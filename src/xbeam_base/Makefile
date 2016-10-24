@@ -1,4 +1,4 @@
-FFLAGS = -g -fPIC
+FFLAGS = -g -fPIC -O3
 FC = gfortran
 LINKER = ar cr
 object_dir = obj/
