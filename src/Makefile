@@ -1,12 +1,13 @@
 FFLAGS = -g -fPIC -O3
+LINKER_FLAGS = -shared
 FC = gfortran
 LINKER = ar cr
 object_dir = obj/
 lib_dir = lib/
 
-target = libxbeam.a
+target = libxbeam.so
 base_dir = xbeam_base/
-base_lib = libxbeam_base.a
+base_lib = libxbeam_base.so
 
 files = xbeam_shared\
 cbeam3_asbly\
@@ -30,7 +31,7 @@ include_dir = $(base_dir)obj/
 default: $(target)
 
 $(target): $(base_lib) $(objects)
-	$(LINKER) $(target) $(addprefix $(object_dir), $(objects))
+	$(FC) -o $(target) $(addprefix $(object_dir), $(objects)) $(LINKER_FLAGS)
 	mkdir -p $(lib_dir)
 	mv $(target) $(lib_dir)$(target)
 	mv *.mod $(object_dir)

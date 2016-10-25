@@ -1,10 +1,11 @@
 FFLAGS = -g -fPIC -O3
+LINKER_FLAGS = -shared
 FC = gfortran
 LINKER = ar cr
 object_dir = obj/
 lib_dir = lib/
 
-target = libxbeam_base.a
+target = libxbeam_base.so
 files = lib_fem\
 lib_rot\
 lib_rotvect\

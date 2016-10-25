@@ -15,7 +15,7 @@ module xbeam_shared
 ! Problem constants.
  integer,parameter:: MaxElNod=3                ! Max number of nodes per element.
  real(8),parameter:: Pi=3.14159265358979
- real(8),parameter,dimension(3,3):: Unit= &    ! Unit matrix.
+ real(8),parameter,private,dimension(3,3):: Unit= &    ! Unit matrix.
 &         reshape((/1.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,1.d0/),(/3,3/))
 
 

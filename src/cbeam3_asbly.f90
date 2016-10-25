@@ -25,7 +25,8 @@ module cbeam3_asbly
   use xbeam_shared
   use lib_solv, only: solv_set_vec_rows_zero
   implicit none
-
+ real(8),parameter,private,dimension(3,3):: Unit= &    ! Unit matrix.
+&         reshape((/1.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,1.d0/),(/3,3/))
  contains
 
 

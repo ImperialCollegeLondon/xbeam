@@ -32,6 +32,8 @@ module cbeam3_solv
 ! Private variables.
   integer,private,parameter:: DimMat=24    ! Memory index for sparse matrices.
 
+  real(8),private,parameter,dimension(3,3):: Unit= &       ! 4x4 Unit matrix.
+&         reshape((/1.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,1.d0/),(/3,3/))
   real(8),private,parameter,dimension(4,4):: Unit4= &       ! 4x4 Unit matrix.
 &         reshape((/1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0/),(/4,4/))
 

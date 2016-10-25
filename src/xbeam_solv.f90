@@ -31,6 +31,8 @@ module xbeam_solv
  integer,private,parameter:: MaxNodCB3=3               ! Max number of nodes per element is 3.
  integer,private,parameter:: DimMat=18                 ! Memory index for sparse matrices.
 
+ real(8),private,parameter,dimension(3,3):: Unit= &       ! 3x3 Unit matrix.
+&         reshape((/1.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,1.d0/),(/3,3/))
  real(8),private,parameter,dimension(4,4):: Unit4= &       ! 4x4 Unit matrix.
 &         reshape((/1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0/),(/4,4/))
 
