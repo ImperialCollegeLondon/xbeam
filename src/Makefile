@@ -18,7 +18,9 @@ xbeam_asbly\
 xbeam_fdiff\
 xbeam_perturb\
 xbeam_solv\
-xbeam_undef
+xbeam_undef\
+FxWrapper_PyFx\
+FxInput_PyFx
 
 objects = $(files:=.o)
 sources = $(files:=.f90)

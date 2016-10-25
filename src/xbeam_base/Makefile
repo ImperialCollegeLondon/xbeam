@@ -25,7 +25,7 @@ modules = $(files:=.mod)
 default: $(target)
 
 $(target): $(objects)
-	$(LINKER) $(target) $(addprefix $(object_dir), $^)
+	$(FC) -o $(target) $(addprefix $(object_dir), $^) $(LINKER_FLAGS)
 	mkdir -p $(lib_dir)
 	mv $(target) $(lib_dir)$(target)
 	mv *.mod $(object_dir)
