@@ -8,10 +8,10 @@
 !
 ! DESCRIPTION
 ! Wrapper file to interface Python scripting and Fortran 90 code.
-! The file contains various F90 routines for Python-driven analyses and 
-! circumvents the issue of derived types by passing each member of the structure 
+! The file contains various F90 routines for Python-driven analyses and
+! circumvents the issue of derived types by passing each member of the structure
 ! separately as function arguments.
-! 
+!
 !-------------------------------------------------------------------------------
 !
 ! DATE     VERSION PROGRAMMER  DESCRIPTION
@@ -19,7 +19,7 @@
 ! 20120210 1.0     A.Da Ronch  Function wrap_cbeam3_asbly_dynamic modified
 ! 20120222 1.0     A.Da Ronch  Function wrap_cbeam3_solv_state2disp modified
 ! 20120929 1.0     A.Da Ronch  Added function wrap_fem_glob2loc_extract
-! 20121011 1.1	   R. Simpson  Added wrapper for F90 solvers... 
+! 20121011 1.1	   R. Simpson  Added wrapper for F90 solvers...
 !								wrap_cbeam3_solv_nlndyn and...
 !								 wrap_cbeam3_solv_nlnstatic
 ! 20121015 1.1	   R. Simpson  Added xbopts input arguments to every wrapper...
@@ -28,15 +28,15 @@
 ! 20130111 1.1     R. Simpson  Added wrapper for cbeam3_solv_nlndyn_accel
 !
 ! 20150908 ?       S.Maraniello Adapt for hinge BCs
-! 
-!-------------------------------------------------------------------------------
-! 
-! To be done
-! - 
 !
 !-------------------------------------------------------------------------------
-module test
-    
+!
+! To be done
+! -
+!
+!-------------------------------------------------------------------------------
+module xbeam_wrapper
+
     use xbeam_shared
     !use input
     use xbeam_undef
@@ -50,18 +50,18 @@ module test
     use xbeam_solv
     use xbeam_perturb
     use lib_perturb
-    
+
     implicit none
-    
+
     contains
-    
+
     !---------------------------------------------------------------------------
     ! Collect separate variables into xbelem fields
     ! Memory allocation is done before the call
     !---------------------------------------------------------------------------
     subroutine pack_xbelem(NumElems,Elem,NumNodes,MemNo,Conn,Master,Length,&
     &           PreCurv,Psi,Vector,Mass,Stiff,InvStiff,RBMass)
-        
+
         integer     ,intent(in) :: NumElems
         type(xbelem),intent(out):: Elem(NumElems)
         integer     ,intent(in) :: NumNodes(NumElems)
@@ -76,13 +76,13 @@ module test
         real(8)     ,intent(in) :: Stiff(6*NumElems,6)
         real(8)     ,intent(in) :: InvStiff(6*NumElems,6)
         real(8)     ,intent(in) :: RBMass(MaxElNod*NumElems,6,6)
-        
+
         integer:: i,i3,i6,iMaxElNod
-        
+
         do i=1,NumElems
             i3 = (i-1)*3; i6 = i3*2
             iMaxElNod = (i-1)*MaxElNod
-            
+
             Elem(i)%NumNodes = NumNodes(i)
             Elem(i)%MemNo = MemNo(i)
             Elem(i)%Conn = Conn(1+iMaxElNod:MaxElNod+iMaxElNod)
@@ -96,17 +96,17 @@ module test
             Elem(i)%InvStiff = InvStiff(1+i6:6+i6,:)
             Elem(i)%RBMass = RBMass(1+(i-1)*MaxElNod:3+i*MaxElNod,:,:)
         end do
-        
+
         return
-        
+
     end subroutine pack_xbelem
-    
+
     !---------------------------------------------------------------------------
     ! Collect separate variables into xbnode fields
     ! Memory allocation is done before the call
     !---------------------------------------------------------------------------
     subroutine pack_xbnode(NumNodes,Node,Master,Vdof,Fdof,Sflag)
-        
+
         integer     ,intent(in) :: NumNodes
         type(xbnode),intent(out):: Node(NumNodes)
         integer     ,intent(in) :: Master(2*NumNodes)
@@ -114,9 +114,9 @@ module test
         integer     ,intent(in) :: Fdof(NumNodes)
 
         integer     ,intent(in), optional :: Sflag(NumNodes)
-        
+
         integer:: i,i2
-        
+
         do i=1,NumNodes
             i2 = (i-1)*2
             Node(i)%Master(1) = Master(1+i2)
@@ -131,11 +131,11 @@ module test
                 Node(i)%Sflag = Sflag(i)
             end do
         end if
-        
+
         return
-        
+
     end subroutine pack_xbnode
-    
+
     !---------------------------------------------------------------------------
     ! Collect separate variables into xbopts fields
     ! Memory allocation is done before the call
@@ -143,7 +143,7 @@ module test
     subroutine pack_xbopts(Options,FollowerForce,FollowerForceRig,PrintInfo,&
     &           OutInBframe,OutInaframe,ElemProj,MaxIterations,NumLoadSteps,&
     &           NumGauss,Solution,DeltaCurved,MinDelta,NewmarkDamp)
-        
+
         type(xbopts),intent(out):: Options
         logical     ,intent(in) :: FollowerForce
         logical     ,intent(in) :: FollowerForceRig
@@ -158,7 +158,7 @@ module test
         real(8)     ,intent(in) :: DeltaCurved
         real(8)     ,intent(in) :: MinDelta
         real(8)     ,intent(in) :: NewmarkDamp
-        
+
         Options%FollowerForce = FollowerForce
         Options%FollowerForceRig = FollowerForceRig
         Options%PrintInfo = PrintInfo
@@ -172,42 +172,42 @@ module test
         Options%DeltaCurved = DeltaCurved
         Options%MinDelta = MinDelta
         Options%NewmarkDamp = NewmarkDamp
-        
+
         return
-        
+
     end subroutine pack_xbopts
-    
+
     !---------------------------------------------------------------------------
     ! Collect separate variables into sparse fields
     ! Memory allocation is done before the call
     !---------------------------------------------------------------------------
     subroutine pack_sparse(DimSparse,IArray,JArray,Vec,Vec1)
-        
+
         integer     ,intent(in) :: DimSparse
         integer     ,intent(in) :: IArray(DimSparse)
         integer     ,intent(in) :: JArray(DimSparse)
         real(8)     ,intent(in) :: Vec(DimSparse)
         type(sparse),intent(out):: Vec1(DimSparse)
-        
+
         integer:: k
-        
+
         do k=1,DimSparse
             Vec1(k)%i = IArray(k)
             Vec1(k)%j = JArray(k)
             Vec1(k)%a = Vec(k)
         end do
-        
+
         return
-        
+
     end subroutine pack_sparse
-    
+
     !---------------------------------------------------------------------------
     ! Extract xbelem fields to separate variables
     ! Memory allocation is done before the call
     !---------------------------------------------------------------------------
     subroutine unpack_xbelem(NumElems,Elem,NumNodes,MemNo,Conn,Master,Length,&
     &           PreCurv,Psi,Vector,Mass,Stiff,InvStiff,RBMass)
-        
+
         integer     ,intent(in) :: NumElems
         type(xbelem),intent(in) :: Elem(NumElems)
         integer     ,intent(out):: NumNodes(NumElems)
@@ -222,14 +222,14 @@ module test
         real(8)     ,intent(out):: Stiff(6*NumElems,6)
         real(8)     ,intent(out):: InvStiff(6*NumElems,6)
         real(8)     ,intent(out):: RBMass(MaxElNod*NumElems,6,6)
-        
+
         integer:: i,i3,i6,iMaxElNod
-        
+
         do i=1,NumElems
             i3 = (i-1)*3
             i6 = (i-1)*6
             iMaxElNod = (i-1)*MaxElNod
-            
+
             NumNodes(i) = Elem(i)%NumNodes
             MemNo(i) = Elem(i)%MemNo
             Conn(1+iMaxElNod:MaxElNod+iMaxElNod) = Elem(i)%Conn
@@ -243,17 +243,17 @@ module test
             InvStiff(1+i6:6+i6,:) = Elem(i)%InvStiff
             RBMass(1+(i-1)*MaxElNod:3+i*MaxElNod,:,:) = Elem(i)%RBMass
         end do
-        
+
         return
-        
+
     end subroutine unpack_xbelem
-    
+
     !---------------------------------------------------------------------------
     ! Extract xbnode fields to separate variables
     ! Memory allocation is done before the call
     !---------------------------------------------------------------------------
     subroutine unpack_xbnode(NumNodes,Node,Master,Vdof,Fdof, Sflag)
-        
+
         integer     ,intent(in) :: NumNodes
         type(xbnode),intent(in) :: Node(NumNodes)
         integer     ,intent(out):: Master(2*NumNodes)
@@ -261,16 +261,16 @@ module test
         integer     ,intent(out):: Fdof(NumNodes)
 
         integer     ,intent(out), optional :: Sflag(NumNodes)
-        
+
         integer:: i,i2
-        
+
         do i=1,NumNodes
             i2 = (i-1)*2
             Master(1+i2:2+i2) = Node(i)%Master
             Vdof(i) = Node(i)%Vdof
             Fdof(i) = Node(i)%Fdof
         end do
-        
+
         ! Optional - Sflag
         if (present(Sflag)) then
             do i=1,NumNodes
@@ -279,9 +279,9 @@ module test
         end if
 
         return
-        
+
     end subroutine unpack_xbnode
-    
+
     !---------------------------------------------------------------------------
     ! Extract xbopts fields to separate variables
     ! Memory allocation is done before the call
@@ -289,7 +289,7 @@ module test
     subroutine unpack_xbopts(Options,FollowerForce,FollowerForceRig,PrintInfo,&
     &           OutInBframe,OutInaframe,ElemProj,MaxIterations,NumLoadSteps,&
     &           NumGauss,Solution,DeltaCurved,MinDelta,NewmarkDamp)
-        
+
         type(xbopts),intent(in) :: Options
         logical     ,intent(out):: FollowerForce
         logical     ,intent(out):: FollowerForceRig
@@ -304,7 +304,7 @@ module test
         real(8)     ,intent(out):: DeltaCurved
         real(8)     ,intent(out):: MinDelta
         real(8)     ,intent(out):: NewmarkDamp
-        
+
         FollowerForce = Options%FollowerForce
         FollowerForceRig = Options%FollowerForceRig
         PrintInfo = Options%PrintInfo
@@ -318,71 +318,71 @@ module test
         DeltaCurved = Options%DeltaCurved
         MinDelta = Options%MinDelta
         NewmarkDamp = Options%NewmarkDamp
-        
+
         return
-        
+
     end subroutine unpack_xbopts
-    
+
     !---------------------------------------------------------------------------
     ! Extract sparse fields to separate variables
     ! Memory allocation is done before the call
     !---------------------------------------------------------------------------
     subroutine unpack_sparse(DimSparse,Vec1,IArray,JArray,Vec)
-        
+
         integer     ,intent(in) :: DimSparse
         type(sparse),intent(in) :: Vec1(DimSparse)
         integer     ,intent(out):: IArray(DimSparse)
         integer     ,intent(out):: JArray(DimSparse)
         real(8)     ,intent(out):: Vec(DimSparse)
-        
+
         integer:: k
-        
+
         do k=1,DimSparse
             IArray(k) = Vec1(k)%i
             JArray(k) = Vec1(k)%j
             Vec(k)    = Vec1(k)%a
         end do
-        
+
         return
-        
+
     end subroutine unpack_sparse
-    
+
     !---------------------------------------------------------------------------
     ! Convert a Fortran ordered array into a matrix of dimension (nx,ny)
     ! Vector elements are of type real(8)
     !---------------------------------------------------------------------------
     subroutine vec2mat_double(vec,mat,nx,ny)
-        
+
         real(8),intent(in) :: vec(nx*ny)
         real(8),intent(out):: mat(nx,ny)
         integer,intent(in) :: nx,ny
-        
+
         integer:: i,j
-        
+
         mat = 0.d0
         do j=1,ny
             do i=1,nx
                 mat(i,j)=vec(i+(j-1)*nx)
             end do
         end do
-        
+
     end subroutine vec2mat_double
-    
+
     !---------------------------------------------------------------------------
     ! Convert a Fortran ordered array into a 3d matrix of dimension (n1,n2,n3)
     ! Vector elements are of type real(8)
     !---------------------------------------------------------------------------
     subroutine vec2mat3d_double(Array,Mat,n1,n2,n3)
-        
+
         integer,intent(in)   :: n1,n2,n3
         real(8),intent(in)   :: Array(n1*n2*n3)
         real(8),intent(inout):: Mat(n1,n2,n3)
-        
+
         real(8),allocatable:: temp(:,:)
         integer:: i,i1,i2
-        
+
         allocate(temp(n2,n3)); temp = 0.d0
-        
+
         i1 = 0
         i2 = n1*(n2*n3-1)
         do i=1,n1
@@ -391,70 +391,70 @@ module test
             call vec2mat_double(Array(i1:i2:n1), temp, n2, n3)
             Mat(i,:,:) = temp
         end do
-        
+
         deallocate(temp)
-        
+
         return
-        
+
     end subroutine vec2mat3d_double
-    
+
     !---------------------------------------------------------------------------
     ! Convert a Fortran ordered array into a matrix of dimension (nx,ny)
     ! Vector elements are of type int
     !---------------------------------------------------------------------------
     subroutine vec2mat_int(vec,mat,nx,ny)
-        
+
         integer,intent(in) :: vec(nx*ny)
         integer,intent(out):: mat(nx,ny)
         integer,intent(in) :: nx,ny
-        
+
         integer:: i,j
-        
+
         mat=0
         do j=1,ny
             do i=1,nx
                 mat(i,j)=vec(i+(j-1)*nx)
             end do
         end do
-        
+
     end subroutine vec2mat_int
-    
+
     !---------------------------------------------------------------------------
     ! Convert a matrix of dimension (nx,ny) into a Fortran ordered array
     ! Vector elements are of type real(8)
     !---------------------------------------------------------------------------
     subroutine mat2vec_double(mat,vec,nx,ny)
-        
+
         real(8),intent(in) :: mat(nx,ny)
         real(8),intent(out):: vec(nx*ny)
         integer,intent(in) :: nx,ny
-        
+
         integer:: i,j
-        
+
         vec=0.d0
         do j=1,ny
             do i=1,nx
                 vec(i+(j-1)*nx)=mat(i,j)
             end do
         end do
-        
+
     end subroutine mat2vec_double
-    
+
     !---------------------------------------------------------------------------
     ! Convert a 3d matrix of dimension (n1,n2,n3) into a Fortran ordered array
     ! Vector elements are of type real(8)
     !---------------------------------------------------------------------------
     subroutine mat2vec3d_double(Mat,Array,n1,n2,n3)
-        
+
         integer,intent(in)   :: n1,n2,n3
         real(8),intent(in)   :: Mat(n1,n2,n3)
         real(8),intent(inout):: Array(n1*n2*n3)
-        
+
         real(8),allocatable:: temp(:,:)
         integer:: i,i1,i2
-        
+
         allocate(temp(n2,n3)); temp = 0.d0
-        
+
         i1 = 0
         i2 = n1*(n2*n3-1)
         do i=1,n1
@@ -463,63 +463,63 @@ module test
             temp = Mat(i,:,:)
             call mat2vec_double(temp, Array(i1:i2:n1), n2, n3)
         end do
-        
+
         deallocate(temp)
-        
+
         return
-        
+
     end subroutine mat2vec3d_double
-    
+
     !---------------------------------------------------------------------------
     ! Convert a Fortran ordered array into a matrix of dimension (nx,ny)
     ! Vector elements are of type int
     !---------------------------------------------------------------------------
     subroutine mat2vec_int(mat,vec,nx,ny)
-        
+
         integer,intent(in) :: mat(nx,ny)
         integer,intent(out):: vec(nx*ny)
         integer,intent(in) :: nx,ny
-        
+
         integer:: i,j
-        
+
         vec=0
         do j=1,ny
             do i=1,nx
                 vec(i+(j-1)*nx)=mat(i,j)
             end do
         end do
-        
+
     end subroutine mat2vec_int
-    
+
     !---------------------------------------------------------------------------
     ! From sparse type to full matrix
     !---------------------------------------------------------------------------
     subroutine sparse2full_rank(DimSprMat,SprMat,n1,n2,FulMat)
-        
+
         integer     ,intent(in) :: DimSprMat
         type(sparse),intent(in) :: SprMat(DimSprMat)
         integer     ,intent(in) :: n1
         integer     ,intent(in) :: n2
         real(8)     ,intent(out):: FulMat(n1,n2)
-        
+
         integer:: k
-        
+
         FulMat = 0.d0
         do k=1,DimSprMat
             FulMat(SprMat(k)%i,SprMat(k)%j) = SprMat(k)%a
         end do
-        
+
         return
-        
+
     end subroutine sparse2full_rank
-    
+
     !---------------------------------------------------------------------------
     ! Form the xbelem derived type
     !---------------------------------------------------------------------------
     subroutine do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
     &           Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
     &           InvStiff_Array,RBMass_Array)
-        
+
         integer     ,intent(in)   :: NumElems
         type(xbelem),intent(inout):: Elem(NumElems)
         integer     ,intent(in)   :: NumNodes(NumElems)
@@ -534,47 +534,47 @@ module test
         real(8)     ,intent(in)   :: Stiff_Array(6*NumElems*6)
         real(8)     ,intent(in)   :: InvStiff_Array(6*NumElems*6)
         real(8)     ,intent(in)   :: RBMass_Array(MaxElNod*NumElems*6*6)
-        
+
         integer,allocatable:: Master(:,:)
         real(8),allocatable:: Mass(:,:)
         real(8),allocatable:: Stiff(:,:)
         real(8),allocatable:: InvStiff(:,:)
         real(8),allocatable:: RBMass(:,:,:)
-        
+
         allocate(Master(MaxElNod*NumElems,2)); Master = 0
         allocate(Mass(6*NumElems,6)); Mass = 0.d0
         allocate(Stiff(6*NumElems,6)); Stiff = 0.d0
         allocate(InvStiff(6*NumElems,6)); InvStiff = 0.d0
         allocate(RBMass(MaxElNod*NumElems,6,6)); RBMass = 0.d0
-        
+
         ! From one-dim array to multi-dim entity
         call vec2mat_int(Master_Array,Master,MaxElNod*NumElems,2)
         call vec2mat_double(Mass_Array,Mass,6*NumElems,6)
         call vec2mat_double(Stiff_Array,Stiff,6*NumElems,6)
         call vec2mat_double(InvStiff_Array,InvStiff,6*NumElems,6)
         call vec2mat3d_double(RBMass_Array,RBMass,MaxElNod*NumElems,6,6)
-        
+
         ! Pack xbelem derived type
         call pack_xbelem(NumElems,Elem,NumNodes,MemNo,Conn,Master,Length,&
         &       PreCurv,Psi,Vector,Mass,Stiff,InvStiff,RBMass)
-        
+
         deallocate(Master)
         deallocate(Mass)
         deallocate(Stiff)
         deallocate(InvStiff)
         deallocate(RBMass)
-        
+
         return
-        
+
     end subroutine do_xbelem_var
-    
+
     !---------------------------------------------------------------------------
     ! Extract one-dim arrays from the xbelem derived type
     !---------------------------------------------------------------------------
     subroutine undo_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,&
     &           Master_Array,Length,PreCurv,Psi,Vector,Mass_Array,&
     &           Stiff_Array,InvStiff_Array,RBMass_Array)
-        
+
         integer     ,intent(in)   :: NumElems
         type(xbelem),intent(in)   :: Elem(NumElems)
         integer     ,intent(inout):: NumNodes(NumElems)
@@ -589,98 +589,98 @@ module test
         real(8)     ,intent(inout):: Stiff_Array(6*NumElems*6)
         real(8)     ,intent(inout):: InvStiff_Array(6*NumElems*6)
         real(8)     ,intent(inout):: RBMass_Array(MaxElNod*NumElems*6*6)
-        
+
         integer,allocatable:: Master(:,:)
         real(8),allocatable:: Mass(:,:)
         real(8),allocatable:: Stiff(:,:)
         real(8),allocatable:: InvStiff(:,:)
         real(8),allocatable:: RBMass(:,:,:)
-        
+
         allocate(Master(MaxElNod*NumElems,2)); Master = 0
         allocate(Mass(6*NumElems,6)); Mass = 0.d0
         allocate(Stiff(6*NumElems,6)); Stiff = 0.d0
         allocate(InvStiff(6*NumElems,6)); InvStiff = 0.d0
         allocate(RBMass(MaxElNod*NumElems,6,6)); RBMass = 0.d0
-        
+
         ! Unpack xbelem derived type
         call unpack_xbelem(NumElems,Elem,NumNodes,MemNo,Conn,Master,Length,&
         &       PreCurv,Psi,Vector,Mass,Stiff,InvStiff,RBMass)
-        
+
         ! From multi-dim entity to one-dim array
         call mat2vec_int(Master,Master_Array,MaxElNod*NumElems,2)
         call mat2vec_double(Mass,Mass_Array,6*NumElems,6)
         call mat2vec_double(Stiff,Stiff_Array,6*NumElems,6)
         call mat2vec_double(InvStiff,InvStiff_Array,6*NumElems,6)
         call mat2vec3d_double(RBMass,RBMass_Array,MaxElNod*NumElems,6,6)
-        
+
         deallocate(Master)
         deallocate(Mass)
         deallocate(Stiff)
         deallocate(InvStiff)
         deallocate(RBMass)
-        
+
         return
-        
+
     end subroutine undo_xbelem_var
-    
+
     !---------------------------------------------------------------------------
     ! Extract forces on unconstrained nodes and return one-dim array
     !---------------------------------------------------------------------------
     subroutine wrap_fem_m2v(N1,N2,Matrix_1d,N3,Vector,FilterIN)
-        
+
         integer,intent(in) :: N1
         integer,intent(in) :: N2
         real(8),intent(in) :: Matrix_1d(N1*N2)
         integer,intent(in) :: N3
         real(8),intent(out):: Vector(N3)
         integer,intent(in) :: FilterIN(N1)
-        
+
         real(8),allocatable:: Matrix(:,:)
-        
+
         allocate(Matrix(N1,N2)); Matrix = 0.d0
-        
+
         ! Convert PY data to F90 data
         call vec2mat_double(Matrix_1d,Matrix,N1,N2)
-        
+
         ! Convert matrix to vector array
         Vector = fem_m2v(Matrix,N3,Filter=FilterIN)
-        
+
         deallocate(Matrix)
-        
+
         return
-        
+
     end subroutine wrap_fem_m2v
-    
+
     !---------------------------------------------------------------------------
     ! Extract forces on unconstrained nodes and return one-dim array
     ! No filter option
-    ! Not able to get the optional argument to work properly in one single 
+    ! Not able to get the optional argument to work properly in one single
     ! routine
     !---------------------------------------------------------------------------
     subroutine wrap_fem_m2v_nofilter(N1,N2,Matrix_1d,N3,Vector)
-        
+
         integer,intent(in) :: N1
         integer,intent(in) :: N2
         real(8),intent(in) :: Matrix_1d(N1*N2)
         integer,intent(in) :: N3
         real(8),intent(out):: Vector(N3)
-        
+
         real(8),allocatable:: Matrix(:,:)
-        
+
         allocate(Matrix(N1,N2)); Matrix = 0.d0
-        
+
         ! Convert PY data to F90 data
         call vec2mat_double(Matrix_1d,Matrix,N1,N2)
-        
+
         ! Convert matrix to vector array
         Vector = fem_m2v(Matrix,N3)
-        
+
         deallocate(Matrix)
-        
+
         return
-        
+
     end subroutine wrap_fem_m2v_nofilter
-    
+
     !---------------------------------------------------------------------------
     ! input_setup wrapper
     !---------------------------------------------------------------------------
@@ -690,7 +690,7 @@ module test
 	&			ElemProj, MaxIterations, NumLoadSteps,	&!for pack_xbopts
 	&			NumGauss, Solution, DeltaCurved, 		&!for pack_xbopts
 	&			MinDelta, NewmarkDamp)					 !for pack_xbopts
-        
+
         integer          ,intent(in)   :: NumElems
         character(len=25),intent(inout):: OutFile
 		logical,intent(in) :: FollowerForce
@@ -707,7 +707,7 @@ module test
         real(8),intent(in) :: MinDelta
         real(8),intent(in) :: NewmarkDamp
 
-        
+
         type(xbopts):: Options
 
 		! Convert PY data to F90 data
@@ -715,10 +715,10 @@ module test
 &					PrintInfo,OutInBframe,OutInaframe,ElemProj,				&
 &					MaxIterations,NumLoadSteps,								&
 &					NumGauss,Solution,DeltaCurved,MinDelta,NewmarkDamp)
-        
+
         ! Setup testcase
         call input_setup(NumElems,OutFile,Options)
-        
+
 
         ! Convert F90 into PY data
 !        call unpack_xbopts(Options,FollowerForce,FollowerForceRig,PrintInfo,&
@@ -726,16 +726,16 @@ module test
 !&           NumGauss,Solution,DeltaCurved,MinDelta,NewmarkDamp)
 
         return
-        
+
     end subroutine wrap_input_setup
-    
+
     !---------------------------------------------------------------------------
     ! input_elem wrapper
     !---------------------------------------------------------------------------
     subroutine wrap_input_elem(NumElems,NumNodes_tot,NumNodes,MemNo,Conn,&
     &           Master_Array,Length,PreCurv,Psi,Vector,Mass_Array,&
     &           Stiff_Array,InvStiff_Array,RBMass_Array)
-        
+
         integer,intent(in) :: NumElems
         integer,intent(out):: NumNodes_tot
         integer,intent(out):: NumNodes(NumElems)
@@ -750,30 +750,30 @@ module test
         real(8),intent(out):: Stiff_Array(6*NumElems*6)
         real(8),intent(out):: InvStiff_Array(6*NumElems*6)
         real(8),intent(out):: RBMass_Array(MaxElNod*NumElems*6*6)
-        
+
         type(xbelem),allocatable:: Elem(:)
-        
+
         allocate(Elem(NumElems))
-        
+
         ! Convert PY data to F90 data
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &       InvStiff_Array,RBMass_Array)
-        
+
         ! Setup element properties
         call input_elem(NumElems,NumNodes_tot,Elem)
-        
+
         ! Convert F90 data to PY data
         call undo_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &       InvStiff_Array,RBMass_Array)
-        
+
         deallocate(Elem)
-        
+
         return
-        
+
     end subroutine wrap_input_elem
-    
+
     !---------------------------------------------------------------------------
     ! input_node wrapper
     !---------------------------------------------------------------------------
@@ -781,7 +781,7 @@ module test
     &           Master_Array,Length,PreCurv,Psi,Vector,Mass_Array,&
     &           Stiff_Array,InvStiff_Array,RBMass_Array,BoundConds,&
     &           PosIni_Array,ForceStatic_Array,PhiNodes)
-        
+
         integer,intent(in)   :: NumElems
         integer,intent(in)   :: NumNodes_tot
         integer,intent(in)   :: NumNodes(NumElems)
@@ -800,15 +800,15 @@ module test
         real(8),intent(inout):: PosIni_Array(NumNodes_tot*3)
         real(8),intent(inout):: ForceStatic_Array(NumNodes_tot*6)
         real(8),intent(inout):: PhiNodes(NumNodes_tot)
-        
+
         type(xbelem),allocatable:: Elem(:)
         real(8)     ,allocatable:: PosIni(:,:)
         real(8)     ,allocatable:: ForceStatic(:,:)
-        
+
         allocate(Elem(NumElems))
         allocate(PosIni(NumNodes_tot,3)); PosIni = 0.d0
         allocate(ForceStatic(NumNodes_tot,6)); ForceStatic = 0.d0
-        
+
         ! Convert PY data to F90 data
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
@@ -816,22 +816,22 @@ module test
 
         call vec2mat_double(PosIni_Array,PosIni,NumNodes_tot,3)
         call vec2mat_double(ForceStatic_Array,ForceStatic,NumNodes_tot,6)
-        
+
         ! Setup nodal properties
         call input_node(NumNodes_tot,Elem,BoundConds,PosIni,ForceStatic,PhiNodes)
-        
+
         ! Convert F90 data to PY data
         call mat2vec_double(PosIni,PosIni_Array,NumNodes_tot,3)
         call mat2vec_double(ForceStatic,ForceStatic_Array,NumNodes_tot,6)
-        
+
         deallocate(Elem)
         deallocate(PosIni)
         deallocate(ForceStatic)
-        
+
         return
-        
+
     end subroutine wrap_input_node
-    
+
     !---------------------------------------------------------------------------
     ! Compute initial (undeformed) geometry
     !---------------------------------------------------------------------------
@@ -844,7 +844,7 @@ module test
 	&			ElemProj, MaxIterations, NumLoadSteps,	&!for pack_xbopts
 	&			NumGauss, Solution, DeltaCurved, 		&!for pack_xbopts
 	&			MinDelta, NewmarkDamp)					 !for pack_xbopts
-        
+
         integer,intent(in)   :: NumElems
         integer,intent(inout):: NumNodes_tot
         integer,intent(inout):: NumNodes(NumElems)
@@ -875,17 +875,17 @@ module test
         real(8),intent(in) :: DeltaCurved
         real(8),intent(in) :: MinDelta
         real(8),intent(in) :: NewmarkDamp
-        
+
         type(xbelem),allocatable:: Elem(:)
         real(8)     ,allocatable:: PosIni(:,:)
         real(8)     ,allocatable:: PsiIni(:,:,:)
-        
+
         type(xbopts):: Options
-        
+
         allocate(Elem(NumElems))
         allocate(PosIni(NumNodes_tot,3)); PosIni = 0.d0
         allocate(PsiIni(NumElems,MaxElNod,3)); PsiIni = 0.d0
-        
+
         ! Convert PY data to F90 data
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
@@ -896,28 +896,28 @@ module test
 &					PrintInfo,OutInBframe,OutInaframe,ElemProj,				&
 &					MaxIterations,NumLoadSteps,								&
 &					NumGauss,Solution,DeltaCurved,MinDelta,NewmarkDamp)
-        
+
         call vec2mat_double(PosIni_Array,PosIni,NumNodes_tot,3)
         call vec2mat3d_double(PsiIni_Array,PsiIni,NumElems,MaxElNod,3)
-        
+
         ! Compute initial (undeformed) geometry
         call xbeam_undef_geom(Elem,PosIni,PhiNodes,PsiIni,Options)
-        
+
         ! Convert F90 data to PY data
         call undo_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &       InvStiff_Array,RBMass_Array)
-        
+
         call mat2vec3d_double(PsiIni,PsiIni_Array,NumElems,MaxElNod,3)
-        
+
         deallocate(Elem)
         deallocate(PosIni)
         deallocate(PsiIni)
-        
+
         return
-        
+
     end subroutine wrap_xbeam_undef_geom
-    
+
     !---------------------------------------------------------------------------
     ! Identify nodal degrees of freedom
     !---------------------------------------------------------------------------
@@ -926,7 +926,7 @@ module test
     &           Stiff_Array,InvStiff_Array,RBMass_Array,BoundConds,&
     &           Nod_Master,Nod_Vdof,Nod_Fdof,NumDof,&
     &           Nod_Sflag                                                  ) ! optional variables
-        
+
         integer,intent(in)   :: NumElems
         integer,intent(in)   :: NumNodes_tot
         integer,intent(in)   :: NumNodes(NumElems)
@@ -948,12 +948,12 @@ module test
         integer,intent(inout):: NumDof
 
         !integer,intent(inout),optional:: Nod_Sflag(NumNodes_tot)
-        integer,intent(inout):: Nod_Sflag(NumNodes_tot)        
+        integer,intent(inout):: Nod_Sflag(NumNodes_tot)
 
         type(xbelem),allocatable:: Elem(:)
         type(xbnode),allocatable:: Node(:)
 
-        
+
         allocate(Elem(NumElems))
         allocate(Node(NumNodes_tot))
 
@@ -961,7 +961,7 @@ module test
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &       InvStiff_Array,RBMass_Array)
-        
+
         !if(present(Nod_Sflag)) then
             call pack_xbnode(NumNodes_tot,Node,Nod_Master,Nod_Vdof,Nod_Fdof,Nod_Sflag)
         !else
@@ -970,21 +970,21 @@ module test
 
         ! Identify nodal degrees of freedom
         call xbeam_undef_dofs(Elem,BoundConds,Node,NumDof)
-        
+
         ! Convert F90 data to PY data
         !if(present(Nod_Sflag)) then
             call unpack_xbnode(NumNodes_tot,Node,Nod_Master,Nod_Vdof,Nod_Fdof,Nod_Sflag)
         !else
         !    call unpack_xbnode(NumNodes_tot,Node,Nod_Master,Nod_Vdof,Nod_Fdof)
-        !end if                
+        !end if
 
         deallocate(Elem)
         deallocate(Node)
-        
+
         return
-        
+
     end subroutine wrap_xbeam_undef_dofs
-    
+
     !---------------------------------------------------------------------------
     ! Assembly matrices for a nonlinear static problem
     !---------------------------------------------------------------------------
@@ -1000,7 +1000,7 @@ module test
     &           ElemProj, MaxIterations, NumLoadSteps,  &!for pack_xbopts
     &           NumGauss, Solution, DeltaCurved,        &!for pack_xbopts
     &           MinDelta, NewmarkDamp)                   !for pack_xbopts)
-        
+
         integer,intent(in)   :: NumElems
         integer,intent(in)   :: NumNodes_tot
         integer,intent(in)   :: NumNodes(NumElems)
@@ -1043,7 +1043,7 @@ module test
         real(8),intent(in) :: DeltaCurved
         real(8),intent(in) :: MinDelta
         real(8),intent(in) :: NewmarkDamp
-        
+
         type(xbelem),allocatable:: Elem(:)
         type(xbnode),allocatable:: Node(:)
         real(8)     ,allocatable:: Coords(:,:)
@@ -1055,9 +1055,9 @@ module test
         type(sparse),allocatable:: Fglobal(:)
         real(8)     ,allocatable:: Kglobal_Full(:,:)
         real(8)     ,allocatable:: Fglobal_Full(:,:)
-        
+
         type(xbopts):: Options
-        
+
         allocate(Elem(NumElems))
         allocate(Node(NumNodes_tot))
         allocate(Coords(NumNodes_tot,3)); Coords = 0.d0
@@ -1069,12 +1069,12 @@ module test
         allocate(Fglobal(DimMat*NumDof)); call sparse_zero(fs,Fglobal)
         allocate(Kglobal_Full(NumDof,NumDof)); Kglobal_Full = 0.d0
         allocate(Fglobal_Full(NumDof,NumDof)); Fglobal_Full = 0.d0
-        
+
         ! Convert PY data to F90 data
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &       InvStiff_Array,RBMass_Array)
-        
+
         ! Convert PY data to F90 data
         call pack_xbnode(NumNodes_tot,Node,Nod_Master,Nod_Vdof,Nod_Fdof)
 
@@ -1083,24 +1083,24 @@ module test
 &                   PrintInfo,OutInBframe,OutInaframe,ElemProj,             &
 &                   MaxIterations,NumLoadSteps,                             &
 &                   NumGauss,Solution,DeltaCurved,MinDelta,NewmarkDamp)
-        
+
         call vec2mat_double(PosIni_Array,Coords,NumNodes_tot,3)
         call vec2mat3d_double(PsiIni_Array,Psi0,NumElems,MaxElNod,3)
         call vec2mat_double(PosDefor_Array,PosDefor,NumNodes_tot,3)
         call vec2mat3d_double(PsiDefor_Array,PsiDefor,NumElems,MaxElNod,3)
         call vec2mat_double(ForceStatic_Array,AppForces,NumNodes_tot,6)
-        
+
         ! Assembly matrices for a nonlinear static problem
         call cbeam3_asbly_static(Elem,Node,Coords,Psi0,PosDefor,PsiDefor,&
         &       AppForces,ks,Kglobal,fs,Fglobal,Qglobal,Options)
-        
+
         ! Convert F90 data to PY data
         call sparse2full_rank(ks,Kglobal,NumDof,NumDof,Kglobal_Full)
         call sparse2full_rank(fs,Fglobal,NumDof,NumDof,Fglobal_Full)
 
         call mat2vec_double(Kglobal_Full,Kglobal_Array,NumDof,NumDof)
         call mat2vec_double(Fglobal_Full,Fglobal_Array,NumDof,NumDof)
-        
+
         deallocate(Elem)
         deallocate(Node)
         deallocate(Coords)
@@ -1112,21 +1112,21 @@ module test
         deallocate(Fglobal)
         deallocate(Kglobal_Full)
         deallocate(Fglobal_Full)
-        
+
         return
-        
+
     end subroutine wrap_cbeam3_asbly_static
 
 
     !---------------------------------------------------------------------------
-    ! Update global vectors 
+    ! Update global vectors
     !---------------------------------------------------------------------------
     subroutine wrap_cbeam3_solv_update_static(NumElems,NumNodes_tot,NumNodes,&
     &           MemNo,Conn,Master_Array,Length,PreCurv,Psi,Vector,Mass_Array,&
     &           Stiff_Array,InvStiff_Array,RBMass_Array,Nod_Master,&
     &           Nod_Vdof,Nod_Fdof,NumDof,&
     &           DeltaX,PosIni_Array,PsiIni_Array,PosDefor_Array,PsiDefor_Array)
-        
+
         integer,intent(in)   :: NumElems
         integer,intent(in)   :: NumNodes_tot
         integer,intent(in)   :: NumNodes(NumElems)
@@ -1150,51 +1150,51 @@ module test
         real(8),intent(in)   :: PsiIni_Array(NumElems*MaxElNod*3)
         real(8),intent(inout):: PosDefor_Array(NumNodes_tot*3)
         real(8),intent(inout):: PsiDefor_Array(NumElems*MaxElNod*3)
-        
+
         type(xbelem),allocatable:: Elem(:)
         type(xbnode),allocatable:: Node(:)
         real(8)     ,allocatable:: Psi0(:,:,:)
         real(8)     ,allocatable:: PosDefor(:,:)
         real(8)     ,allocatable:: PsiDefor(:,:,:)
         real(8)     ,allocatable:: Coords(:,:)
-        
+
         allocate(Elem(NumElems))
         allocate(Node(NumNodes_tot))
         allocate(Psi0(NumElems,MaxElNod,3)); Psi0 = 0.d0
         allocate(PosDefor(NumNodes_tot,3)); PosDefor = 0.d0
         allocate(PsiDefor(NumElems,MaxElNod,3)); PsiDefor = 0.d0
         allocate(Coords(NumNodes_tot,3)); Coords = 0.d0
-        
+
         ! Convert PY data to F90 data
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &       InvStiff_Array,RBMass_Array)
-        
+
         call pack_xbnode(NumNodes_tot,Node,Nod_Master,Nod_Vdof,Nod_Fdof)
-        
+
         call vec2mat3d_double(PsiIni_Array,Psi0,NumElems,MaxElNod,3)
         call vec2mat_double(PosDefor_Array,PosDefor,NumNodes_tot,3)
         call vec2mat3d_double(PsiDefor_Array,PsiDefor,NumElems,MaxElNod,3)
         call vec2mat_double(PosIni_Array,Coords,NumNodes_tot,3)
-        
+
         ! Update global vectors
         call cbeam3_solv_update_static(Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
-        
+
         ! Convert F90 data to PY data
         call mat2vec_double(PosDefor,PosDefor_Array,NumNodes_tot,3)
         call mat2vec3d_double(PsiDefor,PsiDefor_Array,NumElems,MaxElNod,3)
-        
+
         deallocate(Elem)
         deallocate(Node)
         deallocate(Psi0)
         deallocate(PosDefor)
         deallocate(PsiDefor)
         deallocate(Coords)
-        
+
         return
-        
+
     end subroutine wrap_cbeam3_solv_update_static
-    
+
     !---------------------------------------------------------------------------
     ! Dump out deformed configuration
     !---------------------------------------------------------------------------
@@ -1202,7 +1202,7 @@ module test
     &           Master_Array,Length,PreCurv,Psi,Vector,Mass_Array,&
     &           Stiff_Array,InvStiff_Array,RBMass_Array,PosDefor_Array,&
     &           PsiDefor_Array,OutFile,Ini0_Def1)
-        
+
         integer,intent(in):: NumElems
         integer,intent(in):: NumNodes_tot
         integer,intent(in):: NumNodes(NumElems)
@@ -1221,25 +1221,25 @@ module test
         real(8),intent(in):: PsiDefor_Array(NumElems*MaxElNod*3)
         character(len=25),intent(in):: OutFile
         integer,intent(in):: Ini0_Def1
-        
+
         type(xbelem),allocatable:: Elem(:)
         real(8)     ,allocatable:: PosDef(:,:)
         real(8)     ,allocatable:: PsiDef(:,:,:)
         real(8)     ,allocatable:: temp(:,:)
-        
+
         allocate(Elem(NumElems))
         allocate(PosDef(NumNodes_tot,3)); PosDef = 0.d0
         allocate(PsiDef(NumElems,MaxElNod,3)); PsiDef = 0.d0
         allocate(temp(MaxElNod,3)); temp = 0.d0
-        
+
         ! Convert PY data to F90 data
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &                  Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &                  InvStiff_Array,RBMass_Array)
-        
+
         call vec2mat_double(PosDefor_Array,PosDef,NumNodes_tot,3)
         call vec2mat3d_double(PsiDefor_Array,PsiDef,NumElems,MaxElNod,3)
-        
+
         ! Dump out deformed configuration
         ! Options: status='replace', access='append'
         if(Ini0_Def1.eq.0) then
@@ -1249,16 +1249,16 @@ module test
         end if
         call output_elems(11,Elem,PosDef,PsiDef)
         close(11)
-        
+
         deallocate(Elem)
         deallocate(PosDef)
         deallocate(PsiDef)
         deallocate(temp)
-        
+
         return
-        
+
     end subroutine wrap_output_elems
-    
+
     !---------------------------------------------------------------------------
     ! Setup dynamic parameters
     !---------------------------------------------------------------------------
@@ -1268,7 +1268,7 @@ module test
 	&			ElemProj, MaxIterations, NumLoadSteps,	&!for pack_xbopts
 	&			NumGauss, Solution, DeltaCurved, 		&!for pack_xbopts
 	&			MinDelta, NewmarkDamp)					 !for pack_xbopts
-        
+
         integer,intent(out):: NumSteps
         real(8),intent(out):: t0
         real(8),intent(out):: dt
@@ -1292,49 +1292,49 @@ module test
 &					PrintInfo,OutInBframe,OutInaframe,ElemProj,				&
 &					MaxIterations,NumLoadSteps,								&
 &					NumGauss,Solution,DeltaCurved,MinDelta,NewmarkDamp)
-        
+
         call input_dynsetup(NumSteps,t0,dt,Options)
-        
+
         return
-        
+
     end subroutine wrap_input_dynsetup
-    
+
     !---------------------------------------------------------------------------
     ! Define time-varying forcing terms
     !---------------------------------------------------------------------------
     subroutine wrap_input_dynforce(NumNodes,nrt,Time,ForceStatic,ForceDynAmp,&
     &           ForceTime)
-        
+
         integer,intent(in) :: NumNodes
         integer,intent(in) :: nrt
         real(8),intent(in) :: Time(nrt)
         real(8),intent(in) :: ForceStatic(NumNodes,6)
         real(8),intent(out):: ForceDynAmp(NumNodes,6)
         real(8),intent(out):: ForceTime(nrt)
-        
+
         call input_dynforce(NumNodes,Time,ForceStatic,ForceDynAmp,ForceTime)
-        
+
         return
-        
+
     end subroutine wrap_input_dynforce
-    
+
     !---------------------------------------------------------------------------
     ! Setup time-varying forcing velocity
     !---------------------------------------------------------------------------
     subroutine wrap_input_forcedvel(NumNodes,nrt,Time,ForcedVel,ForcedVelDot)
-        
+
         integer,intent(in) :: NumNodes
         integer,intent(in) :: nrt
         real(8),intent(in) :: Time(nrt)
         real(8),intent(out):: ForcedVel(nrt,6)
         real(8),intent(out):: ForcedVelDot(nrt,6)
-        
+
         call input_forcedvel(NumNodes,Time,ForcedVel,ForcedVelDot)
-        
+
         return
-        
+
     end subroutine wrap_input_forcedvel
-    
+
     !---------------------------------------------------------------------------
     ! Assembly matrices for dynamic problem
     !---------------------------------------------------------------------------
@@ -1356,7 +1356,7 @@ module test
 	&			NumGauss, Solution, DeltaCurved, 		&!for pack_xbopts
 	&			MinDelta, NewmarkDamp,                  &!for pack_xbopts
 	&           Cao_Array)
-        
+
         integer,intent(in) :: NumElems
         integer,intent(in) :: NumNodes_tot
         integer,intent(in) :: NumNodes(NumElems)
@@ -1412,7 +1412,7 @@ module test
         real(8),intent(in) :: MinDelta
         real(8),intent(in) :: NewmarkDamp
         real(8),intent(in) :: Cao_Array(3*3)
-        
+
         type(xbelem),allocatable:: Elem(:)
         type(xbnode),allocatable:: Node(:)
         real(8)     ,allocatable:: Coords(:,:)
@@ -1435,9 +1435,9 @@ module test
         type(sparse),allocatable:: Fglobal(:)
         real(8)     ,allocatable:: Fglobal_Full(:,:)
         real(8)     ,allocatable:: Cao(:,:)
-        
+
         type(xbopts):: Options
-        
+
         allocate(Elem(NumElems))
         allocate(Node(NumNodes_tot))
         allocate(Coords(NumNodes_tot,3)); Coords = 0.d0
@@ -1460,13 +1460,13 @@ module test
         allocate(Fglobal(DimMat*NumDof)); call sparse_zero(fs,Fglobal)
         allocate(Fglobal_Full(NumDof,NumDof)); Fglobal_Full = 0.d0
         allocate(Cao(3,3)); Cao = 0.d0
-        
+
         ! Convert PY data to F90 data
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &       InvStiff_Array,RBMass_Array)
 
-		! Convert PY data to F90 data        
+		! Convert PY data to F90 data
         call pack_xbnode(NumNodes_tot,Node,Nod_Master,Nod_Vdof,Nod_Fdof)
 
 		! Convert PY data to F90 data
@@ -1474,41 +1474,41 @@ module test
 &					PrintInfo,OutInBframe,OutInaframe,ElemProj,				&
 &					MaxIterations,NumLoadSteps,								&
 &					NumGauss,Solution,DeltaCurved,MinDelta,NewmarkDamp)
-        
+
         call vec2mat_double(Coords_Array,Coords,NumNodes_tot,3)
         call vec2mat3d_double(Psi0_Array,Psi0,NumElems,MaxElNod,3)
         call vec2mat_double(PosDefor_Array,PosDefor,NumNodes_tot,3)
         call vec2mat3d_double(PsiDefor_Array,PsiDefor,NumElems,MaxElNod,3)
-        
+
         call vec2mat_double(PosDeforDot_Array,PosDeforDot,NumNodes_tot,3)
         call vec2mat3d_double(PsiDeforDot_Array,PsiDeforDot,NumElems,MaxElNod,3)
         call vec2mat_double(PosDeforDDot_Array,PosDeforDDot,NumNodes_tot,3)
         call vec2mat3d_double(PsiDeforDDot_Array,PsiDeforDDot,NumElems,MaxElNod,3)
-        
+
         call vec2mat_double(Force_Array,Force,NumNodes_tot,6)
         call vec2mat_double(Cao_Array,Cao,3,3)
-        
+
         ! Assembly matrices for a dynamic problem
         call cbeam3_asbly_dynamic(Elem,Node,Coords,Psi0,&
         &       PosDefor,PsiDefor,PosDeforDot,PsiDeforDot,&
         &       PosDeforDDot,PsiDeforDDot,Force,Vrel,VrelDot,&
         &       ms,Mglobal,Mvel,cs,Cglobal,Cvel,ks,Kglobal,fs,Fglobal,&
         &       Qglobal,Options,Cao)
-        
+
         ! Convert F90 data to PY data
         call sparse2full_rank(ms,Mglobal,NumDof,NumDof,Mglobal_Full)
         call sparse2full_rank(cs,Cglobal,NumDof,NumDof,Cglobal_Full)
         call sparse2full_rank(ks,Kglobal,NumDof,NumDof,Kglobal_Full)
         call sparse2full_rank(fs,Fglobal,NumDof,NumDof,Fglobal_Full)
-        
+
         call mat2vec_double(Mglobal_Full,Mglobal_Array,NumDof,NumDof)
         call mat2vec_double(Cglobal_Full,Cglobal_Array,NumDof,NumDof)
         call mat2vec_double(Kglobal_Full,Kglobal_Array,NumDof,NumDof)
         call mat2vec_double(Fglobal_Full,Fglobal_Array,NumDof,NumDof)
-        
+
         call mat2vec_double(Mvel,Mvel_Array,NumDof,6)
         call mat2vec_double(Cvel,Cvel_Array,NumDof,6)
-        
+
         deallocate(Elem)
         deallocate(Node)
         deallocate(Coords)
@@ -1531,11 +1531,11 @@ module test
         deallocate(Fglobal)
         deallocate(Fglobal_Full)
         deallocate(Cao)
-        
+
         return
-        
+
     end subroutine wrap_cbeam3_asbly_dynamic
-    
+
     !---------------------------------------------------------------------------
     ! From physical coordinates to state space vector
     !---------------------------------------------------------------------------
@@ -1543,7 +1543,7 @@ module test
     &           NumNodes_tot,NumDof,NumElems,Nod_Master,Nod_Vdof,Nod_Fdof,&
     &           Pos_Array,Psi_Array,PosDot_Array,PsiDot_Array,&
     &           X,dXdt)
-        
+
         integer,intent(in) :: NumNodes_tot
         integer,intent(in) :: NumDof
         integer,intent(in) :: NumElems
@@ -1556,40 +1556,40 @@ module test
         real(8),intent(in) :: PsiDot_Array(NumElems*MaxElNod*3)
         real(8),intent(out):: X(NumDof)
         real(8),intent(out):: dXdt(NumDof)
-        
+
         type(xbnode),allocatable:: Node(:)
         real(8)     ,allocatable:: Pos(:,:)
         real(8)     ,allocatable:: Psi(:,:,:)
         real(8)     ,allocatable:: PosDot(:,:)
         real(8)     ,allocatable:: PsiDot(:,:,:)
-        
+
         allocate(Node(NumNodes_tot))
         allocate(Pos(NumNodes_tot,3)); Pos = 0.d0
         allocate(Psi(NumElems,MaxElNod,3)); Psi = 0.d0
         allocate(PosDot(NumNodes_tot,3)); PosDot = 0.d0
         allocate(PsiDot(NumElems,MaxElNod,3)); PsiDot = 0.d0
-        
+
         ! Convert PY data to F90 data
         call pack_xbnode(NumNodes_tot,Node,Nod_Master,Nod_Vdof,Nod_Fdof)
-        
+
         call vec2mat_double(Pos_Array,Pos,NumNodes_tot,3)
         call vec2mat3d_double(Psi_Array,Psi,NumElems,MaxElNod,3)
         call vec2mat_double(PosDot_Array,PosDot,NumNodes_tot,3)
         call vec2mat3d_double(PsiDot_Array,PsiDot,NumElems,MaxElNod,3)
-        
+
         ! From physical coordinates to state space vector
         call cbeam3_solv_disp2state(Node,Pos,Psi,PosDot,PsiDot,X,dXdt)
-        
+
         deallocate(Node)
         deallocate(Pos)
         deallocate(Psi)
         deallocate(PosDot)
         deallocate(PsiDot)
-        
+
         return
-        
+
     end subroutine wrap_cbeam3_solv_disp2state
-    
+
     !---------------------------------------------------------------------------
     ! From state space vector to physical coordinates
     !---------------------------------------------------------------------------
@@ -1601,7 +1601,7 @@ module test
     &           Coords_Array,Psi0_Array,&
     &           NumDof,X,dXdt,&
     &           Pos_Array,Psi_Array,PosDot_Array,PsiDot_Array)
-        
+
         integer,intent(in) :: NumElems
         integer,intent(in) :: NumNodes_tot
         integer,intent(in) :: NumNodes(NumElems)
@@ -1628,7 +1628,7 @@ module test
         real(8),intent(out):: Psi_Array(NumElems*MaxElNod*3)
         real(8),intent(out):: PosDot_Array(NumNodes_tot*3)
         real(8),intent(out):: PsiDot_Array(NumElems*MaxElNod*3)
-        
+
         type(xbelem),allocatable:: Elem(:)
         type(xbnode),allocatable:: Node(:)
         real(8)     ,allocatable:: Coords(:,:)
@@ -1637,7 +1637,7 @@ module test
         real(8)     ,allocatable:: Psi3d(:,:,:)
         real(8)     ,allocatable:: PosDot(:,:)
         real(8)     ,allocatable:: PsiDot(:,:,:)
-        
+
         allocate(Elem(NumElems))
         allocate(Node(NumNodes_tot))
         allocate(Coords(NumNodes_tot,3)); Coords = 0.d0
@@ -1646,26 +1646,26 @@ module test
         allocate(Psi3d(NumElems,MaxElNod,3)); Psi3d = 0.d0
         allocate(PosDot(NumNodes_tot,3)); PosDot = 0.d0
         allocate(PsiDot(NumElems,MaxElNod,3)); PsiDot = 0.d0
-        
+
         ! Convert PY data to F90 data
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &       InvStiff_Array,RBMass_Array)
-        
+
         call pack_xbnode(NumNodes_tot,Node,Nod_Master,Nod_Vdof,Nod_Fdof)
-        
+
         call vec2mat_double(Coords_Array,Coords,NumNodes_tot,3)
         call vec2mat3d_double(Psi0_Array,Psi0,NumElems,MaxElNod,3)
-        
+
         ! From state vector to physical coordinates
         call cbeam3_solv_state2disp(Elem,Node,Coords,Psi0,X,dXdt,Pos,Psi3d,PosDot,PsiDot)
-        
+
         ! Convert F90 data to PY data
         call mat2vec_double(Pos,Pos_Array,NumNodes_tot,3)
         call mat2vec3d_double(Psi3d,Psi_Array,NumElems,MaxElNod,3)
         call mat2vec_double(PosDot,PosDot_Array,NumNodes_tot,3)
         call mat2vec3d_double(PsiDot,PsiDot_Array,NumElems,MaxElNod,3)
-        
+
         deallocate(Elem)
         deallocate(Node)
         deallocate(Coords)
@@ -1674,11 +1674,11 @@ module test
         deallocate(Psi3d)
         deallocate(PosDot)
         deallocate(PsiDot)
-        
+
         return
-        
+
     end subroutine wrap_cbeam3_solv_state2disp
-    
+
     !---------------------------------------------------------------------------
     ! Update results from linear dynamic solution
     !---------------------------------------------------------------------------
@@ -1689,7 +1689,7 @@ module test
     &           Nod_Master,Nod_Vdof,Nod_Fdof,&
     &           PsiIni_Array,NumDof,DX,DXDt,PosDefor_Array,PsiDefor_Array,&
     &           PosDotDefor_Array,PsiDotDefor_Array)
-        
+
         integer,intent(in)   :: NumElems
         integer,intent(in)   :: NumNodes_tot
         integer,intent(in)   :: NumNodes(NumElems)
@@ -1715,7 +1715,7 @@ module test
         real(8),intent(inout):: PsiDefor_Array(NumElems*MaxElNod*3)
         real(8),intent(inout):: PosDotDefor_Array(NumNodes_tot*3)
         real(8),intent(inout):: PsiDotDefor_Array(NumElems*MaxElNod*3)
-        
+
         type(xbelem),allocatable:: Elem(:)
         type(xbnode),allocatable:: Node(:)
         real(8)     ,allocatable:: Psi0(:,:,:)
@@ -1723,7 +1723,7 @@ module test
         real(8)     ,allocatable:: PsiDefor(:,:,:)
         real(8)     ,allocatable:: PosDotDefor(:,:)
         real(8)     ,allocatable:: PsiDotDefor(:,:,:)
-        
+
         allocate(Elem(NumElems))
         allocate(Node(NumNodes_tot))
         allocate(Psi0(NumElems,MaxElNod,3)); Psi0 = 0.d0
@@ -1731,30 +1731,30 @@ module test
         allocate(PsiDefor(NumElems,MaxElNod,3)); PsiDefor = 0.d0
         allocate(PosDotDefor(NumNodes_tot,3)); PosDotDefor = 0.d0
         allocate(PsiDotDefor(NumElems,MaxElNod,3)); PsiDotDefor = 0.d0
-        
+
         ! Convert PY data to F90 data
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &       Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &       InvStiff_Array,RBMass_Array)
-        
+
         call pack_xbnode(NumNodes_tot,Node,Nod_Master,Nod_Vdof,Nod_Fdof)
-        
+
         call vec2mat3d_double(PsiIni_Array,Psi0,NumElems,MaxElNod,3)
         call vec2mat_double(PosDefor_Array,PosDefor,NumNodes_tot,3)
         call vec2mat3d_double(PsiDefor_Array,PsiDefor,NumElems,MaxElNod,3)
         call vec2mat_double(PosDotDefor_Array,PosDotDefor,NumNodes_tot,3)
         call vec2mat3d_double(PsiDotDefor_Array,PsiDotDefor,NumElems,MaxElNod,3)
-        
+
         ! Update results from linear dynamic solution
         call cbeam3_solv_update_lindyn(Elem,Node,Psi0,DX,DXDt,PosDefor,&
         &       PsiDefor,PosDotDefor,PsiDotDefor)
-        
+
         ! Convert F90 data to PY data
         call mat2vec_double(PosDefor,PosDefor_Array,NumNodes_tot,3)
         call mat2vec3d_double(PsiDefor,PsiDefor_Array,NumElems,MaxElNod,3)
         call mat2vec_double(PosDotDefor,PosDotDefor_Array,NumNodes_tot,3)
         call mat2vec3d_double(PsiDotDefor,PsiDotDefor_Array,NumElems,MaxElNod,3)
-        
+
         deallocate(Elem)
         deallocate(Node)
         deallocate(Psi0)
@@ -1762,9 +1762,9 @@ module test
         deallocate(PsiDefor)
         deallocate(PosDotDefor)
         deallocate(PsiDotDefor)
-        
-        return 
-        
+
+        return
+
     end subroutine wrap_cbeam3_solv_update_lindyn
         !---------------------------------------------------------------------------
     ! Wrapper to fem_glob2loc_extract
@@ -1773,7 +1773,7 @@ module test
     &           Conn,Master_Array,Length,PreCurv,Psi,Vector,Mass_Array,&
     &           Stiff_Array,InvStiff_Array,RBMass_Array,PosDefor_Array,&
     &           PsiDefor_Array,PosGlob_Array,NumNE_array)
-        
+
         integer,intent(in) :: NumElems
         integer,intent(in) :: NumNodes_tot
         integer,intent(in) :: NumNodes(NumElems)
@@ -1792,29 +1792,29 @@ module test
         real(8),intent(in) :: PsiDefor_Array(NumElems*MaxElNod*3)
         real(8),intent(out):: PosGlob_Array(NumElems*MaxElNod*3)
         integer,intent(out):: NumNE_array(NumElems)
-        
+
         type(xbelem),allocatable:: Elem(:)
         real(8)     ,allocatable:: PosDef(:,:)
         real(8)     ,allocatable:: PsiDef(:,:,:)
         real(8)     ,allocatable:: PosElem(:,:)
         real(8)     ,allocatable:: PosGlob(:,:)
-        
+
         integer:: iElem,i1,i2,NumNE
-        
+
         allocate(Elem(NumElems))
         allocate(PosDef(NumNodes_tot,3)); PosDef = 0.d0
         allocate(PsiDef(NumElems,MaxElNod,3)); PsiDef = 0.d0
         allocate(PosElem(MaxElNod,3)); PosElem = 0.d0
         allocate(PosGlob(NumElems*MaxElNod,3)); PosGlob = 0.d0
-        
+
         ! Convert PY data to F90 data
         call do_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,Master_Array,&
         &                  Length,PreCurv,Psi,Vector,Mass_Array,Stiff_Array,&
         &                  InvStiff_Array,RBMass_Array)
-        
+
         call vec2mat_double(  PosDefor_Array,PosDef,NumNodes_tot,     3)
         call vec2mat3d_double(PsiDefor_Array,PsiDef,NumElems,MaxElNod,3)
-        
+
         do iElem=1,NumElems
             call fem_glob2loc_extract(Elem(iElem)%Conn,PosDef,PosElem,NumNE)
             i1 = 1 + (iElem-1)*NumNE
@@ -1822,7 +1822,7 @@ module test
             PosGlob(i1:i2,:) = PosElem
             NumNE_array(iElem) = NumNE
         end do
-        
+
         call mat2vec_double(PosGlob,PosGlob_Array,NumElems*MaxElNod,3)
 
         deallocate(Elem)
@@ -1830,9 +1830,9 @@ module test
         deallocate(PsiDef)
         deallocate(PosElem)
         deallocate(PosGlob)
-        
+
         return
-        
+
     end subroutine wrap_fem_glob2loc_extract
 
     !---------------------------------------------------------------------------
@@ -2077,7 +2077,7 @@ module test
         real(8),	intent(in) :: MinDelta
         real(8),	intent(in) :: NewmarkDamp
 
-		! Declare local variables 
+		! Declare local variables
         type(xbelem),allocatable:: Elem(:) ! Initialise vec of xbelem derived type
 		type(xbnode),allocatable:: Node(:) ! Initialise vec xbnode derived type
 		real(8)     ,allocatable:: AppForces(:,:)
@@ -2088,8 +2088,8 @@ module test
 
 		! create Options struct
 		type(xbopts):: Options
-		
-		! allocate memory for vectors of derived type       
+
+		! allocate memory for vectors of derived type
         allocate(Elem(NumElems))
 		allocate(Node(NumNodes_tot))
 
@@ -2140,7 +2140,7 @@ module test
 		deallocate(PsiDefor)
 
 	end subroutine wrap_cbeam3_solv_nlnstatic
-    
+
     !---------------------------------------------------------------------------
     ! Wrapper for cbeam3_solv_nlndyn_accel under external forces
     !---------------------------------------------------------------------------
@@ -3077,5 +3077,5 @@ module test
     end subroutine wrap_xbeam_solv_couplednlndyn
 
 
-end module test
+end module xbeam_wrapper
 
