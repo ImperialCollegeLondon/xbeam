@@ -1,5 +1,5 @@
 FFLAGS = -g -fPIC -O3
-LINKER_FLAGS = -shared
+LINKER_FLAGS = -shared -fPIC -llapack
 FC = gfortran
 LINKER = ar cr
 object_dir = obj/
@@ -7,7 +7,8 @@ lib_dir = lib/
 
 target = libxbeam.so
 base_dir = xbeam_base/
-base_lib = libxbeam_base.so
+base_lib = xbeam_base
+
 
 files = xbeam_shared\
 cbeam3_asbly\
@@ -19,8 +20,7 @@ xbeam_fdiff\
 xbeam_perturb\
 xbeam_solv\
 xbeam_undef\
-FxWrapper_PyFx\
-FxInput_PyFx
+f90wrapper
 
 objects = $(files:=.o)
 sources = $(files:=.f90)
@@ -30,10 +30,12 @@ libs = xbeam_base
 libs_dir = $(base_dir)lib/
 include_dir = $(base_dir)obj/
 
+#LINKER_FLAGS += -l$(base_lib) -L$(libs_dir)
+
 default: $(target)
 
 $(target): $(base_lib) $(objects)
-	$(FC) -o $(target) $(addprefix $(object_dir), $(objects)) $(LINKER_FLAGS)
+	$(FC) -o $(target) $(addprefix $(object_dir), $(objects)) $(include_dir)*.o $(LINKER_FLAGS)
 	mkdir -p $(lib_dir)
 	mv $(target) $(lib_dir)$(target)
 	mv *.mod $(object_dir)

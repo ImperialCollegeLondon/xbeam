@@ -26,6 +26,7 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module cbeam3_solv
+  use, intrinsic    :: iso_c_binding
   use xbeam_shared
   implicit none
 
@@ -545,7 +546,7 @@ TaPsi =           Psisc *Options%MinDelta
   real(8),      intent(out)  :: PosPsiTime(:,:)   ! Time-history of the position/rotation at selected nodes.
   real(8),      intent(out)  :: VelocTime (:,:)   ! Time-history of the time derivatives at selected nodes.
   real(8),      intent(out)  :: DynOut    (:,:)   ! Time-history of displacement of all nodes.
-  logical,      intent(inout):: OutGrids  (:)     ! Output grids.
+  logical(c_bool),      intent(inout):: OutGrids  (:)     ! Output grids.
   type(xbopts),intent(in)    :: Options           ! Solver parameters.
 
 ! Local variables.
@@ -1036,7 +1037,7 @@ TaPsi =           Psisc *Options%MinDelta
   real(8),      intent(out)  :: PosPsiTime(:,:)   ! Time-history of the position/rotation at selected nodes.
   real(8),      intent(out)  :: VelocTime (:,:)   ! Time-history of the time derivatives at selected nodes.
   real(8),      intent(out)  :: DynOut    (:,:)   ! Time-history of displacement of all nodes.
-  logical,      intent(inout):: OutGrids  (:)     ! Output grids.
+  logical(c_bool),      intent(inout):: OutGrids  (:)     ! Output grids.
   type(xbopts),intent(in)    :: Options           ! Solver parameters.
 
 ! Local variables.

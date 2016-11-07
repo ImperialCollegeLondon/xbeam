@@ -40,6 +40,7 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module lib_xbeam
+ use, intrinsic     :: iso_c_binding
  implicit none
 
 ! Shared variables within the module.
