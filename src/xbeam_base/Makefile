@@ -1,4 +1,4 @@
-FFLAGS = -g -fPIC -O3
+FFLAGS = -g -fPIC -O0
 LINKER_FLAGS = -shared
 FC = gfortran
 LINKER = ar cr
