@@ -9,6 +9,7 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module xbeam_shared
+    use, intrinsic          :: iso_c_binding
  implicit none
 
 
@@ -32,7 +33,7 @@ module xbeam_shared
   real(8):: Length                 ! Length in the undeformed configuration.
   real(8):: PreCurv (3)            ! Initial curvature of the element.
   real(8):: Psi     (3)            ! Rotation vector of (undeformed) element frame.
-  real(8):: Vector  (3)            ! Element orientation vector. It goes along the local Y axis.
+  real(8):: Vector  (3)            ! Element orientatIon vector. It goes along the local Y axis.
                                    ! sm: this defines the element y axis and is in the a frame components
   real(8):: Mass    (6,6)          ! Mass matrix (constant along the element).
   real(8):: Stiff   (6,6)          ! Element stiffness (constant along the element).
@@ -57,19 +58,19 @@ module xbeam_shared
  end type xbnode
 
 ! Simulation options (with default values).
- type xbopts
-  logical:: FollowerForce   =.true.   ! =T: Follower force.
-  logical:: FollowerForceRig=.true.   ! =T: Follower force in the body-fixed frame.
-  logical:: PrintInfo    =.true.      ! =T: Print information on screen.
-  logical:: OutInBframe  =.true.      ! =T print velocities in B-frame (if not, use a-frame)
-  logical:: OutInaframe  =.false.     ! =T print velocities in a-frame (if not, Inertial frame)
-  integer:: ElemProj     = 0          ! =0: Element info computed in the global frame.
+ type, bind(C) :: xbopts
+  logical(c_bool):: FollowerForce   =.true.   ! =T: Follower force.
+  logical(c_bool):: FollowerForceRig=.true.   ! =T: Follower force in the body-fixed frame.
+  logical(c_bool):: PrintInfo    =.true.      ! =T: Print information on screen.
+  logical(c_bool):: OutInBframe  =.true.      ! =T print velocities in B-frame (if not, use a-frame)
+  logical(c_bool):: OutInaframe  =.false.     ! =T print velocities in a-frame (if not, Inertial frame)
+  integer(c_int):: ElemProj     = 0          ! =0: Element info computed in the global frame.
                                       ! =1: Element info computed in a fixed element frame.
                                       ! =2: Element info computed in a moving element frame.
-  integer:: MaxIterations=99          ! Maximum number of iterations.
-  integer:: NumLoadSteps=5            ! Number of load increments.
-  integer:: NumGauss=1                ! Number of Gauss points in the integration.
-  integer:: Solution=111              ! Solution process:
+  integer(c_int):: MaxIterations=99          ! Maximum number of iterations.
+  integer(c_int):: NumLoadSteps=5            ! Number of load increments.
+  integer(c_int):: NumGauss=1                ! Number of Gauss points in the integration.
+  integer(c_int):: Solution=111              ! Solution process:
                                       ! =102/112: cbeam3 linear/nonlinear static.
                                       ! =202/212: cbeam3 linear/nonlinear structural dynamic
                                       ! =302/312: cbeam3 linear/nonlinear static + structural dynamic
@@ -77,9 +78,9 @@ module xbeam_shared
                                       ! =902/912: cbeam3 linear/nonlinear flexible-body dynamic
                                       ! =    922: cbeam3 nonlinear static + flexible-body dynamic
                                       ! =    952: cbeam3 linear flexible with nonlinear rigid-body dynamic
-  real(8):: DeltaCurved=1d-5          ! Minimum angle for two unit vectors to be parallel.
-  real(8):: MinDelta=1d-8             ! Convergence parameter for Newton-Raphson iterations.
-  real(8):: NewmarkDamp=1.d-4         ! Numerical damping in the Newmark integration scheme.
+  real(c_double):: DeltaCurved=1d-5          ! Minimum angle for two unit vectors to be parallel.
+  real(c_double):: MinDelta=1d-8             ! Convergence parameter for Newton-Raphson iterations.
+  real(c_double):: NewmarkDamp=1.d-4         ! Numerical damping in the Newmark integration scheme.
  end type
 
 end module xbeam_shared

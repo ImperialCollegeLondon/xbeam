@@ -571,12 +571,12 @@ module cbeam3_asbly
 &   call rotvect_boundscheck2(rElem(3,4:6),rElem(2,4:6))
 
     ! Compute the influence coefficients multiplying the vector of external forces.
-    call cbeam3_fext (NumNE,rElem,Flags(1:NumNE),Felem_foll,.true.,.true.,CAG)
-    call cbeam3_fext (NumNE,rElem,Flags(1:NumNE),Felem_dead,.false.,.false.,CAG)
+    call cbeam3_fext (NumNE,rElem,Flags(1:NumNE),Felem_foll,.true._c_bool,.true._c_bool,CAG)
+    call cbeam3_fext (NumNE,rElem,Flags(1:NumNE),Felem_dead,.false._c_bool,.false._c_bool,CAG)
     
     ! Compute contribution to Kglobal from follower forces
     call fem_glob2loc_extract (Elem(iElem)%Conn,Force,ForceElem,NumNE)
-    if (any(ForceElem.ne.0.d0)) call cbeam3_dqext (NumNE,rElem,ForceElem,Flags(1:NumNE),Kelem_foll,.true.)
+    if (any(ForceElem.ne.0.d0)) call cbeam3_dqext (NumNE,rElem,ForceElem,Flags(1:NumNE),Kelem_foll,.true._c_bool)
     
     ! Project equations to the orientation of the "master" degrees of freedom.
     call cbeam3_slave2master (NumNE,Elem(iElem)%Master(:,:),rElem0(:,4:6),Psi0,rElem(:,4:6),PsiDefor,SB2B1)

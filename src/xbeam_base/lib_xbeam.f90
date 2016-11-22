@@ -1582,8 +1582,8 @@ module lib_xbeam
   real(8),intent(in)        :: Ri    (:,:)      ! Current position/orientation of grid points.
   logical,intent(in)        :: Flags (:)        ! Identify master nodes.
   real(8),intent(inout)     :: Fmat  (:,:)      ! Forces/moments on the element nodes.
-  logical,intent(in)        :: FollowerForce    ! =T if follower forces.
-  logical,intent(in)        :: FollowerForceRig ! =T if follower force in the body-fixed frame.
+  logical(c_bool),intent(in)        :: FollowerForce    ! =T if follower forces.
+  logical(c_bool),intent(in)        :: FollowerForceRig ! =T if follower force in the body-fixed frame.
   real(8),intent(in)        :: Cao   (:,:)      ! Rotation operator from inertial frame to reference frame
 
 ! Local variables.

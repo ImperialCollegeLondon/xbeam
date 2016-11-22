@@ -16,7 +16,7 @@
 
 
 module lib_solv
-
+    use, intrinsic          :: iso_c_binding
   implicit none
 
  contains
@@ -53,7 +53,7 @@ module lib_solv
     real(8), intent(inout)        :: Res0        ! Residual at iteration 1.
     ! optional
     real(8),             optional :: Tr, Ta      ! relative and absolute tolerance
-    logical,             optional :: print_info  ! print update or not
+    logical(c_bool),             optional :: print_info  ! print update or not
     ! output:
     logical, intent(out)          :: passed      ! outcome of convergence test
     real(8), intent(out)          :: Res ! absolute residual
@@ -126,7 +126,7 @@ module lib_solv
     real(8), intent(in)   :: DX_old      ! norm of dx at previous iteration
     ! optional
     real(8), optional :: Ta               ! tolerance level
-    logical, optional :: print_info      ! print update or not
+    logical(c_bool), optional :: print_info      ! print update or not
     ! output:
     real(8), intent(out)   :: DX_now     ! norm of dx at current iteration
     real(8), intent(out)   :: Er         ! Error at current iteration
@@ -177,7 +177,7 @@ module lib_solv
     ! input
     real(8), intent(in)  :: r(:), dx(:) ! residual and delta solution vectors
     real(8), optional    :: T           ! tolerance
-    logical, optional    :: print_info  ! print on screenupdate or not
+    logical(c_bool), optional    :: print_info  ! print on screenupdate or not
     ! output
     logical, intent(out) :: passed
     real(8), intent(out) :: delta

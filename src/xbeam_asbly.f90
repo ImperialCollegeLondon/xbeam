@@ -19,6 +19,7 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module xbeam_asbly
+ use, intrinsic         :: iso_c_binding
  use xbeam_shared
  implicit none
 
@@ -366,8 +367,8 @@ subroutine xbeam_asbly_orient (Elem,Node,PosDefor,PsiDefor,Vrel,Quat,CQR,CQQ,fs,
     if (NumNE.eq.3) call rotvect_boundscheck2(rElem(3,4:6),rElem(2,4:6))
 
     ! Compute the influence coefficients multiplying the vector of external forces.
-    call xbeam_fext (NumNE,rElem,Flags(1:NumNE),Felem_foll,.true.,.true.,CAG)
-    call xbeam_fext (NumNE,rElem,Flags(1:NumNE),Felem_dead,.false.,.false.,CAG)
+    call xbeam_fext (NumNE,rElem,Flags(1:NumNE),Felem_foll,.true._c_bool,.true._c_bool,CAG)
+    call xbeam_fext (NumNE,rElem,Flags(1:NumNE),Felem_dead,.false._c_bool,.false._c_bool,CAG)
 
     ! Add to global matrix. Remove columns and rows at clamped points.
     do i=1,NumNE

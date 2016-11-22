@@ -24,7 +24,13 @@ contains
                                             RBMass,&
                                             master_node,&
                                             vdof,&
-                                            fdof) bind(C)
+                                            fdof,&
+                                            options,&
+                                            applied_forces,&
+                                            pos_ini,&
+                                            psi_ini,&
+                                            pos_def,&
+                                            psi_def) bind(C)
         integer(c_int), intent(IN)      :: n_elem
         integer(c_int), intent(IN)      :: n_node
 
@@ -49,7 +55,22 @@ contains
 
         type(xbelem)                    :: elements(n_elem)
         type(xbnode)                    :: nodes(n_node)
+        type(xbopts), intent(IN)        :: options
+
+        real(c_double), intent(IN)      :: applied_forces(n_node, 6)
+        real(c_double), intent(IN)      :: pos_ini(n_node, 3)
+        real(c_double), intent(IN)      :: psi_ini(n_elem, max_elem_node, 3)
+        real(c_double), intent(INOUT)   :: pos_def(n_node, 3)
+        real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
+
+        integer(c_int)                  :: num_dof
+
+
         integer(c_int)                  :: i
+
+        num_dof = count(vdof > 0)*6
+
+        print*, 'Num_dof = ', num_dof
 
 
         !subroutine cbeam3_solv_nlnstatic (NumDof,Elem,Node,AppForces,Coords,Psi0, &
@@ -89,16 +110,24 @@ contains
                                    stiffness_indices,&
                                    RBMass)
 
-        do i=1, n_elem
+        !do i=1, n_elem
             !call print_xbelem(elements(i))
-        end do
+        !end do
 
         nodes = generate_xbnode(n_node,&
                                 master_node,&
                                 vdof,&
                                 fdof)
 
-
+        call cbeam3_solv_nlnstatic(num_dof,&
+                                  elements,&
+                                  nodes,&
+                                  applied_forces,&
+                                  pos_ini,&
+                                  psi_ini,&
+                                  pos_def,&
+                                  psi_def,&
+                                  options)
 
 
 
@@ -192,6 +221,54 @@ contains
             nodes(i)%fdof        = fdof(i)
         end do
     end function generate_xbnode
+
+
+    !function generate_xbopts(follower_force,&
+                             !follower_force_rig,&
+                             !print_info,&
+                             !out_in_a_frame,&
+                             !out_in_b_frame,&
+                             !elem_proj,&
+                             !max_iterations,&
+                             !num_load_steps,&
+                             !num_gauss,&
+                             !solution,&
+                             !delta_curved,&
+                             !min_delta,&
+                             !newmark_damp) result(options)
+        !! options
+        !logical(c_bool), intent(IN)     :: follower_force
+        !logical(c_bool), intent(IN)     :: follower_force_rig
+        !logical(c_bool), intent(IN)     :: print_info
+        !logical(c_bool), intent(IN)     :: out_in_a_frame
+        !logical(c_bool), intent(IN)     :: out_in_b_frame
+        !integer(c_int), intent(IN)      :: elem_proj
+        !integer(c_int), intent(IN)      :: max_iterations
+        !integer(c_int), intent(IN)      :: num_load_steps
+        !integer(c_int), intent(IN)      :: num_gauss
+        !integer(c_int), intent(IN)      :: solution
+        !real(c_double), intent(IN)      :: delta_curved
+        !real(c_double), intent(IN)      :: min_delta
+        !real(c_double), intent(IN)      :: newmark_damp
+
+        !type(xbopts)                    :: options
+
+        !options%FollowerForce       = follower_force
+        !options%FollowerForceRig    = follower_force_rig
+        !options%PrintInfo           = print_info
+        !options%OutInAFrame         = out_in_a_frame
+        !options%OutInBFrame         = out_in_b_frame
+        !options%ElemProj            = elem_proj
+        !options%MaxIterations       = max_iterations
+        !options%NumLoadSteps        = num_load_steps
+        !options%NumGauss            = num_gauss
+        !options%Solution            = solutions
+        !options%DeltaCurved         = delta_curved
+        !options%MinDelta            = min_delta
+        !options%NewmarkDamp         = newmark_damp
+    !end function generate_xbopts
+
+
 
 
 

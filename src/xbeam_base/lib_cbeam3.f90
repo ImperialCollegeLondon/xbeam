@@ -49,6 +49,7 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module lib_cbeam3
+    use, intrinsic      :: iso_c_binding
   implicit none
 
 ! Shared variables within the module.
@@ -1924,8 +1925,8 @@ module lib_cbeam3
   real(8),intent(in)   :: Ri    (:,:)      ! Current position/orientation of grid points.
   logical,intent(in)   :: Flags (:)        ! Identify master nodes.
   real(8),intent(inout):: Fmat  (:,:)      ! Forces/moments on the element nodes.
-  logical,intent(in)   :: FollowerForce    ! =T if follower forces.
-  logical,intent(in)   :: FollowerForceRig ! =T if follower forces.
+  logical(c_bool),intent(in)   :: FollowerForce    ! =T if follower forces.
+  logical(c_bool),intent(in)   :: FollowerForceRig ! =T if follower forces.
   real(8),intent(in)   :: Cao    (:,:)     ! Rotation operator
 
 ! Local variables.
@@ -2038,7 +2039,7 @@ module lib_cbeam3
   real(8),intent(in)   :: Fi    (:,:)     ! Current forces/moments at grid points.
   logical,intent(in)   :: Flags (:)       ! Identify master nodes.
   real(8),intent(inout):: Kmat  (:,:)     ! Derivative of the external forces.
-  logical,intent(in)   :: FollowerForce   ! =T if follower forces.
+  logical(c_bool),intent(in)   :: FollowerForce   ! =T if follower forces.
 
 ! Local variables.
   integer :: iNode                 ! Counter on the element nodes.
