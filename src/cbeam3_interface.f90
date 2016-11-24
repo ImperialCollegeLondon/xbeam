@@ -173,7 +173,7 @@ contains
             elements(i)%Master      = master(i, :, :)
             elements(i)%Length      = 0.0d0
             elements(i)%Psi         = [0.0d0, 0.0d0, 0.0d0]
-            elements(i)%Vector      = elements(i)%Psi
+            elements(i)%Vector      = [0.0d0, 1.0d0, 0.0d0]
             elements(i)%Mass        = mass_db(mass_indices(i), :, :)
             elements(i)%Stiff       = stiffness_db(stiffness_indices(i), :, :)
             elements(i)%InvStiff    = inv_stiffness_db(stiffness_indices(i),:,:)

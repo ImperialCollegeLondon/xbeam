@@ -370,6 +370,8 @@ TaPsi =           Psisc *Options%MinDelta
   type(sparse),allocatable:: Fglobal(:)    ! Influence coefficients matrix for applied forces.
   type(sparse),allocatable:: Kglobal(:)    ! Global stiffness matrix in sparse storage.
 
+  print*, "In cbeam3_solv_linstatic"
+
 ! Initialize.
   NumN=size(Node)
   allocate (ListIN (NumN));
@@ -396,7 +398,7 @@ TaPsi =           Psisc *Options%MinDelta
 &                           ks,Kglobal,fs,Fglobal,Qglobal,Options)               ! output (except for Options)
 
   ! Check Kglobal is filled correctly
-  do k=1,size(Kglobal)+1
+  do k=1,size(Kglobal) ! ADC: CHANGED (was size(Kglobal) + 1)
     if ((Kglobal(k)%i>NumDof) .or. (Kglobal(k)%j>NumDof)) then
       print *, 'Out of Bounds!!! Allocated: (', Kglobal(k)%i,',',Kglobal(k)%j,')'
       stop 'Execution terminated!'
