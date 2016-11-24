@@ -1,6 +1,12 @@
 FFLAGS = -g -fPIC -O0 -ffpe-trap=zero,invalid,overflow,underflow
 LINKER_FLAGS = -shared
+UNAME := $(shell uname)
+ifeq ($(UNAME), Linux)
 FC = gfortran
+endif
+ifeq ($(UNAME), Darwin)
+FC = ifort
+endif
 LINKER = ar cr
 object_dir = obj/
 lib_dir = lib/
