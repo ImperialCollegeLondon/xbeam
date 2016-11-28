@@ -1,11 +1,22 @@
 FFLAGS = -g -fPIC -O0 -ffpe-trap=zero,invalid,overflow,underflow
 LINKER_FLAGS = -shared
+UNAME := $(shell uname)
+ifeq ($(UNAME), Linux)
 FC = gfortran
+endif
+ifeq ($(UNAME), Darwin)
+FC = ifort
+endif
 LINKER = ar cr
 object_dir = obj/
 lib_dir = lib/
 
+ifeq ($(UNAME), Linux)
 target = libxbeam_base.so
+endif
+ifeq ($(UNAME), Darwin)
+target = libxbeam_base.dylib
+endif
 files = lib_fem\
 lib_rot\
 lib_rotvect\
