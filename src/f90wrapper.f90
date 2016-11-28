@@ -80,7 +80,7 @@ module f90wrapper
         type(xbelem)       ,intent(out):: Elem(NumElems)
         integer(c_int)     ,intent(in) :: NumNodes(NumElems)
         integer(c_int)     ,intent(in) :: MemNo(NumElems)
-        integer(c_int)     ,intent(in) :: Conn(MaxElNod*NumElems)
+        integer(c_int)     ,intent(in) :: Conn(NumElems, MaxElNod)
         integer(c_int)     ,intent(in) :: Master(MaxElNod*NumElems,2)
         real(c_double)     ,intent(in) :: Length(NumElems)
         real(c_double)     ,intent(in) :: PreCurv(3*NumElems)
@@ -99,7 +99,7 @@ module f90wrapper
 
             Elem(i)%NumNodes = NumNodes(i)
             Elem(i)%MemNo = MemNo(i)
-            Elem(i)%Conn = Conn(1+iMaxElNod:MaxElNod+iMaxElNod)
+            Elem(i)%Conn = Conn(i, :)
             Elem(i)%Master = Master(1+iMaxElNod:MaxElNod+iMaxElNod,1:2)
             Elem(i)%Length = Length(i)
             Elem(i)%PreCurv = PreCurv(1+i3:3+i3)
@@ -161,7 +161,7 @@ module f90wrapper
                            Solution,&
                            DeltaCurved,&
                            MinDelta,&
-                           NewmarkDamp) 
+                           NewmarkDamp)
 
         type(xbopts),intent(out)        :: Options
         logical(c_bool)     ,intent(in) :: FollowerForce
@@ -238,7 +238,7 @@ module f90wrapper
         type(xbelem)       ,intent(in) :: Elem(NumElems)
         integer(c_int)     ,intent(out):: NumNodes(NumElems)
         integer(c_int)     ,intent(out):: MemNo(NumElems)
-        integer(c_int)     ,intent(out):: Conn(MaxElNod*NumElems)
+        integer(c_int)     ,intent(out):: Conn(NumElems, MaxElNod)
         integer(c_int)     ,intent(out):: Master(MaxElNod*NumElems,2)
         real(c_double)     ,intent(out):: Length(NumElems)
         real(c_double)     ,intent(out):: PreCurv(3*NumElems)
@@ -258,7 +258,7 @@ module f90wrapper
 
             NumNodes(i) = Elem(i)%NumNodes
             MemNo(i) = Elem(i)%MemNo
-            Conn(1+iMaxElNod:MaxElNod+iMaxElNod) = Elem(i)%Conn
+            Conn(i, :) = Elem(i)%Conn
             Master(1+iMaxElNod:MaxElNod+iMaxElNod,:) = Elem(i)%Master
             Length(i) = Elem(i)%Length
             PreCurv(1+i3:3+i3) = Elem(i)%PreCurv
@@ -544,7 +544,7 @@ module f90wrapper
         type(xbelem),intent(inout):: Elem(NumElems)
         integer(c_int)     ,intent(in)   :: NumNodes(NumElems)
         integer(c_int)     ,intent(in)   :: MemNo(NumElems)
-        integer(c_int)     ,intent(in)   :: Conn(MaxElNod*NumElems)
+        integer(c_int)     ,intent(in)   :: Conn(NumElems, MaxElNod)
         integer(c_int)     ,intent(in)   :: Master_Array(MaxElNod*NumElems*2)
         real(c_double)     ,intent(in)   :: Length(NumElems)
         real(c_double)     ,intent(in)   :: PreCurv(3*NumElems)
@@ -593,7 +593,7 @@ module f90wrapper
     !---------------------------------------------------------------------------
     subroutine undo_xbelem_var(NumElems,Elem,NumNodes,MemNo,Conn,&
     &           Master_Array,Length,PreCurv,Psi,Vector,Mass_Array,&
-    &           Stiff_Array,InvStiff_Array,RBMass_Array) 
+    &           Stiff_Array,InvStiff_Array,RBMass_Array)
 
         integer(c_int)     ,intent(in)   :: NumElems
         type(xbelem),intent(in)   :: Elem(NumElems)
@@ -2066,7 +2066,7 @@ module f90wrapper
 		integer(c_int),	intent(in) 	:: NumElems				!for do_xbelem_var
         integer(c_int),	intent(in) 	:: NumNodes(NumElems) 	!for do_xbelem_var+pkxbn !Number of nodes in each element
         integer(c_int),	intent(in) 	:: MemNo(NumElems)		!for do_xbelem_var
-        integer(c_int),	intent(in) 	:: Conn(MaxElNod*NumElems)	 !for do_xbelem_var
+        integer(c_int),	intent(in) 	:: Conn(NumElems, MaxElNod)	 !for do_xbelem_var
         integer(c_int),	intent(in) 	:: Master_Array(MaxElNod*NumElems*2) !for do_xbe
         real(c_double),	intent(in) 	:: Length(NumElems)		!for do_xbelem_var
         real(c_double),	intent(in) 	:: PreCurv(3*NumElems)	!for do_xbelem_var
@@ -2108,8 +2108,16 @@ module f90wrapper
 		real(8)		,allocatable:: PosDefor(:,:)
 		real(8)		,allocatable:: PsiDefor(:,:,:)
 
+        integer(c_int)          :: i
+
 		! create Options struct
 		type(xbopts):: Options
+
+        do i=1, NumElems
+            print*, Conn(i,:)
+        end do
+        print*, '==------'
+
 
 		! allocate memory for vectors of derived type
         allocate(Elem(NumElems))
@@ -2142,6 +2150,12 @@ module f90wrapper
 		call vec2mat3d_double(Psi0_Vec,Psi0,NumElems,MaxElNod,3)
 		call vec2mat_double(PosDefor_Vec,PosDefor,NumNodes_tot,3)
 		call vec2mat3d_double(PsiDefor_Vec,PsiDefor,NumElems,MaxElNod,3)
+
+
+        ! ADC added for debugging
+        do i=1, size(Elem)
+            call print_xbelem(Elem(i))
+        end do
 
 		call cbeam3_solv_nlnstatic (NumDof,Elem,Node,AppForces,Coords,Psi0, &
 &                                  PosDefor,PsiDefor,Options)
@@ -3106,6 +3120,20 @@ module f90wrapper
         c = c + a + b
     end subroutine
 
+    subroutine print_xbelem(input)
+        type(xbelem), intent(IN)            :: input
+
+        print*, "-----------------------------------"
+        print*, "NumNodes = ", input%NumNodes
+        print*, "MemNo = ", input%MemNo
+        print*, "Conn = ", input%Conn
+        print*, "Master = ", input%Master
+        print*, "Psi = ", input%Psi
+        print*, "Vector = ", input%Vector
+        print*, "Mass = ", input%Mass
+        print*, "Stiff = ", input%Stiff
+        print*, ""
+    end subroutine print_xbelem
 
 end module f90wrapper
 

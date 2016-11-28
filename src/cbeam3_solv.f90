@@ -387,6 +387,10 @@ TaPsi =           Psisc *Options%MinDelta
   allocate (Qglobal(NumDof));        Qglobal= 0.d0
   allocate (DeltaX (NumDof));        DeltaX = 0.d0
 
+ do k=1, size(AppForces(:,1))
+     print*, AppForces(k, :)
+ end do
+
 ! Assembly matrices and functional.
   Qglobal=0.d0
   call sparse_zero (ks,Kglobal) ! sm BUG: isn't this repeated?
@@ -396,7 +400,7 @@ TaPsi =           Psisc *Options%MinDelta
 &                           ks,Kglobal,fs,Fglobal,Qglobal,Options)               ! output (except for Options)
 
   ! Check Kglobal is filled correctly
-  do k=1,size(Kglobal)+1
+  do k=1,size(Kglobal)
     if ((Kglobal(k)%i>NumDof) .or. (Kglobal(k)%j>NumDof)) then
       print *, 'Out of Bounds!!! Allocated: (', Kglobal(k)%i,',',Kglobal(k)%j,')'
       stop 'Execution terminated!'
@@ -423,8 +427,11 @@ TaPsi =           Psisc *Options%MinDelta
 
   ! sm: PosDefor and PsiDefor are the only one being updated
   call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
+  print*, "RUN"
 
   deallocate (Kglobal,Qglobal,DeltaX)
+  print*, Coords(size(Coords(:,1)),:)
+  print*, PosDefor(size(Coords(:,1)),:)
   return
  end subroutine cbeam3_solv_linstatic
 
@@ -1490,11 +1497,13 @@ TaPsi =           Psisc *Options%MinDelta
   integer :: ix                  ! Counter on the degrees of freedom.
   integer :: iElem               ! Counter on the elements.
   integer :: iNode               ! Counter on the nodes.
-
 ! Store current state in CBEAM3 elements.
   ix=0
   do iNode=1,size(PosDefor,DIM=1)
+      !print*, '**'
+      !print*,  ' iNode = ', iNode
     iElem=Node(iNode)%Master(1)
+      !print*, ' iElem = ', iElem
     if ((Node(iNode)%Vdof.ne.0).and.(Elem(iElem)%MemNo.eq.0)) then
       k=Node(iNode)%Master(2)
 

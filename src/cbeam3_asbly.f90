@@ -82,17 +82,22 @@ module cbeam3_asbly
 
   integer, allocatable:: row_sphBC(:)      ! row in global matrices/vector associated with weakly enforced hinge BCs
 
+!print*, '******'
 ! Loop in all elements in the model.
   NumE=size(Elem)
 
   do iElem=1,NumE
     Kelem=0.d0; Felem=0.d0; Qelem=0.d0; SB2B1=0.d0
 
+    !print*, iElem
   ! Determine if the element nodes are master (Flag=T) or slave.
     Flags=.false.
     do i=1,Elem(iElem)%NumNodes
+        !print*, '  ', i
+        !print*, Elem(iElem)%Conn(i)
       if (Node(Elem(iElem)%Conn(i))%Master(1).eq.iElem) Flags(i)=.true.
     end do
+    !call flush()
 
   ! Extract components of the displacement and rotation vector at the element nodes
   ! and for the reference and current configurations.

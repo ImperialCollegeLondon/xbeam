@@ -24,21 +24,21 @@ module xbeam_shared
 
 ! Element information.
  type xbelem
-  integer:: NumNodes               ! Number of nodes in the element.
-  integer:: MemNo                  ! Member to which the element belongs.
-  integer:: Conn   (MaxElNod)      ! Connectivities (i.e., for each node, contains the local number to global number association)
-  integer:: Master (MaxElNod,2)    ! Master node for each node j in the element.
+  integer:: NumNodes = 0               ! Number of nodes in the element.
+  integer:: MemNo = 0                 ! Member to which the element belongs.
+  integer:: Conn   (MaxElNod) = 0      ! Connectivities (i.e., for each node, contains the local number to global number association)
+  integer:: Master (MaxElNod,2) = 0   ! Master node for each node j in the element.
                                    ! (j,1): # master elem  (or 0 if current is master).
                                    ! (j,2): Node within master element (or 0 if current is master).
-  real(8):: Length                 ! Length in the undeformed configuration.
-  real(8):: PreCurv (3)            ! Initial curvature of the element.
-  real(8):: Psi     (3)            ! Rotation vector of (undeformed) element frame.
-  real(8):: Vector  (3)            ! Element orientatIon vector. It goes along the local Y axis.
+  real(8):: Length = 0.0d0                ! Length in the undeformed configuration.
+  real(8):: PreCurv (3) = 0.0d0            ! Initial curvature of the element.
+  real(8):: Psi     (3) = 0.0d0            ! Rotation vector of (undeformed) element frame.
+  real(8):: Vector  (3) = 0.0d0            ! Element orientatIon vector. It goes along the local Y axis.
                                    ! sm: this defines the element y axis and is in the a frame components
-  real(8):: Mass    (6,6)          ! Mass matrix (constant along the element).
-  real(8):: Stiff   (6,6)          ! Element stiffness (constant along the element).
-  real(8):: InvStiff(6,6)          ! Inverse of the element stiffness (constant along the element).
-  real(8):: RBMass  (MaxElNod,6,6) ! Non-Structural (lumped) mass at element nodes.
+  real(8):: Mass    (6,6) = 0.0d0          ! Mass matrix (constant along the element).
+  real(8):: Stiff   (6,6) = 0.0d0          ! Element stiffness (constant along the element).
+  real(8):: InvStiff(6,6) = 0.0d0          ! Inverse of the element stiffness (constant along the element).
+  real(8):: RBMass  (MaxElNod,6,6) = 0.0d0 ! Non-Structural (lumped) mass at element nodes.
  end type xbelem
 
 ! Nodal information.

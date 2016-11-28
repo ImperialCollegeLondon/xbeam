@@ -1,4 +1,4 @@
-FFLAGS = -g -fPIC -O0 -fcheck=bounds
+FFLAGS = -g -fPIC -O0 -fcheck=bounds -ffpe-trap=zero,invalid,overflow,underflow
 LINKER_FLAGS = -shared -fPIC -llapack
 FC = gfortran
 LINKER = ar cr
@@ -21,6 +21,7 @@ xbeam_perturb\
 xbeam_solv\
 xbeam_undef\
 f90wrapper\
+debug_utils\
 cbeam3_interface
 
 objects = $(files:=.o)

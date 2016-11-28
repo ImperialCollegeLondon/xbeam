@@ -2,6 +2,7 @@ module cbeam3_interface
     use, intrinsic                      :: iso_c_binding
     use                                 :: xbeam_shared
     use                                 :: cbeam3_solv
+    use                                 :: debug_utils
 
     implicit none
 
@@ -67,6 +68,7 @@ contains
 
 
         integer(c_int)                  :: i
+        integer(c_int)                  :: j
 
         num_dof = count(vdof > 0)*6
 
@@ -110,16 +112,30 @@ contains
                                    stiffness_indices,&
                                    RBMass)
 
-        !do i=1, n_elem
-            !call print_xbelem(elements(i))
-        !end do
+    do i=1, n_elem
+        !print*, 'i=', i
+        do j=1,3
+            !print*, 'j=', j
+            !print*, psi_ini(i, j, :)
+        end do
+    end do
 
         nodes = generate_xbnode(n_node,&
                                 master_node,&
                                 vdof,&
                                 fdof)
 
-        call cbeam3_solv_nlnstatic(num_dof,&
+    do i=1, n_node
+        !do j=1, 3
+            !print*, nodes(i)%Vdof
+            !print*, nodes(i)%Fdof
+        !end do
+        !print*, '--'
+    end do
+
+        call print_matrix('Node', nodes)
+        call print_matrix('Elem', elements)
+       call cbeam3_solv_nlnstatic(num_dof,&
                                   elements,&
                                   nodes,&
                                   applied_forces,&
@@ -166,6 +182,7 @@ contains
 
         integer(c_int)                  :: i
 
+
         do i=1, n_elem
             elements(i)%NumNodes    = num_nodes(i)
             elements(i)%MemNo       = mem_number(i)
@@ -173,7 +190,7 @@ contains
             elements(i)%Master      = master(i, :, :)
             elements(i)%Length      = 0.0d0
             elements(i)%Psi         = [0.0d0, 0.0d0, 0.0d0]
-            elements(i)%Vector      = elements(i)%Psi
+            elements(i)%Vector      = [0.0d0, 1.0d0, 0.0d0]
             elements(i)%Mass        = mass_db(mass_indices(i), :, :)
             elements(i)%Stiff       = stiffness_db(stiffness_indices(i), :, :)
             elements(i)%InvStiff    = inv_stiffness_db(stiffness_indices(i),:,:)

@@ -1,4 +1,4 @@
-FFLAGS = -g -fPIC -O0
+FFLAGS = -g -fPIC -O0 -ffpe-trap=zero,invalid,overflow,underflow
 LINKER_FLAGS = -shared
 FC = gfortran
 LINKER = ar cr
