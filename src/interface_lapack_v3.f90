@@ -478,6 +478,11 @@ end subroutine lapack_sparse
 
 ! Identify the larger M eigenvalues.
 
+print*, AlphaR
+print*, '----'
+print*, 'beta'
+print*, beta
+print*, '---'
   Vectors=(0.d0,0.d0)
   do i=1,NumLambda
     MaxIm=0.d0
@@ -485,6 +490,7 @@ end subroutine lapack_sparse
 
       Flag=.true.
       do k=1,i-1
+          print*, 'k = ', k
         if (List(k).eq.j) Flag=.false.
       end do
 
@@ -497,7 +503,7 @@ end subroutine lapack_sparse
     end do
 
 ! Store eigenvalues.
-
+    print*, List
     Lambda(i)=   dcmplx(AlphaR(List(i))/Beta(List(i))) + &
 &             iu*dcmplx(AlphaI(List(i))/Beta(List(i)))
   end do

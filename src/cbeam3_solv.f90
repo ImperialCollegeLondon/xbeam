@@ -38,8 +38,19 @@ module cbeam3_solv
   real(8),private,parameter,dimension(4,4):: Unit4= &       ! 4x4 Unit matrix.
 &         reshape((/1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0/),(/4,4/))
 
- contains
+ interface cbeam3_solv_nlnstatic
+    module procedure :: cbeam3_solv_nlnstatic_old
+ end interface cbeam3_solv_nlnstatic
 
+ interface cbeam3_solv_nlndyn
+    module procedure :: cbeam3_solv_nlndyn_updated, cbeam3_solv_nlndyn_old
+ end interface cbeam3_solv_nlndyn
+
+ interface cbeam3_solv_modal
+    module procedure :: cbeam3_solv_modal_old, cbeam3_solv_modal_updated
+ end interface cbeam3_solv_modal
+
+ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !-> Subroutine CBEAM3_SOLV_NLNSTATIC
@@ -51,11 +62,10 @@ module cbeam3_solv
 !-> Remarks.-
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_solv_nlnstatic (NumDof,Elem,Node,AppForces,Coords,Psi0, &
+ subroutine cbeam3_solv_nlnstatic_old (NumDof,Elem,Node,AppForces,Coords,Psi0, &
 &                                  PosDefor,PsiDefor,Options)
   use lib_fem
   use lib_sparse
-!<<<<<<< HEAD
   use lib_solv
 !#ifdef NOLAPACK
   use lib_lu
@@ -75,6 +85,7 @@ module cbeam3_solv
 ! Local variables.
   real(8):: Delta                          ! Flag for convergence in iterations.
   integer:: fs                             ! Current storage size of force matrix.
+  integer:: ms                             ! Current storage size of mass matrix.
   integer:: iLoadStep                      ! Counter in the load steps.
   integer:: Iter                           ! Counter on iterations.
   integer:: i,j,k                          ! Auxiliary integer.
@@ -85,6 +96,8 @@ module cbeam3_solv
   real(8),allocatable::      DeltaX (:)    ! Unknown in the linearized system.
   type(sparse),allocatable:: Kglobal(:)    ! Global stiffness matrix in sparse storage.
   type(sparse),allocatable:: Fglobal(:)    ! Influence coefficients matrix for applied forces.
+  type(sparse),allocatable:: Mglobal(:)    ! Global stiffness matrix in sparse storage.
+  real(8), allocatable    :: gravity_vec(:)! gravity vector to be multiplied by mass matrix
 
   ! Parameters to Check Convergence
   logical :: converged = .false.
@@ -159,6 +172,9 @@ TaPsi =           Psisc *Options%MinDelta
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrix Kglobal).
   allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+  if (options%gravity_on) then
+      allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+  end if
   allocate (Qglobal(NumDof));    Qglobal= 0.d0
   allocate (DeltaX (NumDof));    DeltaX = 0.d0
   allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
@@ -172,7 +188,6 @@ TaPsi =           Psisc *Options%MinDelta
 ! Iteration until convergence.
   converged=.false.
     do while (converged .eqv. .false.)!(Delta.gt.Options%MinDelta)
-
       Iter= Iter+1
       if (Iter.gt.Options%MaxIterations) STOP 'Static equations did not converge (17235)'
 
@@ -203,27 +218,41 @@ TaPsi =           Psisc *Options%MinDelta
       Qglobal=0.d0
       call sparse_zero (ks,Kglobal)
       call sparse_zero (fs,Fglobal)
+      if (options%gravity_on .eqv. .FALSE.) then
+          call cbeam3_asbly_static (Elem,Node,Coords,Psi0,&
+                                    PosDefor,PsiDefor,&
+                                    AppForces*dble(iLoadStep)/dble(Options%NumLoadSteps), &
+                                    ks,Kglobal,fs,Fglobal,Qglobal,Options)
+      else
+          call sparse_zero(ms, Mglobal)
+          call cbeam3_asbly_static (Elem,Node,Coords,Psi0,&
+                                    PosDefor,PsiDefor,&
+                                    AppForces*dble(iLoadStep)/dble(Options%NumLoadSteps), &
+                                    ks,Kglobal,fs,Fglobal,Qglobal,Options, ms,&
+                                    Mglobal)
+      end if
 
-      call cbeam3_asbly_static (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,AppForces*dble(iLoadStep)/dble(Options%NumLoadSteps), &
-&                               ks,Kglobal,fs,Fglobal,Qglobal,Options)
-
-! Add forces on the unconstrained nodes.
-      Qglobal= Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps) * &
-&              sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(AppForces,NumDof,Filter=ListIN))
+      if (options%gravity_on .eqv. .FALSE.) then
+        ! Add forces on the unconstrained nodes.
+              Qglobal= Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps) * &
+        &              sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(AppForces,NumDof,Filter=ListIN))
+      else
+              gravity_vec = cbeam3_asbly_gravity_static(NumDof, options)
+              Qglobal= Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps) * (&
+        &              sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(AppForces,NumDof,Filter=ListIN)) - &
+                       sparse_matvmul(ms,Mglobal,NumDof,gravity_vec))
+      end if
 
 ! Solve equation and update the global vectors.
       call lu_sparse(ks,Kglobal,-Qglobal,DeltaX)
       call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
-
 ! Convergence parameter delta (original):
       call delta_check(Qglobal,DeltaX,Delta,passed_delta,Options%MinDelta,Options%PrintInfo)
-
  ! Check convergence using the residual:
       call separate_dofs(Qglobal,(/1,2,3/),(/4,5,6/),QglFrc,QglMmt)
 
       call residual_check(Iter,Qglobal,Res,Res0,passed_res,Options%MinDelta,&
                          &TaRes,Options%PrintInfo  )
-
 
       if ( (iLoadStep .eq. 1) .and. (Iter.eq.2) ) then
           ! update forcesd and moments residual at 2nd iteration to avoid zero
@@ -288,40 +317,18 @@ TaPsi =           Psisc *Options%MinDelta
         if (Options%PrintInfo) write (*,'(A)') 'Displacements and Rotations error converged!'
     end if
 
-
-
- ! Print Progress
-      ! ------------------------------------------------------------- old format
-      !if (Options%PrintInfo) write (*,'(5X,A,I4,A,I4,$)') 'Load Step',iLoadStep,' Subiteration',Iter
-      !if (Options%PrintInfo) write (*,'(2X,A,1PE10.3,A,1PE10.3,$)') &
-      ! &                           'DeltaF=',maxval(abs(Qglobal)), ' DeltaX=',maxval(abs(DeltaX))
-      !if (Options%PrintInfo) write (*,'(2X,A,1PE10.3,A,1PE10.3,$)') &
-      !&                           'Res=',Res, ' ResRel=',ResRel
-
-      ! ------------------------------------------------------------- new format
-      !if ((Options%PrintInfo) .AND. (Iter.eq.1)) write (*,'(A,A,A,A,A,A,A,A,A)') &
-      !'Load Step ',' Subiteration ','DeltaF ','DeltaX ','Res ','ResRel ','ErX ','ErPos ','ErPsi'
-      !if (Options%PrintInfo) write(*,'(I4,I4,$)')  iLoadStep, Iter
-      !if (Options%PrintInfo) write (*,'(2X,1PE10.3,2X,1PE10.3,$)') maxval(abs(Qglobal)), maxval(abs(DeltaX))
-      !if (Options%PrintInfo) write (*,'(2X,1PE10.3,2X,1PE10.3,$)') ,Res, Res/Res0
-      !if (Iter .ge. 2) then
-      ! !!!if (Options%PrintInfo) write (*,'(2X,A,1PE10.3,A,1PE10.3,A,1PE10.3)') &
-      ! !!!!&                     'ErX=',ErrX, ' ErPos=',ErrPos, 'ErPsi=', ErrPsi
-      ! if (Options%PrintInfo) write (*,'(2X,1PE10.3,2X,1PE10.3,2X,1PE10.3)') ErrX, ErrPos, ErrPsi
-      !else
-      ! if (Options%PrintInfo) write (*,'(2X)')
-      !end if
-
-
     end do
   end do
 
   call flush(6) !Flush stdout buffer so SharPy output looks nice
 
   deallocate (Kglobal,Qglobal,DeltaX)
+  if (options%gravity_on .eqv. .TRUE.) then
+      deallocate(Mglobal)
+  end if
 
   return
- end subroutine cbeam3_solv_nlnstatic
+ end subroutine cbeam3_solv_nlnstatic_old
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -438,10 +445,87 @@ TaPsi =           Psisc *Options%MinDelta
  end subroutine cbeam3_solv_linstatic
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-> Subroutine CBEAM3_SOLV_MODAL_UPDATED
+!   Find linear vibration modes.
+!
+!-> Remarks.-
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ subroutine cbeam3_solv_modal_updated  (NumDof,&
+                                        Elem,&
+                                        Node,&
+                                        Vrel,&
+                                        Coords,&
+                                        Psi0,&
+                                        PosDefor,&
+                                        PsiDefor,&
+                                        Options,&
+                                        Mglobal,&
+                                        Cglobal,&
+                                        Kglobal,&
+                                        ms,&
+                                        cs,&
+                                        ks&
+                                        )
+  use lib_fem
+  use lib_sparse
+  use cbeam3_asbly
+
+! I/O Variables.
+  integer,      intent(in) :: NumDof            ! Number of independent DoFs.
+  type(xbelem), intent(in) :: Elem      (:)     ! Element information.
+  type(xbnode), intent(in) :: Node      (:)     ! Nodal information.
+  real(8),      intent(in) :: Vrel      (:,:)   ! Time history of the velocities of the reference frame.
+  real(8),      intent(in) :: Coords    (:,:)   ! Initial coordinates of the grid points.
+  real(8),      intent(in) :: Psi0      (:,:,:) ! Initial CRV of the nodes in the elements.
+  real(8),      intent(in) :: PosDefor  (:,:)   ! Current coordinates of the grid points
+  real(8),      intent(in) :: PsiDefor  (:,:,:) ! Current CRV of the nodes in the elements.
+  type(xbopts), intent(in) :: Options           ! Solver parameters.
+
+! Local variables.
+  integer:: k                            ! Counters.
+  integer, intent(OUT):: cs,ks,ms
+  type(sparse),allocatable, intent(OUT):: Cglobal(:)     ! Sparse damping matrix.
+  type(sparse),allocatable, intent(OUT):: Kglobal(:)     ! Global stiffness matrix in sparse storage.
+  type(sparse),allocatable, intent(OUT):: Mglobal(:)     ! Global mass matrix in sparse storage.
+
+
+! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
+  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
+  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+
+! Compute tangent matrices at initial time.
+  call cbeam3_asbly_modal (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Vrel(1,:), &
+&                          ms,Mglobal,cs,Cglobal,ks,Kglobal,Options)
+
+! Write matrices in files.
+  !open (unit=71,file='Msparse',status='replace')
+  !do k=1,ms
+    !write (71,'(2I4,1PE18.10)') Mglobal(k)%i,Mglobal(k)%j,Mglobal(k)%a
+  !end do
+  !close (71)
+
+  !open (unit=72,file='Csparse',status='replace')
+  !do k=1,cs
+    !write (72,'(2I4,1PE18.10)') Cglobal(k)%i,Cglobal(k)%j,Cglobal(k)%a
+  !end do
+  !close (72)
+
+  !open (unit=73,file='Ksparse',status='replace')
+  !do k=1,ks
+    !write (73,'(2I4,1PE18.10)') Kglobal(k)%i,Kglobal(k)%j,Kglobal(k)%a
+  !end do
+  !close (73)
+
+! End of routine.
+  return
+ end subroutine cbeam3_solv_modal_updated
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!-> Subroutine CBEAM3_SOLV_MODAL
+!-> Subroutine CBEAM3_SOLV_MODAL_OLD
 !
 !-> Description:
 !
@@ -450,7 +534,7 @@ TaPsi =           Psisc *Options%MinDelta
 !-> Remarks.-
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_solv_modal  (iOut,NumDof,Elem,Node,Vrel,Coords,Psi0, &
+ subroutine cbeam3_solv_modal_old  (iOut,NumDof,Elem,Node,Vrel,Coords,Psi0, &
 &                               PosDefor,PsiDefor,Options)
   use lib_fem
   use lib_sparse
@@ -507,9 +591,265 @@ TaPsi =           Psisc *Options%MinDelta
 ! End of routine.
   deallocate (Mglobal,Kglobal,Cglobal)
   return
- end subroutine cbeam3_solv_modal
+ end subroutine cbeam3_solv_modal_old
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-> Subroutine CBEAM3_SOLV_NLNDYN_UPDATED
+!
+!-> Description:
+!
+!    Linear dynamic solution of multibeam problem under applied forces.
+!
+!-> Remarks.-
+!    ADC: this is a modified version, which outputs the whole history
+!         of displacements and rotations for every timestep
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ subroutine cbeam3_solv_nlndyn_updated (iOut,&
+                                        NumDof,&
+                                        Time,&
+                                        Elem,&
+                                        Node,&
+                                        F0,&
+                                        Fa,&
+                                        Ftime,&
+                                        Vrel,&
+                                        VrelDot,&
+                                        Coords,&
+                                        Psi0,&
+                                        PosDefor,&
+                                        PsiDefor,&
+                                        PosDotDefor,&
+                                        PsiDotDefor,&
+                                        Options,&
+                                        pos_def_history,&
+                                        psi_def_history,&
+                                        pos_dot_def_history,&
+                                        psi_dot_def_history)
+  use lib_fem
+  use lib_rot
+  use lib_rotvect
+  use lib_lu
+  use lib_out
+  use lib_sparse
+  use lib_lu
+  use cbeam3_asbly
+  use lib_xbeam
+
+! I/O Variables.
+  integer,      intent(in)   :: iOut              ! Output file.
+  integer,      intent(in)   :: NumDof            ! Number of independent DoFs.
+  real(8),      intent(in)   :: Time      (:)     ! Time steps.
+  type(xbelem), intent(in)   :: Elem      (:)     ! Element information.
+  type(xbnode), intent(in)   :: Node      (:)     ! Nodal information.
+  real(8),      intent(in)   :: F0        (:,:)   ! Applied static nodal forces.
+  real(8),      intent(in)   :: Fa        (:,:)  ! Amplitude of the dynamic nodal forces.
+  real(8),      intent(in)   :: Ftime     (:)    ! Time history of the applied forces.
+  real(8),      intent(in)   :: Vrel      (:,:)   ! Time history of the velocities of the reference frame.
+  real(8),      intent(in)   :: VrelDot   (:,:)   ! Time history of the accelerations of the reference frame.
+  real(8),      intent(in)   :: Coords    (:,:)   ! Initial coordinates of the grid points.
+  real(8),      intent(in)   :: Psi0      (:,:,:) ! Initial CRV of the nodes in the elements.
+  real(8),      intent(inout):: PosDefor  (:,:)   ! Current coordinates of the grid points
+  real(8),      intent(inout):: PsiDefor  (:,:,:) ! Current CRV of the nodes in the elements.
+  real(8),      intent(inout):: PosDotDefor(:,:)  ! Current time derivatives of the coordinates of the grid points
+  real(8),      intent(inout):: PsiDotDefor(:,:,:)! Current time derivatives of the CRV of the nodes in the elements.
+  type(xbopts),intent(in)    :: Options           ! Solver parameters.
+
+  real(8), intent(OUT)       :: pos_def_history(:,:,:)
+  real(8), intent(OUT)       :: pos_dot_def_history(:,:,:)
+  real(8), intent(OUT)       :: psi_def_history(:,:,:,:)
+  real(8), intent(OUT)       :: psi_dot_def_history(:,:,:,:)
+
+! Local variables.
+  real(8):: beta,gamma                     ! Newmark coefficients.
+  real(8):: dt                             ! Time step
+  integer:: k                              ! Counters.
+  integer:: iStep,Iter                     ! Counters on time steps and subiterations.
+  real(8):: MinDelta                       ! Value of Delta for convergence.
+  integer:: NumE(1)                        ! Number of elements in the model.
+  integer:: NumN                           ! Number of nodes in the model.
+
+  real(8),allocatable:: dXdt(:),dXddt(:)  ! Generalized coordinates and derivatives.
+  real(8),allocatable:: X(:), DX(:)
+
+  integer,allocatable::  ListIN     (:)    ! List of independent nodes.
+
+  ! Define variables for system matrices.
+  integer:: as,cs,ks,ms,fs
+  type(sparse),allocatable:: Asys   (:)    ! System matrix for implicit Newmark method.
+  type(sparse),allocatable:: Cglobal(:)    ! Sparse damping matrix.
+  type(sparse),allocatable:: Kglobal(:)    ! Global stiffness matrix in sparse storage.
+  type(sparse),allocatable:: Mglobal(:)    ! Global mass matrix in sparse storage.
+  type(sparse),allocatable:: Fglobal(:)
+  real(8),allocatable::      Qglobal(:)    ! Global vector of discrete generalize forces.
+  real(8),allocatable::      Mvel(:,:)     ! Mass and damping from the motions of reference system.
+  real(8),allocatable::      Cvel(:,:)     ! Mass and damping from the motions of reference system.
+
+  ! Define vaiables for output information.
+  character(len=80)  ::  Text          ! Text with current time information to print out.
+  type(outopts)      ::  OutOptions    ! Output options.
+  real(8),allocatable::  Displ(:,:)    ! Current nodal displacements/rotations.
+  real(8),allocatable::  Veloc(:,:)    ! Current nodal velocities.
+
+  ! Rotation operator for body-fixed frame using quaternions
+  real(8) :: Cao(3,3)
+  real(8) :: Quat(4)
+  real(8) :: Temp(4,4)
+
+! Initialize.
+  NumN=size(Node)
+  NumE(1)=size(Elem)
+  allocate (ListIN (NumN));
+  do k=1,NumN
+    ListIN(k)=Node(k)%Vdof
+  end do
+  gamma=1.d0/2.d0+Options%NewmarkDamp
+  beta =1.d0/4.d0*(gamma+0.5d0)*(gamma+0.5d0)
+
+! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
+  allocate (Asys   (DimMat*NumDof)); call sparse_zero (as,Asys)
+  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
+  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+  allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
+  allocate (Qglobal(NumDof));   Qglobal= 0.d0
+  allocate (Mvel   (NumDof,6)); Mvel   = 0.d0
+  allocate (Cvel   (NumDof,6)); Cvel   = 0.d0
+
+  allocate (X     (NumDof)); X      = 0.d0
+  allocate (DX    (NumDof)); DX     = 0.d0
+  allocate (dXdt  (NumDof)); dXdt   = 0.d0
+  allocate (dXddt (NumDof)); dXddt  = 0.d0
+
+! Compute system information at initial condition.
+  allocate (Veloc(NumN,6)); Veloc=0.d0
+  allocate (Displ(NumN,6)); Displ=0.d0
+
+! sm:
+  !allocate( Fdyn(NumN,6,size(Time)) ) ! temporary
+  !do iStep=1,size(Time)
+  !  Fdyn(:,:,iStep)=Ftime(iStep)*Fa
+  !end do
+
+! Allocate quaternions and rotation operator for initially undeformed system
+  Quat = (/1.d0,0.d0,0.d0,0.d0/); Cao = Unit; Temp = Unit4
+
+! Extract initial displacements and velocities.
+  call cbeam3_solv_disp2state (Node,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor,X,dXdt)
+
+! Compute initial acceleration (we are neglecting qdotdot in Kmass).
+  call cbeam3_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor,           &
+&                            0.d0*PosDefor,0.d0*PsiDefor,F0+Ftime(1)*Fa,Vrel(1,:),VrelDot(1,:),         &
+&                            ms,Mglobal,Mvel,cs,Cglobal,Cvel,ks,Kglobal,fs,Fglobal,Qglobal,Options,Cao)
+
+
+  Qglobal= Qglobal - sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(F0+Ftime(1)*Fa,NumDof,Filter=ListIN))
+
+  ! ADC: add gravity loads
+
+
+
+
+  call sparse_addsparse(0,0,ms,Mglobal,as,Asys)
+  call lu_sparse(as,Asys,-Qglobal,dXddt)
+
+! Loop in the time steps.
+  do iStep=1,size(Time)-1
+    dt= Time(iStep+1)-Time(iStep)
+    if (Options%PrintInfo) then
+      call out_time(iStep,Time(iStep+1),Text)
+      write (*,'(5X,A,$)') trim(Text)
+    end if
+! Update transformation matrix for given angular velocity
+    call lu_invers ((Unit4+0.25d0*xbeam_QuadSkew(Vrel(iStep+1,4:6))*(Time(iStep+1)-Time(iStep))),Temp)
+    Quat=matmul(Temp,matmul((Unit4-0.25d0*xbeam_QuadSkew(Vrel(iStep,4:6))*(Time(iStep+1)-Time(iStep))),Quat))
+    Cao = xbeam_Rot(Quat)
+
+! Predictor step.
+    X    = X + dt*dXdt + (0.5d0-beta)*dt*dt*dXddt
+    dXdt = dXdt + (1.d0-gamma)*dt*dXddt
+    dXddt= 0.d0
+
+! Iteration until convergence.
+    do Iter=1,Options%MaxIterations+1
+      if (Iter.gt.Options%MaxIterations) then
+        write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
+        STOP 'Solution did not converge (18235)'
+      end if
+
+! Update nodal positions and velocities .
+      call cbeam3_solv_state2disp (Elem,Node,Coords,Psi0,X,dXdt,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor)
+
+! Compute system functionals and matrices. (Use initial accelerations for Kgyr).
+      Qglobal= 0.d0
+      Mvel   = 0.d0
+      Cvel   = 0.d0
+      call sparse_zero (ms,Mglobal)
+      call sparse_zero (cs,Cglobal)
+      call sparse_zero (ks,Kglobal)
+      call sparse_zero (fs,Fglobal)
+
+
+       call cbeam3_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor,                     &
+ &                                0.d0*PosDefor,0.d0*PsiDefor,F0+Ftime(iStep+1)*Fa,Vrel(iStep+1,:),VrelDot(iStep+1,:), &
+ &                                ms,Mglobal,Mvel,cs,Cglobal,Cvel,ks,Kglobal,fs,Fglobal,Qglobal,Options,Cao)
+
+
+! Compute admissible error.
+      MinDelta=Options%MinDelta*max(1.d0,maxval(abs(Qglobal)))
+
+! Compute the residual.
+      Qglobal= Qglobal + sparse_matvmul(ms,Mglobal,NumDof,dXddt) + matmul(Mvel,Vreldot(iStep+1,:))
+      Qglobal= Qglobal - sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(F0+Ftime(iStep+1)*Fa,NumDof,Filter=ListIN))
+
+
+! Check convergence.
+      if (maxval(abs(DX)+abs(Qglobal)).lt.MinDelta) then
+        if (Options%PrintInfo) then
+          write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
+        end if
+        exit
+      end if
+
+! Compute Jacobian
+      call sparse_zero (as,Asys)
+      call sparse_addsparse(0,0,ks,Kglobal,as,Asys,Factor=1.d0)
+      call sparse_addsparse(0,0,cs,Cglobal,as,Asys,Factor=gamma/(beta*dt))
+      call sparse_addsparse(0,0,ms,Mglobal,as,Asys,Factor=1.d0/(beta*dt*dt))
+
+! Calculation of the correction.
+      call lu_sparse(as,Asys,-Qglobal,DX)
+
+      X    = X     + DX
+      dXdt = dXdt  + gamma/(beta*dt)*DX
+      dXddt= dXddt + 1.d0/(beta*dt*dt)*DX
+    end do
+
+! Update nodal positions and velocities on the current converged time step.
+    call cbeam3_solv_state2disp (Elem,Node,Coords,Psi0,X,dXdt,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor)
+
+! Write output to export to main program (obsolete!).
+    !PosPsiTime(iStep+1,1:3)= PosDefor(NumN,:)
+    !PosPsiTime(iStep+1,4:6)= PsiDefor(NumE(1),Elem(NumE(1))%NumNodes,:)
+
+    !do k=1,NumN
+        !DynOut(iStep*NumN+k,:) = PosDefor(k,:)
+    !end do
+    pos_def_history(iStep + 1, :, :) = PosDefor
+    pos_dot_def_history(iStep + 1, :, :) = PosDotDefor
+    psi_def_history(iStep + 1, :, :, :) = PsiDefor
+    psi_dot_def_history(iStep + 1, :, :, :) = PsiDotDefor
+
+  end do
+
+  deallocate (ListIN,Mvel,Cvel)
+  deallocate (Asys,Fglobal,Mglobal)
+  deallocate (Kglobal,Cglobal,Qglobal)
+  deallocate (X,DX,dXdt,dXddt)
+  deallocate (Displ,Veloc)
+  return
+ end subroutine cbeam3_solv_nlndyn_updated
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !-> Subroutine CBEAM3_SOLV_NLNDYN
@@ -521,7 +861,7 @@ TaPsi =           Psisc *Options%MinDelta
 !-> Remarks.-
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_solv_nlndyn (iOut,NumDof,Time,Elem,Node,F0,Fa,Ftime,              &
+ subroutine cbeam3_solv_nlndyn_old (iOut,NumDof,Time,Elem,Node,F0,Fa,Ftime,              &
 &                               Vrel,VrelDot,Coords,Psi0,PosDefor,PsiDefor,          &
 &                               PosDotDefor,PsiDotDefor,PosPsiTime,VelocTime,DynOut, &
 &                               OutGrids,Options)
@@ -666,7 +1006,7 @@ TaPsi =           Psisc *Options%MinDelta
 
 ! Iteration until convergence.
     do Iter=1,Options%MaxIterations+1
-      if (Iter.gt.Options%MaxIterations) then 
+      if (Iter.gt.Options%MaxIterations) then
         write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
         STOP 'Solution did not converge (18235)'
       end if
@@ -738,7 +1078,7 @@ TaPsi =           Psisc *Options%MinDelta
   deallocate (X,DX,dXdt,dXddt)
   deallocate (Displ,Veloc)
   return
- end subroutine cbeam3_solv_nlndyn
+ end subroutine cbeam3_solv_nlndyn_old
 
 
 
@@ -916,7 +1256,7 @@ TaPsi =           Psisc *Options%MinDelta
 
 ! Iteration until convergence.
     do Iter=1,Options%MaxIterations+1
-      if (Iter.gt.Options%MaxIterations) then 
+      if (Iter.gt.Options%MaxIterations) then
         write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
         STOP 'Solution did not converge (18235)'
       end if
@@ -1538,6 +1878,78 @@ TaPsi =           Psisc *Options%MinDelta
   return
  end subroutine cbeam3_solv_update_static
 
+ subroutine cbeam3_solv_update_static_python(num_dof,&
+                                             n_node,&
+                                             node_master,&
+                                             vdof,&
+                                             n_elem,&
+                                             elem_master,&
+                                             elem_num_nodes,&
+                                             psi0,&
+                                             pos_def,&
+                                             psi_def,&
+                                             deltax) bind(C)
+    use, intrinsic                          :: iso_c_binding
+    use lib_fem
+    use lib_rotvect
+    use lib_bgeom
+    use lib_cbeam3
+
+    integer(c_int), intent(IN)              :: num_dof
+    integer(c_int), intent(IN)              :: n_node
+    integer(c_int), intent(IN)              :: node_master(n_node, 2)
+    integer(c_int), intent(IN)              :: vdof(n_node)
+    integer(c_int), intent(IN)              :: n_elem
+    integer(c_int), intent(IN)              :: elem_master(n_elem, MaxElNod, 2)
+    integer(c_int), intent(IN)              :: elem_num_nodes(n_elem)
+    real(c_double), intent(IN)              :: psi0(n_elem, MaxElNod, 3)
+    real(c_double), intent(INOUT)           :: pos_def(n_node, 3)
+    real(c_double), intent(INOUT)           :: psi_def(n_elem, MaxElNod, 3)
+    real(c_double), intent(IN)              :: deltax(num_dof+6)
+
+    ! Local variables.
+    integer :: i,j,k               ! Counters.
+    integer :: ix                  ! Counter on the degrees of freedom.
+    integer :: iElem               ! Counter on the elements.
+    integer :: iNode               ! Counter on the nodes.
+
+  ! Store current state in CBEAM3 elements.
+    ix=0
+    do iNode=1, n_node
+        print*, 'node'
+        print*, iNode
+      iElem=node_master(iNode, 1)
+      if (vdof(iNode) /= 0) then
+        k=node_master(iNode, 2)
+        print*, vdof(inode)
+        ix = (vdof(inode) - 1)*6
+        print*, ix
+
+  ! Nodal displacements.
+        pos_def(iNode,:)   = pos_def(iNode,:)   + deltax(ix+1:ix+3)
+
+  ! Cartesian rotation vector at master nodes.
+        psi_def(iElem,k,:) = psi_def(iElem,k,:) + deltax(ix+4:ix+6)
+        !ix=ix+6
+      end if
+    end do
+
+  !!! Post-processing.
+  ! Compute rotation vector at slave nodes of CBEAM3 elements.
+    do i=1, n_elem
+      ! Copy rotation from master node for each slave node.
+        do j=1, elem_num_nodes(i)
+          if (elem_master(i, j, 1) /= 0) then
+            psi_def(i,j,:) = psi_def(elem_master(i, j, 1),elem_master(i, j, 2),:)
+          end if
+        end do
+
+  ! Include master-to-slave initial rotations from the undeformed configuration.
+        !call cbeam3_projm2s (Elem(i)%NumNodes,Elem(i)%Master,Psi0(i,:,:),Psi0,PsiDefor(i,:,:))
+        call cbeam3_projm2s (elem_num_nodes(i),elem_master(i, :, :),psi0(i,:,:),psi0,psi_def(i,:,:))
+    end do
+
+ end subroutine cbeam3_solv_update_static_python
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1614,7 +2026,7 @@ TaPsi =           Psisc *Options%MinDelta
 
     ! Include master-to-slave initial rotations from the undeformed configuration.
     call cbeam3_projm2s (Elem(i)%NumNodes,Elem(i)%Master,Psi0(i,:,:),Psi0,Psi(i,:,:))
-    
+
     ! Compute the delta value.
     do j=1,Elem(i)%NumNodes
       if (Elem(i)%Master(j,1).ne.0) then
@@ -1691,6 +2103,12 @@ TaPsi =           Psisc *Options%MinDelta
       ix=ix+6
     end if
   end do
+
+  !do i=1, size(Elem)
+    !do j=1,Elem(i)%NumNodes
+      !print*, Elem(i)%Master(j, :)
+    !end do
+  !end do
 
 ! Compute rotation vector and time derivative at slave nodes within elements.
   do i=1,size(Elem)
@@ -1870,6 +2288,14 @@ TaPsi =           Psisc *Options%MinDelta
 
   return
  end subroutine cbeam3_solv_accel2state
+
+ subroutine dprint(line, ifile)
+    character(len=*), intent(IN)        :: line
+    character(len=*), intent(IN)        :: ifile
+    print*, 'Line: ', line
+    print*, 'File: ', ifile
+    call flush()
+ end subroutine dprint
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end module cbeam3_solv

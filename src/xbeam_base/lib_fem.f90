@@ -55,7 +55,7 @@ module lib_fem
 
 !-> Private variables.
 !
-! This parameter to simulate the machine epsilon for 
+! This parameter to simulate the machine epsilon for
 ! a very small number which will cause singularity
  real(8), private, parameter:: Epsilon = 1.0d-13
 
@@ -131,7 +131,7 @@ module lib_fem
 !
 ! Initialization of variables.
 !
-  fem_bandvec=0.d0  
+  fem_bandvec=0.d0
   if (Symmetry.eq.'S') Delta= 1.d0
   if (Symmetry.eq.'A') Delta=-1.d0
   NumRows= size(b)
@@ -166,7 +166,7 @@ module lib_fem
 !
 !->Description.-
 !
-!    Cholesky decomposition for a banded symmetric positive definite 
+!    Cholesky decomposition for a banded symmetric positive definite
 !    coefficient matrix.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -176,7 +176,7 @@ module lib_fem
 !
   real(8), intent(inout)::A (:,:)  ! Input and output matrices.
   integer, intent(out) :: Error    ! Error code.
-! 
+!
 !-> Local variables.
 !
   integer :: i, j, k    ! Counters.
@@ -186,7 +186,7 @@ module lib_fem
 ! Initialize variables.
 !
   Error=0
-  NumBand= size(A,DIM=2)  
+  NumBand= size(A,DIM=2)
 !
 ! Loop in the coefficients of the matrix.
 !
@@ -199,13 +199,13 @@ module lib_fem
       Sum=0.0d0
       do k= max(i+j - NumBand,1) , i-1
         Sum= Sum + A(k,1) * A(k,i+1-k) * A(k,i+j-k)
-      enddo  
+      enddo
       A(i,j)= A(i,j) - Sum
     enddo
 !
 ! Update the element value in the decomposition and give an error if
 ! the matrix is ill-conditioned.
-! 
+!
     if(abs(A(i,1)).le.Epsilon) then
       Error=-1
       return
@@ -243,7 +243,7 @@ module lib_fem
   real(8), intent(inout) :: b(:)    ! Right Hand Side.
 !
 !-> Local variables.
-!  
+!
   integer :: i, j      ! Counters on rows and columns.
   integer :: NumCols   ! Half-Bandwidth of the matrix.
   integer :: NumRows   ! Number of equations in the system.
@@ -255,7 +255,7 @@ module lib_fem
 ! Forward Substitution.
   do i=2,NumRows
     Sum= 0.0d0
-    do j= max(1,i+1-NumCols), i-1 
+    do j= max(1,i+1-NumCols), i-1
       Sum= Sum + A(j,i-j+1) * b(j)
     enddo
     b(i)= b(i)-Sum
@@ -288,7 +288,7 @@ module lib_fem
 !->Remarks:
 !
 !   1) Coefficients from Abramowitz and Stegun.
-! 
+!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  subroutine fem_1d_gauss_val (NumGauss,Coords,Weight)
 
@@ -438,13 +438,13 @@ module lib_fem
 ! CQUAD) and the number of nodes of the element.
 !
   if (Flag.eq.0) then
-    if (NumNode_Elem.gt.3) then 
+    if (NumNode_Elem.gt.3) then
       NumGauss=7
     else
       NumGauss=3
     end if
   else
-    if (NumNode_Elem.gt.4) then 
+    if (NumNode_Elem.gt.4) then
       NumGauss=9
     else
       NumGauss=4
@@ -467,7 +467,7 @@ module lib_fem
 !
 !   1) Coefficients are extracted from Zienkiewitz' book "The Finite
 !      Element Method".
-! 
+!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  subroutine fem_2d_gauss_val (Flag, NumGauss, Coords, Weight, iErr)
 !
@@ -659,7 +659,7 @@ module lib_fem
     Der(4,1)=.25d0*(-(1.d0+z2)-Der(9,1)) - .5d0*(Der(7,1)+Der(8,1))
 !
 ! Derivatives with z2.
-!      
+!
     if (Node(9).ne.0) Der(9,2)=-2.d0*z2*(1.d0-z1*z1)
     if (Node(5).ne.0) Der(5,2)=.5d0*(-(1.d0-z1*z1)-Der(9,2))
     if (Node(7).ne.0) Der(7,2)=.5d0*( (1.d0-z1*z1)-Der(9,2))
@@ -720,7 +720,7 @@ module lib_fem
 !->Description.-
 !
 !   Find the corresponding d.o.f's for an element and store them in
-!   a steering vector.  
+!   a steering vector.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  subroutine fem_elmdof(NumDofNode,NodeList,g)
@@ -737,7 +737,7 @@ module lib_fem
 !
 ! Initialize.
   g= 0;
-  m= 0;  
+  m= 0;
 !
 ! Loop in the nodes.
   do i=1,size(NodeList)
@@ -773,7 +773,7 @@ module lib_fem
 !
   integer:: i
 !
-  do i=1,size(local,1) 
+  do i=1,size(local,1)
     local(i,:)=local(i,:)+global(g(i),:)
   end do
 !
@@ -855,7 +855,7 @@ module lib_fem
   do i=1,size(Vector)
 
     fem_v2m(iRow,iCol)=Vector(i)
-    
+
     if (iCol.eq.NCol) then
       iRow=iRow+1
       iCol=1
@@ -891,7 +891,7 @@ module lib_fem
 ! Initialize
   k=0
   fem_m2v=0.d0
-  
+
   do i=1,size(Matrix,DIM=1)
     do j=1,size(Matrix,DIM=2)
 

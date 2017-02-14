@@ -35,7 +35,7 @@
 !    -cbeam3_projm2s:   Convert rotations from master to slave nodes.
 !    -cbeam3_proj2a:    Project vector from local to element frame.
 !    -cbeam3_glob2loc:  Compute transformation from global to local frame.
-!   
+!
 !-> Remarks.-
 !
 !  1) The degrees of freedom in the element are the displacements and the
@@ -321,7 +321,7 @@ module lib_cbeam3
  end subroutine cbeam3_kgeom
 
 
- 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !-> Subroutine CBEAM3_FSTIF
 !
@@ -1063,7 +1063,7 @@ module lib_cbeam3
     AWW(1:3,4:6)=0.d0
     AWW(4:6,1:3)=rot_skew(VB)
     AWW(4:6,4:6)=rot_skew(WB)
-    
+
     dVdq(1:3,1:3)= matmul(CBa,rot_skew(Vrel(4:6)))
     dVdq(1:3,4:6)= matmul(rot_skew(VB),Rot)
     dVdq(4:6,1:3)= 0.0d0
@@ -1085,7 +1085,7 @@ module lib_cbeam3
     AdeltaW(4:6,4:6)= AdeltaW(4:6,4:6) - rot_skew(Phat(4:6))
 
 ! Operators in Kbar from the derivatives of matrices D and T.
-    
+
     Vhat(1:3)=VB
     Vhat(4:6)=WB
     Phat=matmul(AWW,matmul(ElemMass,Vhat))
@@ -1093,7 +1093,7 @@ module lib_cbeam3
     Vhat(1:3)=VBdot
     Vhat(4:6)=WBdot
     Phat= Phat + matmul(ElemMass,Vhat)
-    
+
 ! Compute Kbar for the tangent inertial stiffness at the current Gauss point.
     Kbar= 0.d0
     Kbar(1:3,4:6)=-matmul(transpose(CBa),matmul(rot_skew(Phat(1:3)),Rot))
@@ -1897,7 +1897,7 @@ module lib_cbeam3
 &		                                        (matmul(NodalMass(iNode,:,:),dVgyrdvrel) &
 &                                           +matmul(ADeltaW,dVdvrel))))
   end do
-	
+
   return
  end subroutine cbeam3_rbcvel
 
@@ -2145,7 +2145,7 @@ module lib_cbeam3
         T02= rotvect_psi2rot(Psi02_t(iNode,:))
         T01= rotvect_psi2rot(Psi01)
 
-        call lu_invers(T02,invT02); Info=0        
+        call lu_invers(T02,invT02); Info=0
         if (Info.ne.0) STOP 'Error: Could not compute the inverse of the tangent operator (77921)'
 
         S21n= matmul(invT02,matmul(transpose(C_12),T01))
@@ -2211,7 +2211,7 @@ module lib_cbeam3
       T02= rotvect_psi2rot(Psi02(iNode,:))
       T01= rotvect_psi2rot(Psi01)
 
-      call lu_invers(T02,invT02); Info=0      
+      call lu_invers(T02,invT02); Info=0
       if (Info.ne.0) STOP 'Error: Could not compute the inverse of the tangent operator (7921)'
 
       Tnode=matmul(invT02,matmul(transpose(C_12),T01))

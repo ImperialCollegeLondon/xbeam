@@ -4,7 +4,8 @@ module debug_utils
     implicit none
 
     interface print_matrix
-        module procedure print_1d_matrix_double, print_1d_matrix_int, print_2d_matrix_double, print_2d_matrix_int,&
+        module procedure print_1d_matrix_double, print_1d_matrix_int, print_3d_matrix_double, print_2d_matrix_double, &
+                            print_2d_matrix_int,&
                             print_node, print_elem
     end interface
 contains
@@ -65,6 +66,24 @@ contains
         end do
         close(unit)
     end subroutine
+    subroutine print_3d_matrix_double(name, matrix)
+        character(len=*), intent(IN)        :: name
+        real(c_double), intent(IN)           :: matrix(:,:,:)
+
+        integer(c_int)                          :: unit
+        integer(c_int)                          :: i
+        integer(c_int)                          :: j
+
+
+        open(newunit=unit, file='debug_'//name//'.txt')
+        do i=1, size(matrix(:,1,1))
+            write(unit,*) 'i = ', i
+            do j=1, size(matrix(i,:,1))
+				write(unit,*) matrix(i, j, :)
+			end do
+        end do
+        close(unit)
+    end subroutine
     subroutine print_node(name, matrix)
         character(len=*), intent(IN)        :: name
         type(xbnode), intent(IN)           :: matrix(:)
@@ -118,7 +137,7 @@ contains
             do j=1,6
 				write(unit,*) matrix(i)%Mass(j,:)
 			end do
-			write(unit,*) 'Stiff'
+			write(unit,*) 'InvStiff'
 			do j=1,6
 				write(unit,*) matrix(i)%InvStiff(j,:)
 		    end do

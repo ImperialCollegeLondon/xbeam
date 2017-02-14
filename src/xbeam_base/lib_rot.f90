@@ -12,6 +12,7 @@
 !   rot_cross:       Cross product of two vectors.
 !   rot_skew:        Convert a vector to its dual skew-symmetric matrix.
 !   rot_outprod:     Outer product of two vectors.
+!   rot_unit:        Unit vector
 !
 !-> Remarks.
 !
@@ -304,5 +305,24 @@ module lib_rot
   return
  end function rot_outprod
  
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!->Subroutine ROT_UNIT
+!
+!->Description.-
+!
+!   Compute the unit vector
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ function rot_unit (a)
+
+! I/O Variables.
+  real(8),intent(in)    :: a(3)
+  real(8),dimension(3)  :: rot_unit
+
+  rot_unit = a/(sqrt(dot_product(a, a)))
+
+  return
+ end function rot_unit
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end module lib_rot

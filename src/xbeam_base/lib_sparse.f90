@@ -25,6 +25,7 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module lib_sparse
+  use iso_c_binding
  implicit none
 
 ! Define derived types.
@@ -100,7 +101,10 @@ module lib_sparse
 ! If (i,j) was empty, create a new entry.
 
   if (.not.Flag) then
-    if (DimArray.eq.size(Matrix)) STOP 'ERROR: Not enough memory for sparse matrix allocation defined in solver routine'
+    if (DimArray.eq.size(Matrix)) then
+      call BACKTRACE
+      STOP 'ERROR: Not enough memory for sparse matrix allocation defined in solver routine'
+    end if
 
     DimArray=DimArray+1
     Matrix(DimArray)%i= i
@@ -701,6 +705,19 @@ module lib_sparse
   return
  end subroutine sparse_print_mat
 
+function sparse_max_index(DimArray, SprMat) result(max_i)
+    integer,     intent(in):: DimArray  ! Storage dimension of sparse matrix
+    type(sparse),intent(in):: SprMat(:) ! Sparse matrix.
+    integer                             :: max_i
+    integer                             :: max_j
+
+  max_i = maxval(SprMat(1:DimArray)%i)
+  max_j = maxval(SprMat(1:DimArray)%j)
+
+  max_i = max(max_i, max_j)
+
+
+end function sparse_max_index
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end module lib_sparse

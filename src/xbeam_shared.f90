@@ -81,6 +81,11 @@ module xbeam_shared
   real(c_double):: DeltaCurved=1d-5          ! Minimum angle for two unit vectors to be parallel.
   real(c_double):: MinDelta=1d-8             ! Convergence parameter for Newton-Raphson iterations.
   real(c_double):: NewmarkDamp=1.d-4         ! Numerical damping in the Newmark integration scheme.
+  logical(c_bool):: gravity_on = .FALSE.
+  real(c_double):: gravity = 0.0d0
+  real(c_double):: gravity_dir_x = 0
+  real(c_double):: gravity_dir_y = 0
+  real(c_double):: gravity_dir_z = 1
  end type
 
 end module xbeam_shared

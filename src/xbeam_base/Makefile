@@ -1,5 +1,5 @@
-FFLAGS = -g -fPIC -O0 -ffpe-trap=zero,invalid,overflow,underflow
-LINKER_FLAGS = -shared
+FFLAGS = -g -fPIC -O0 -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow
+LINKER_FLAGS = -shared -fbacktrace
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
 FC = gfortran

@@ -1,5 +1,5 @@
-FFLAGS = -g -fPIC -O0 -fcheck=bounds -ffpe-trap=zero,invalid,overflow,underflow
-LINKER_FLAGS = -shared -fPIC -llapack
+FFLAGS = -g -fPIC -O0 -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow
+LINKER_FLAGS = -shared -fPIC -llapack -fbacktrace
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
 FC = gfortran
@@ -35,7 +35,8 @@ xbeam_solv\
 xbeam_undef\
 f90wrapper\
 debug_utils\
-cbeam3_interface
+cbeam3_interface\
+xbeam_interface
 
 objects = $(files:=.o)
 sources = $(files:=.f90)

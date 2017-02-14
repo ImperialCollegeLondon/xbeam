@@ -20,6 +20,9 @@
 !
 !  2) HH (01.11.2013) Need to use full integration in assembly of mass matrix.
 !
+!  3) ADC (19.12.2016) New applied forces description implemented, it still
+!                      supports the old format using function overloading
+!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module cbeam3_asbly
   use xbeam_shared
@@ -27,11 +30,13 @@ module cbeam3_asbly
   implicit none
  real(8),parameter,private,dimension(3,3):: Unit= &    ! Unit matrix.
 &         reshape((/1.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,1.d0/),(/3,3/))
+
+ interface cbeam3_asbly_static
+    module procedure :: cbeam3_asbly_static_old
+ end interface cbeam3_asbly_static
  contains
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!-> Subroutine CBEAM3_ASBLY_STATIC
+!-> Subroutine CBEAM3_ASBLY_STATIC_OLD
 !
 !-> Description:
 !
@@ -40,8 +45,9 @@ module cbeam3_asbly
 !-> Remarks.-
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_asbly_static (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Force, &
-&                                ks,Kglobal,fs,Fglobal,Qglobal,Options)
+ subroutine cbeam3_asbly_static_old (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Force, &
+&                                ks,Kglobal,fs,Fglobal,Qglobal,Options,ms,Mglobal)
+  use lib_rot
   use lib_rotvect
   use lib_fem
   use lib_sparse
@@ -58,6 +64,8 @@ module cbeam3_asbly
   real(8),      intent(in) :: Force     (:,:)   ! Force vector.
   integer,      intent(out):: ks                ! Size of the sparse stiffness matrix.
   type(sparse), intent(out):: Kglobal   (:)     ! Sparse stiffness matrix.
+  type(sparse), optional, intent(out):: Mglobal   (:)     ! Sparse mass matrix.
+  integer, optional, intent(out):: ms                ! Size of the sparse mass matrix.
   real(8),      intent(out):: Qglobal   (:)     ! Discrete force vector.
   integer,      intent(out):: fs                ! Size of the sparse stiffness matrix.
   type(sparse), intent(out):: Fglobal   (:)     ! Influence coefficients matrix for applied forces.
@@ -72,21 +80,24 @@ module cbeam3_asbly
   integer:: NumE                           ! Number of elements in the model.
   integer:: NumNE                          ! Number of nodes in an element.
   integer:: NsphBC                         ! number of hinges
-  real(8):: Felem (6*MaxElNod,6*MaxElNod)  ! Element force influence coefficients.  
-  real(8):: Kelem (6*MaxElNod,6*MaxElNod)  ! Element tangent stiffness matrix.  
+  real(8):: Melem (6*MaxElNod,6*MaxElNod)  ! Element mass matrix.
+  real(8):: Felem (6*MaxElNod,6*MaxElNod)  ! Element force influence coefficients.
+  real(8):: Kelem (6*MaxElNod,6*MaxElNod)  ! Element tangent stiffness matrix.
   real(8):: Qelem (6*MaxElNod)             ! Total generalized forces on the element.
   real(8):: rElem0(MaxElNod,6)             ! Initial Coordinates/CRV of nodes in the element.
   real(8):: rElem (MaxElNod,6)             ! Current Coordinates/CRV of nodes in the element.
   real(8):: ForceElem (MaxElNod,6)         ! Current forces/moments of nodes in the element.
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)  ! Transformation from master to global node orientations.
+  integer:: NumGaussMass
 
   integer, allocatable:: row_sphBC(:)      ! row in global matrices/vector associated with weakly enforced hinge BCs
 
-!print*, '******'
 ! Loop in all elements in the model.
   NumE=size(Elem)
 
+
   do iElem=1,NumE
+    Melem = 0.0d0
     Kelem=0.d0; Felem=0.d0; Qelem=0.d0; SB2B1=0.d0
 
     !print*, iElem
@@ -107,6 +118,13 @@ module cbeam3_asbly
     call fem_glob2loc_extract (Elem(iElem)%Conn,Coords, rElem0(:,1:3),NumNE)
     call fem_glob2loc_extract (Elem(iElem)%Conn,PosDefor,rElem(:,1:3),NumNE)
 
+! Use full integration for mass matrix.
+    if (NumNE.eq.2) then
+        NumGaussMass=NumNE
+    elseif (NumNE.eq.3) then
+        NumGaussMass=NumNE
+    end if
+
   ! same is done here but there is no need to call fem_glob2loc_extract as the
   ! Psi arrays are already organised by elements.
     rElem0(:,4:6)= Psi0    (iElem,:,:)
@@ -121,6 +139,14 @@ module cbeam3_asbly
   ! Extract current applied forces/moments at the element nodes.
     call fem_glob2loc_extract (Elem(iElem)%Conn,Force,ForceElem,NumNE)
 
+  !----------------------------------- ADDED SECTION
+    if (options%gravity_on .eqv. .TRUE.) then
+    ! Contributions of the structural mass to the linearized inertia matrices.
+        call cbeam3_mass (NumNE,rElem0,rElem,Elem(iElem)%Mass,Melem,NumGaussMass)
+        call cbeam3_rbmass (NumNE,rElem0,rElem,Elem(iElem)%RBMass,Melem)
+    end if
+
+  !----------------------------------- END OF ADDED SECTION
   ! Compute the element tangent stiffness matrix and force vectors.
   ! inportant:
   ! 1. rElem and rEleme0 contain both positions and rotations!
@@ -129,20 +155,36 @@ module cbeam3_asbly
     call cbeam3_kmat  (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Kelem,Options%NumGauss)
     call cbeam3_kgeom (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Kelem,Options%NumGauss)
     call cbeam3_fstif (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Qelem,Options%NumGauss)
-
 ! Compute the influence coefficients multiplying the vector of external forces.
 ! - rotate if follower forces and filter out slave nodes.
 ! - The contribution due to follower forces is added to the stiffness matrix
 ! in cbeam3_dqext
     call cbeam3_fext  (NumNE,rElem,Flags(1:NumNE),Felem,Options%FollowerForce,Options%FollowerForceRig,Unit)
     call cbeam3_dqext (NumNE,rElem,ForceElem,Flags(1:NumNE),Kelem,Options%FollowerForce)
-
 ! Project equations to the orientation of the "master" degrees of freedom.
 !    call cbeam3_projs2m (NumNE,Elem(iElem)%Master(:,:),Psi0(iElem,:,:),Psi0,SB2B1)
     call cbeam3_slave2master (NumNE,Elem(iElem)%Master(:,:),rElem0(:,4:6),Psi0,rElem(:,4:6),PsiDefor,SB2B1)
     Kelem=matmul(transpose(SB2B1),matmul(Kelem,SB2B1))
     Felem=matmul(transpose(SB2B1),Felem) !sm: ???
     Qelem=matmul(transpose(SB2B1),Qelem)
+    if (options%gravity_on .eqv. .TRUE.) then
+        Melem=matmul(transpose(SB2B1),matmul(Melem,SB2B1))
+    end if
+
+  ! Add to global matrix Mglobal, not remove columns and rows
+    !if (options%gravity_on)
+        !do i=1, NumNE
+            !nn = Elem(iElem)%Conn(i)
+            !i1=Node(nn)%Vdof
+            !rr = 6*i1
+            !do j=1, NumNE
+                !mm=Elem(iElem)%Conn(j)
+                !j1=Node(mm)%Vdof
+                !cc = 6*j1
+                !call sparse_addmat (rr, cc,Melem(6*(i-1)+1:6*i,6*(j-1)+1:6*j), ms,Mglobal)
+            !end do
+        !end do
+    !end if
 
  ! Add to global matrix. Remove columns and rows at clamped points.
     do i=1,NumNE
@@ -160,6 +202,9 @@ module cbeam3_asbly
             if (j1.ne.0) then ! not clamped
               call sparse_addmat (rr, cc,Kelem(6*(i-1)+1:6*i,6*(j-1)+1:6*j), ks,Kglobal)
               call sparse_addmat (rr, cc,Felem(6*(i-1)+1:6*i,6*(j-1)+1:6*j), fs,Fglobal)
+              if (options%gravity_on .eqv. .TRUE.) then
+                  call sparse_addmat (rr, cc,Melem(6*(i-1)+1:6*i,6*(j-1)+1:6*j), ms,Mglobal)
+              end if
             end if
           end do
       end if
@@ -193,10 +238,11 @@ module cbeam3_asbly
       deallocate(row_sphBC)
    end if
 
+
+
+
   return
- end subroutine cbeam3_asbly_static
-
-
+ end subroutine cbeam3_asbly_static_old
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !-> Subroutine CBEAM3_ASBLY_MODAL
@@ -267,7 +313,7 @@ module cbeam3_asbly
     if (NumNE.eq.2) then
         NumGaussMass=NumNE
     elseif (NumNE.eq.3) then
-        NumGaussMass=NumNE+1
+        NumGaussMass=NumNE
     end if
 
 ! Compute linearized inertia matrices.
@@ -351,7 +397,7 @@ module cbeam3_asbly
   real(8),     intent(in) :: PsiDeforDDot (:,:,:)  ! Current CRV of the nodes in the elements.
   real(8),     intent(in) :: Force     (:,:)       ! Force vector.
   real(8),     intent(in) :: Vrel(6), VrelDot(6)   ! Velocity of reference frame and derivative.
-  
+
   integer,     intent(out):: ms                ! Size of the sparse mass matrix.
   type(sparse),intent(out):: Mglobal   (:)     ! Sparse mass matrix.
   real(8),     intent(out):: Mvel      (:,:)   ! Reference system mass matrix.
@@ -476,6 +522,7 @@ module cbeam3_asbly
       if (i1.ne.0) then
 
         Qglobal(6*(i1-1)+1:6*i1)   = Qglobal(6*(i1-1)+1:6*i1)    + Qelem   (6*(i-1)+1:6*i)
+        ! ADC: I need to save Mvel with the clamped points for gravity loads
         Mvel   (6*(i1-1)+1:6*i1,:) = Mvel   (6*(i1-1)+1:6*i1,:)  + Mvelelem(6*(i-1)+1:6*i,:)
         Cvel   (6*(i1-1)+1:6*i1,:) = Cvel   (6*(i1-1)+1:6*i1,:)  + Cvelelem(6*(i-1)+1:6*i,:)
 
@@ -496,15 +543,15 @@ module cbeam3_asbly
   return
  end subroutine cbeam3_asbly_dynamic
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- 
- 
+
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !-> Subroutine CBEAM3_ASBLY_FGLOBAL
 !
 !-> Description:
 !
-!   Separate assembly of influence coefficients matrix for 
+!   Separate assembly of influence coefficients matrix for
 !   applied follower and dead loads
 !
 !-> Remarks.-
@@ -551,7 +598,7 @@ module cbeam3_asbly
   call sparse_zero(ksf,Kglobal_foll)
   call sparse_zero(fsf,Fglobal_foll)
   call sparse_zero(fsd,Fglobal_dead)
-  
+
 ! Loop in all elements in the model.
   NumE=size(Elem)
 
@@ -578,11 +625,11 @@ module cbeam3_asbly
     ! Compute the influence coefficients multiplying the vector of external forces.
     call cbeam3_fext (NumNE,rElem,Flags(1:NumNE),Felem_foll,.true._c_bool,.true._c_bool,CAG)
     call cbeam3_fext (NumNE,rElem,Flags(1:NumNE),Felem_dead,.false._c_bool,.false._c_bool,CAG)
-    
+
     ! Compute contribution to Kglobal from follower forces
     call fem_glob2loc_extract (Elem(iElem)%Conn,Force,ForceElem,NumNE)
     if (any(ForceElem.ne.0.d0)) call cbeam3_dqext (NumNE,rElem,ForceElem,Flags(1:NumNE),Kelem_foll,.true._c_bool)
-    
+
     ! Project equations to the orientation of the "master" degrees of freedom.
     call cbeam3_slave2master (NumNE,Elem(iElem)%Master(:,:),rElem0(:,4:6),Psi0,rElem(:,4:6),PsiDefor,SB2B1)
     Kelem_foll=matmul(transpose(SB2B1),matmul(Kelem_foll,SB2B1))
@@ -611,5 +658,32 @@ module cbeam3_asbly
 
   return
  end subroutine cbeam3_asbly_Fglobal
- 
+
+ function cbeam3_asbly_gravity_static(NumDof, options) result(gravity_vec)
+    use lib_rot
+    integer, intent(IN)             :: NumDof
+    type(xbopts), intent(IN)        :: options
+    real(8), allocatable             :: gravity_vec(:)
+
+    ! local variables
+    integer                         :: i
+    integer                         :: ii
+    real(8)                         :: g(3)
+
+    g = rot_unit([options%gravity_dir_x,&
+                  options%gravity_dir_y,&
+                  options%gravity_dir_z])*options%gravity
+
+
+    allocate(gravity_vec(NumDof))
+    gravity_vec = 0.0d0
+    do i=1,NumDof/6
+        ii = (i - 1)*6
+        gravity_vec(ii+1: ii+3) = g
+    end do
+
+
+
+ end function cbeam3_asbly_gravity_static
+
 end module cbeam3_asbly
