@@ -87,10 +87,6 @@ contains
             applied_forces(node_app_forces(i), :) = app_forces(i, :)
         end do
 
-        print*, options%gravity_dir_x
-        print*, options%gravity_dir_y
-        print*, options%gravity_dir_z
-
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
         options%NumGauss = nodes_per_elem - 1
@@ -113,32 +109,11 @@ contains
                                    psi_ini,&
                                    rbmass)
 
-    do i=1, n_elem
-        !print*, 'i=', i
-        do j=1,3
-            !print*, 'j=', j
-            !print*, psi_ini(i, j, :)
-        end do
-    end do
-
         nodes = generate_xbnode(n_node,&
                                 master_node,&
                                 vdof,&
                                 fdof)
 
-    do i=1, n_node
-        !do j=1, 3
-            !print*, nodes(i)%Vdof
-            !print*, nodes(i)%Fdof
-        !end do
-        !print*, '--'
-    end do
-
-        call print_matrix('Node', nodes)
-        call print_matrix('Elem', elements)
-        call print_matrix('PsiIni', psi_ini)
-        call print_matrix('PosDef', pos_def)
-        call print_matrix('PsiDef', psi_def)
        ! overloaded function
        call cbeam3_solv_nlnstatic(num_dof,&
                                   elements,&
@@ -150,11 +125,6 @@ contains
                                   psi_def,&
                                   options &
                                   )
-
-    
-        call print_matrix('PosDef2', pos_def)
-        call print_matrix('PsiDef2', psi_def)
-        print*, 'Leaving fortran'
 
     end subroutine cbeam3_solv_nlnstatic_python
 
