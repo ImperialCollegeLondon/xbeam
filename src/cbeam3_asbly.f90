@@ -419,6 +419,7 @@ module cbeam3_asbly
   integer:: NumE                           ! Number of elements in the model.
   integer:: NumNE                          ! Number of nodes in an element.
   integer:: NumGaussMass                   ! Number of Gaussian points in the inertia terms.
+  integer:: NumDof
   real(8):: Celem (6*MaxElNod,6*MaxElNod)  ! Element damping matrix.
   real(8):: Felem (6*MaxElNod,6*MaxElNod)  ! Element force influence coefficients.
   real(8):: Kelem (6*MaxElNod,6*MaxElNod)  ! Element tangent stiffness matrix.
@@ -435,6 +436,7 @@ module cbeam3_asbly
 
 ! Loop in all elements in the model.
   NumE=size(Elem)
+  NumDof = size(Mvel(:,1))
 
   do iElem=1,NumE
     Melem=0.d0; Celem=0.d0; Kelem=0.d0; Felem=0.d0; Qelem=0.d0
@@ -515,14 +517,12 @@ module cbeam3_asbly
     Felem=matmul(transpose(SB2B1),Felem)
     Mvelelem=matmul(transpose(SB2B1),Mvelelem)
     Cvelelem=matmul(transpose(SB2B1),Cvelelem)
-
 ! Add to global matrix. Remove columns and rows at clamped points.
     do i=1,NumNE
       i1=Node(Elem(iElem)%Conn(i))%Vdof
       if (i1.ne.0) then
 
         Qglobal(6*(i1-1)+1:6*i1)   = Qglobal(6*(i1-1)+1:6*i1)    + Qelem   (6*(i-1)+1:6*i)
-        ! ADC: I need to save Mvel with the clamped points for gravity loads
         Mvel   (6*(i1-1)+1:6*i1,:) = Mvel   (6*(i1-1)+1:6*i1,:)  + Mvelelem(6*(i-1)+1:6*i,:)
         Cvel   (6*(i1-1)+1:6*i1,:) = Cvel   (6*(i1-1)+1:6*i1,:)  + Cvelelem(6*(i-1)+1:6*i,:)
 
@@ -539,7 +539,6 @@ module cbeam3_asbly
       end if
     end do
   end do
-
   return
  end subroutine cbeam3_asbly_dynamic
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -659,21 +658,22 @@ module cbeam3_asbly
   return
  end subroutine cbeam3_asbly_Fglobal
 
- function cbeam3_asbly_gravity_static(NumDof, options) result(gravity_vec)
+ function cbeam3_asbly_gravity_static(NumDof, options, g) result(gravity_vec)
     use lib_rot
     integer, intent(IN)             :: NumDof
     type(xbopts), intent(IN)        :: options
     real(8), allocatable             :: gravity_vec(:)
+    real(8), optional, intent(INOUT)   :: g(3)
 
     ! local variables
     integer                         :: i
     integer                         :: ii
-    real(8)                         :: g(3)
 
-    g = rot_unit([options%gravity_dir_x,&
-                  options%gravity_dir_y,&
-                  options%gravity_dir_z])*options%gravity
-
+    if (present(g) .eqv. .FALSE.) then
+        g = rot_unit([options%gravity_dir_x,&
+                      options%gravity_dir_y,&
+                      options%gravity_dir_z])*options%gravity
+    end if
 
     allocate(gravity_vec(NumDof))
     gravity_vec = 0.0d0
@@ -681,9 +681,25 @@ module cbeam3_asbly
         ii = (i - 1)*6
         gravity_vec(ii+1: ii+3) = g
     end do
-
-
-
  end function cbeam3_asbly_gravity_static
+
+ function cbeam3_asbly_gravity_dynamic(NumDof, options, Cao) result(gravity_vec)
+    use lib_rot
+    integer, intent(IN)         :: NumDof
+    type(xbopts), intent(IN)    :: options
+    real(8), intent(IN)         :: Cao(3,3)
+    real(8), allocatable        :: gravity_vec(:)
+
+    ! local vars
+    integer                     :: i
+    integer                     :: ii
+    real(8)                     :: g(3)
+
+    g = rot_unit([options%gravity_dir_x,&
+                  options%gravity_dir_y,&
+                  options%gravity_dir_z])*options%gravity
+    g = MATMUL(Cao, g)
+    gravity_vec = cbeam3_asbly_gravity_static(NumDof, options, g)
+ end function cbeam3_asbly_gravity_dynamic
 
 end module cbeam3_asbly

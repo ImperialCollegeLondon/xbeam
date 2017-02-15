@@ -291,19 +291,28 @@ module lib_sparse
 !   Multiply a sparse matrix by a vector.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- function sparse_matvmul (DimArray,SprMat,DimVector,Vector)
+ function sparse_matvmul (DimArray,SprMat,DimVector,Vector,id)
 
 ! I/O Variables.
   integer,     intent(in):: DimArray    ! Current storage dimension.
   type(sparse),intent(in):: SprMat(:)   ! Sparse matrix.
   integer,     intent(in):: DimVector   ! Dimension of the output vector.
   real(8),     intent(in):: Vector(:)   ! Column vector to be postmultiplied.
+  character(len=*),optional,intent(in):: id
   real(8)                :: sparse_matvmul(DimVector)
 
 ! Local variables.
   integer:: i,j,k    ! Counters on the element of the matrix.
 
   sparse_matvmul=0.d0
+
+  !if (sparse_max_index(DimArray,SprMat) /= size(Vector)) then
+      !print*, 'Error in dimensions @ sparse_matmul'
+      !print*, 'Size of matrix = ', sparse_max_index(DimArray,SprMat)
+      !print*, 'Size of vector = ', size(Vector)
+      !call backtrace()
+      !stop 1
+  !end if
 
   do k=1,DimArray
     i=SprMat(k)%i
@@ -711,6 +720,7 @@ function sparse_max_index(DimArray, SprMat) result(max_i)
     integer                             :: max_i
     integer                             :: max_j
 
+  call flush()
   max_i = maxval(SprMat(1:DimArray)%i)
   max_j = maxval(SprMat(1:DimArray)%j)
 
@@ -718,6 +728,4 @@ function sparse_max_index(DimArray, SprMat) result(max_i)
 
 
 end function sparse_max_index
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end module lib_sparse

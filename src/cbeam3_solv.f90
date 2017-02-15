@@ -739,17 +739,27 @@ TaPsi =           Psisc *Options%MinDelta
   call cbeam3_solv_disp2state (Node,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor,X,dXdt)
 
 ! Compute initial acceleration (we are neglecting qdotdot in Kmass).
-  call cbeam3_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor,           &
-&                            0.d0*PosDefor,0.d0*PsiDefor,F0+Ftime(1)*Fa,Vrel(1,:),VrelDot(1,:),         &
-&                            ms,Mglobal,Mvel,cs,Cglobal,Cvel,ks,Kglobal,fs,Fglobal,Qglobal,Options,Cao)
+  if (options%gravity_on .eqv. .TRUE.) then
+      print*, 'solv, 743'
+      call flush()
+      call cbeam3_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor,           &
+    &                            0.d0*PosDefor,0.d0*PsiDefor,F0+Ftime(1)*Fa,Vrel(1,:),VrelDot(1,:),         &
+    &                            ms,Mglobal,Mvel,cs,Cglobal,Cvel,ks,Kglobal,fs,Fglobal,Qglobal,Options,Cao)
 
+      print*, 'solv, 743'
+      call flush()
+      !print*, 'size of Mglobal:', sparse_max_index(ms, Mglobal)
+      Qglobal= Qglobal + sparse_matvmul(ms,Mglobal,&
+                                        NumDof,&
+                                        cbeam3_asbly_gravity_dynamic(NumDof, options, Cao), '749')
+  else
+      call cbeam3_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor,           &
+    &                            0.d0*PosDefor,0.d0*PsiDefor,F0+Ftime(1)*Fa,Vrel(1,:),VrelDot(1,:),         &
+    &                            ms,Mglobal,Mvel,cs,Cglobal,Cvel,ks,Kglobal,fs,Fglobal,Qglobal,Options,Cao&
+                                 )
+  end if
 
   Qglobal= Qglobal - sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(F0+Ftime(1)*Fa,NumDof,Filter=ListIN))
-
-  ! ADC: add gravity loads
-
-
-
 
   call sparse_addsparse(0,0,ms,Mglobal,as,Asys)
   call lu_sparse(as,Asys,-Qglobal,dXddt)
@@ -790,11 +800,20 @@ TaPsi =           Psisc *Options%MinDelta
       call sparse_zero (ks,Kglobal)
       call sparse_zero (fs,Fglobal)
 
-
-       call cbeam3_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor,                     &
- &                                0.d0*PosDefor,0.d0*PsiDefor,F0+Ftime(iStep+1)*Fa,Vrel(iStep+1,:),VrelDot(iStep+1,:), &
- &                                ms,Mglobal,Mvel,cs,Cglobal,Cvel,ks,Kglobal,fs,Fglobal,Qglobal,Options,Cao)
-
+  if (options%gravity_on .eqv. .TRUE.) then
+      call cbeam3_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor,           &
+                       0.d0*PosDefor,0.d0*PsiDefor,F0+Ftime(iStep+1)*Fa,Vrel(iStep+1,:),VrelDot(iStep+1,:), &
+    &                            ms,Mglobal,Mvel,cs,Cglobal,Cvel,ks,Kglobal,fs,Fglobal,Qglobal,Options,Cao&
+                                 )
+      Qglobal= Qglobal + sparse_matvmul(ms,Mglobal,&
+                                        NumDof,&
+                                        cbeam3_asbly_gravity_dynamic(NumDof, options, Cao), '807')
+  else
+      call cbeam3_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor,           &
+                       0.d0*PosDefor,0.d0*PsiDefor,F0+Ftime(iStep+1)*Fa,Vrel(iStep+1,:),VrelDot(iStep+1,:), &
+    &                            ms,Mglobal,Mvel,cs,Cglobal,Cvel,ks,Kglobal,fs,Fglobal,Qglobal,Options,Cao&
+                                 )
+  end if
 
 ! Compute admissible error.
       MinDelta=Options%MinDelta*max(1.d0,maxval(abs(Qglobal)))

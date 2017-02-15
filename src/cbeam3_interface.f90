@@ -234,13 +234,11 @@ contains
             applied_forces(node_app_forces(i), :) = app_forces(i, :)
         end do
 
+        print*, 'gravity = ', options%gravity
+
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
         options%NumGauss = nodes_per_elem - 1
-
-        call print_matrix('forced_vel', forced_vel)
-        call print_matrix('dynamic_forces_amplitude',dynamic_forces_amplitude)
-        call print_matrix('time', time)
 
         elements = generate_xbelem(n_elem,&
                                    num_nodes,&
@@ -264,11 +262,6 @@ contains
                                 fdof)
 
 
-        call print_matrix('Node', nodes)
-        call print_matrix('Elem', elements)
-        call print_matrix('PsiIni', psi_ini)
-        call print_matrix('PosDef', pos_def)
-        call print_matrix('PsiDef', psi_def)
         i_out = 10  ! random unit for output
         ! updating position vectors
         pos_def = pos_ini
@@ -281,30 +274,6 @@ contains
         psi_dot_def_history = 0.0_c_double
         pos_dot_def = 0.0_c_double
         psi_dot_def = 0.0_c_double
-
-        ! Signature for cbeam3_solv_nlndyn
-          !integer,      intent(in)   :: iOut              ! Output file.
-          !integer,      intent(in)   :: NumDof            ! Number of independent DoFs.
-          !real(8),      intent(in)   :: Time      (:)     ! Time steps.
-          !type(xbelem), intent(in)   :: Elem      (:)     ! Element information.
-          !type(xbnode), intent(in)   :: Node      (:)     ! Nodal information.
-          !real(8),      intent(in)   :: F0        (:,:)   ! Applied static nodal forces.
-          !real(8),      intent(in)   :: Fa        (:,:)  ! Amplitude of the dynamic nodal forces.
-          !real(8),      intent(in)   :: Ftime     (:)    ! Time history of the applied forces.
-          !real(8),      intent(in)   :: Vrel      (:,:)   ! Time history of the velocities of the reference frame.
-          !real(8),      intent(in)   :: VrelDot   (:,:)   ! Time history of the accelerations of the reference frame.
-          !real(8),      intent(in)   :: Coords    (:,:)   ! Initial coordinates of the grid points.
-          !real(8),      intent(in)   :: Psi0      (:,:,:) ! Initial CRV of the nodes in the elements.
-          !real(8),      intent(inout):: PosDefor  (:,:)   ! Current coordinates of the grid points
-          !real(8),      intent(inout):: PsiDefor  (:,:,:) ! Current CRV of the nodes in the elements.
-          !real(8),      intent(inout):: PosDotDefor(:,:)  ! Current time derivatives of the coordinates of the grid points
-          !real(8),      intent(inout):: PsiDotDefor(:,:,:)! Current time derivatives of the CRV of the nodes in the elements.
-          !type(xbopts),intent(in)    :: Options           ! Solver parameters.
-
-          !real(8), intent(OUT)       :: pos_def_history(size(Time) + 1, size(Node), 3)
-          !real(8), intent(OUT)       :: pos_dot_def_history(size(Time) + 1, size(Node), 3)
-          !real(8), intent(OUT)       :: psi_def_history(size(Time) + 1, size(Elem), MaxElNod, 3)
-          !real(8), intent(OUT)       :: psi_dot_def_history(size(Time) + 1, size(Elem), MaxElNod, 3)
 
         call cbeam3_solv_nlndyn (i_out,&
                                    num_dof,&
