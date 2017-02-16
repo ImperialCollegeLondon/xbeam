@@ -108,6 +108,7 @@ module lib_xbeam
       dr0_g(i)= dot_product (ShapeDer(1:NumNodesElem),r0(1:NumNodesElem,i))
     end do
     Jacobian =sqrt(dot_product (dr0_g(1:3),dr0_g(1:3)))
+    ! Jacobian =sqrt(dot_product (dr0_g,dr0_g))
 
 ! Compute the current position vector and rotations.
     do i=1,6
@@ -2255,10 +2256,3 @@ module lib_xbeam_test
 
 
  end module lib_xbeam_test
-
-
-
-
-
-
-

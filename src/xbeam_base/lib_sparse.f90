@@ -56,7 +56,7 @@ module lib_sparse
   Matrix(:)%j=0
   Matrix(:)%a=0.d0
 
- return 
+ return
  end subroutine sparse_zero
 
 
@@ -81,6 +81,14 @@ module lib_sparse
   logical:: Flag     ! Logical flag.
   integer:: k        ! Counter of element
   real(8):: Val2     ! Modified val
+
+  ! debug
+  if (isnan(Val)) then
+      print*, 'Adding NaN'
+      print*, 'i = ', i
+      print*, 'j = ', j
+      STOP
+  end if
 
   if (present(Factor)) then
     Val2=Val*Factor
@@ -136,7 +144,8 @@ module lib_sparse
 
   do i=1,size(Mat,DIM=1)
     do j=1,size(Mat,DIM=2)
-      if (Mat(i,j).ne.0.d0) then
+    !   if (abs(Mat(i,j)) > 1d-16) then
+      if (Mat(i,j) .ne. 0.0d0) then
         call sparse_addval (i1+i,j1+j,Mat(i,j),DimArray,SprMat)
       end if
     end do
@@ -163,6 +172,7 @@ module lib_sparse
 
   integer:: k    ! Counter on the element of the matrix.
 
+  FullMat = 0.0d0
   do k=1,DimArray
     FullMat(SprMat(k)%i,SprMat(k)%j)=SprMat(k)%a
   end do
@@ -215,8 +225,9 @@ module lib_sparse
         j=submat(k)%j
       end if
 
-      if ((i.ne.0).and.(j.ne.0)) &
-&       call sparse_addval (i1+i,j1+j,Submat(k)%a,DimMat,Mat,Factor=ActualFactor)
+      if ((i.ne.0).and.(j.ne.0)) then
+        call sparse_addval (i1+i,j1+j,Submat(k)%a,DimMat,Mat,Factor=ActualFactor)
+      end if
     end if
   end do
 
@@ -714,13 +725,12 @@ module lib_sparse
   return
  end subroutine sparse_print_mat
 
-function sparse_max_index(DimArray, SprMat) result(max_i)
+pure function sparse_max_index(DimArray, SprMat) result(max_i)
     integer,     intent(in):: DimArray  ! Storage dimension of sparse matrix
     type(sparse),intent(in):: SprMat(:) ! Sparse matrix.
     integer                             :: max_i
     integer                             :: max_j
 
-  call flush()
   max_i = maxval(SprMat(1:DimArray)%i)
   max_j = maxval(SprMat(1:DimArray)%j)
 
@@ -728,4 +738,20 @@ function sparse_max_index(DimArray, SprMat) result(max_i)
 
 
 end function sparse_max_index
+
+pure function sparse_n_rows(DimArray, SprMat) result(max_i)
+    integer, intent(IN)     :: DimArray
+    type(sparse), intent(IN):: SprMat(:)
+    integer                 :: max_i
+
+    max_i = maxval(SprMat(1:DimArray)%i)
+end function sparse_n_rows
+
+pure function sparse_n_cols(DimArray, SprMat) result(max_j)
+    integer, intent(IN)     :: DimArray
+    type(sparse), intent(IN):: SprMat(:)
+    integer                 :: max_j
+
+    max_j = maxval(SprMat(1:DimArray)%j)
+end function sparse_n_cols
 end module lib_sparse
