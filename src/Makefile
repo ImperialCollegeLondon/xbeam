@@ -1,4 +1,5 @@
-FFLAGS = -g -fPIC -O0 -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow
+#FFLAGS = -g -fPIC -O0 -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow
+FFLAGS = -fPIC -O3
 LINKER_FLAGS = -shared -fPIC -llapack -fbacktrace
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)

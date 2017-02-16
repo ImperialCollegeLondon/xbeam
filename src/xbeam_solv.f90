@@ -673,6 +673,24 @@ module xbeam_solv
   call sparse_addmat    (NumDof,NumDof,MRR,mtot,Mtotal)
   call sparse_addmat    (NumDof+6,NumDof+6,Unit4,mtot,Mtotal)
 
+  ! gravity implementation
+  if (options%gravity_on .eqv. .TRUE.) then
+    !Qtotal = Qtotal + &
+    !          sparse_matvmul(mtot,&
+    !                         Mtotal,&
+    !                         NumDof + 6 + 4,&
+    !                         [cbeam3_asbly_gravity_dynamic(NumDof + 6,&
+    !                                                      options,&
+    !                                                      Cao), 0.0d0, 0.0d0, 0.0d0, 0.0d0])
+    Qtotal = Qtotal + &
+              sparse_matvmul(mtot,&
+                             Mtotal,&
+                             NumDof + 6 + 4,&
+                             [cbeam3_asbly_gravity_dynamic(NumDof,&
+                                                          options,&
+                                                          Cao),0.0d0,0.0d0,0.0d0,0.0d0,0.0d0,0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0])
+  end if
+
 ! Spherical Joint - sm:
 ! unit diag term in Mtotal to the translational dof of the a FoR. The aim is to
 ! implement M*dBetadt = 0
@@ -796,7 +814,7 @@ module xbeam_solv
       call sparse_addsparse (0,0,ms,MSS,mtot,Mtotal)
       call sparse_addmat    (0,NumDof,MSR,mtot,Mtotal)
 !      call sparse_addsparse (NumDof,0,mr,MRS,mtot,Mtotal)
-      call sparse_addmat    (NumDof,0,transpose(MSR),mtot,Mtotal)
+      call sparse_addmat    (NumDof,0,transpose(MSR),mtot,Mtotal) ! TODO XXX check
       call sparse_addmat    (NumDof,NumDof,MRR,mtot,Mtotal)
       call sparse_addmat    (NumDof+6,NumDof+6,Unit4,mtot,Mtotal)
 
@@ -809,6 +827,23 @@ module xbeam_solv
       end if
 
       Qtotal= Qtotal + sparse_matvmul(mtot,Mtotal,NumDof+6+4,dQddt)
+      ! gravity implementation
+      if (options%gravity_on .eqv. .TRUE.) then
+    !Qtotal = Qtotal + &
+    !          sparse_matvmul(mtot,&
+    !                         Mtotal,&
+    !                         NumDof + 6 + 4,&
+    !                         [cbeam3_asbly_gravity_dynamic(NumDof + 6,&
+    !                                                      options,&
+    !                                                      Cao), 0.0d0, 0.0d0, 0.0d0, 0.0d0])
+    Qtotal = Qtotal + &
+              sparse_matvmul(mtot,&
+                             Mtotal,&
+                             NumDof + 6 + 4,&
+                             [cbeam3_asbly_gravity_dynamic(NumDof,&
+                                                          options,&
+                                                          Cao),0.0d0,0.0d0,0.0d0,0.0d0,0.0d0,0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0])
+      end if
 
       ! ------------------------------------------------------ Check convergence.
 

@@ -151,7 +151,7 @@ subroutine xbeam_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDefor
     call xbeam_crr  (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,CRRelem,Options%NumGauss)
 
 ! Add contributions of non-structural (lumped) mass.
-	if (any(Elem(iElem)%RBMass.ne.0.d0)) then
+    if (any(Elem(iElem)%RBMass.ne.0.d0)) then
       call xbeam_rbmrs  (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,MRSelem)
       call xbeam_rbcgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,CRSelem)
       call xbeam_rbkgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%RBMass,KRSelem)

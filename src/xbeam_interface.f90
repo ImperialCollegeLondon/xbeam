@@ -129,11 +129,6 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
        applied_forces(node_app_forces(i), :) = app_forces(i, :)
    end do
 
-   call print_matrix('dynamic_forces_time',dynamic_forces_time)
-   call print_matrix('dynamic_forces_amplitude',dynamic_forces_amplitude)
-   call print_matrix('time', time)
-   call print_matrix('num_nodes', num_nodes)
-
    elements = generate_xbelem(n_elem,&
                               num_nodes,&
                               mem_number,&
@@ -156,11 +151,11 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
                            fdof)
 
 
-   call print_matrix('Node', nodes)
-   call print_matrix('Elem', elements)
-   call print_matrix('PsiIni', psi_ini)
-   call print_matrix('PosDef', pos_def)
-   call print_matrix('PsiDef', psi_def)
+   !call print_matrix('Node', nodes)
+   !call print_matrix('Elem', elements)
+   !call print_matrix('PsiIni', psi_ini)
+   !call print_matrix('PosDef', pos_def)
+   !call print_matrix('PsiDef', psi_def)
    i_out = 10  ! random unit for output
    ! updating position vectors
    pos_def = pos_ini
