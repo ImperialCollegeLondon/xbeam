@@ -1619,14 +1619,12 @@ module lib_cbeam3
   real(8) :: N (6,6*MaxNodCB3)     ! Element shape function matrix
 
 ! Loop on the element nodes.
-	do iNode=1,NumNodesElem
-
-! Compute element shape function.
+do iNode=1,NumNodesElem
+    ! Compute element shape function.
     N =0.d0
     do i=1,6
       N(i,i+(iNode-1)*6)= 1.d0
     end do
-
 ! Compute the current coordinate transformation matrix and rotational operator.
     CBa= rotvect_psi2mat  (Ri(iNode,4:6))
     Rot= rotvect_psi2rot  (Ri(iNode,4:6))
@@ -1649,9 +1647,9 @@ module lib_cbeam3
 
 ! Compute mass tangent stiffness.
     Mvel= Mvel + matmul(transpose(DTYpN),matmul(NodalMass(iNode,:,:),dVdotdvrel))
-  end do
-  return
- end subroutine cbeam3_rbmvel
+end do
+return
+end subroutine cbeam3_rbmvel
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

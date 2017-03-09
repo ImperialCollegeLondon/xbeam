@@ -108,7 +108,6 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
    real(c_double)                  :: psi_dot_def(n_elem, max_elem_node, 3)
    integer(c_int)                  :: i_out
    integer(c_int)                  :: i
-   integer(c_int)                  :: j
    integer(c_int)                  :: nodes_per_elem
 
    logical(c_bool), intent(INOUT)  :: success
@@ -120,7 +119,6 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
    ! number of nodes per element
    nodes_per_elem = 0
    nodes_per_elem = count(conn(1, :) /= 0)
-   print*, nodes_per_elem
    options%NumGauss = nodes_per_elem - 1
 
    num_dof = count(vdof > 0)*6

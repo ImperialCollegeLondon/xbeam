@@ -180,7 +180,6 @@ module lib_xbeam
 
 ! Local variables.
   integer :: i,iNode               ! Counters.
-  real(8) :: Ra(3)                 ! Current position vector
   real(8) :: CaB(3,3)              ! Coordinate transformation matrix.
   real(8) :: Rot(3,3)              ! Tangential operator.
   real(8) :: ARC(6,6)              ! A_{RC}
@@ -190,21 +189,19 @@ module lib_xbeam
 
 ! Loop in the nodes.
   do iNode=1,NumNodesElem
-
+    ! Compute element shape function.
+    N =0.d0
+    do i=1,6
+      N(i,i+(iNode-1)*6)= 1.d0
+    end do
 ! Compute the nodal coordinate transformation matrix and rotational operator.
     CaB= transpose(rotvect_psi2mat(Ri(iNode,4:6)))
     Rot= rotvect_psi2rot(Ri(iNode,4:6))
 
-! Compute element shape function at the current node.
-    N =0.d0
-    do i=1,6
-        N (i,i+(iNode-1)*6)= 1.d0
-    end do
-
 !Operators for the tangent mass matrix.
     ARC=0.d0
     ARC(1:3,1:3)=CaB
-    ARC(4:6,1:3)=matmul(rot_skew(Ra),CaB)
+    ARC(4:6,1:3)=matmul(rot_skew(Ri(iNode, 1:3)),CaB)
     ARC(4:6,4:6)=CaB
 
     D=0.d0
@@ -1552,7 +1549,6 @@ module lib_xbeam
 &                            + matmul(matmul(CaB,matmul(rot_skew(PB),CBa)),rot_skew(Ra)) &
 &                            - matmul(rot_skew(Ra),matmul(CaB,matmul(rot_skew(PB),CBa)))
 
-! Compute strain matrix operator and material tangent stiffness.
     CRR= CRR +(matmul(ARC, matmul(NodalMass(iNode,:,:),dVgyrdvrel)) + dAWRCdvrelPhat      &
 &            + matmul(AWRC,matmul(NodalMass(iNode,:,:),dVdvrel)))
 

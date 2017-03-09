@@ -65,7 +65,7 @@ subroutine xbeam_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDefor
   real(8),      intent(in) :: Quat(4)               ! Quaternions.
 
   integer,      intent(out):: ms                ! Size of the sparse mass matrix.
-  type(sparse), intent(out):: MRS(:)            ! Sparse mass matrix.
+  real(8),      intent(out):: MRS(:,:)            ! mass matrix.
   real(8),      intent(out):: MRR(:,:)          ! Reference system mass matrix.
   integer,      intent(out):: cs                ! Size of the sparse damping matrix.
   type(sparse), intent(out):: CRS(:)            ! Sparse damping matrix.
@@ -81,7 +81,7 @@ subroutine xbeam_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDefor
 
 ! Local variables.
   logical:: Flags(MaxElNod)                ! Auxiliary flags.
-  integer:: i,i1                           ! Counters.
+  integer:: i,i1, j                        ! Counters.
   integer:: iElem                          ! Counter on the finite elements.
   integer:: NumE                           ! Number of elements in the model.
   integer:: NumNE                          ! Number of nodes in an element.
@@ -100,6 +100,16 @@ subroutine xbeam_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDefor
   real(8):: rElemDot (MaxElNod,6)          ! Current Coordinates/CRV of nodes in the element.
   real(8):: rElemDDot (MaxElNod,6)         ! Current Coordinates/CRV of nodes in the element.
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)  ! Transformation from master to rigid node orientations.
+
+  call sparse_zero(cs,CRS)
+  call sparse_zero(ks,KRS)
+  call sparse_zero(fs,Frigid)
+  MRS = 0.0d0
+  MRR = 0.0d0
+  CRR = 0.0d0
+  CQR = 0.0d0
+  CQQ = 0.0d0
+  Qrigid = 0.0d0
 
 ! Loop in all elements in the model.
   NumE=size(Elem)
@@ -132,11 +142,35 @@ subroutine xbeam_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDefor
     if (NumNE.eq.2) then
         NumGaussMass=NumNE
     elseif (NumNE.eq.3) then
-        NumGaussMass=NumNE+1
+        NumGaussMass=NumNE
     end if
 
 ! Compute linearized inertia matrices.
-    call xbeam_mrs  (NumNE,rElem0,rElem,                                Elem(iElem)%Mass,MRSelem,NumGaussMass)
+    ! if (iElem == 2) then
+    !     print*, 'XBEAM'
+    !     print*, 'numNE ', NumNE
+    !     print*, 'rElem0', rElem0
+    !     print*, 'rElem', rElem
+    !     print*, 'Elem%mass'
+    !     do i=1, 3
+    !         print*, Elem(iElem)%Mass(i, 1:3)
+    !     end do
+    !     print*, 'NumGaussMass', NumGaussMass
+    ! end if
+    call xbeam_mrs  (NumNE,rElem0,rElem,Elem(iElem)%Mass,MRSelem,NumGaussMass)
+    ! if (iElem == 2) then
+    !     print*, 'MRS'
+    !     do i=1, 6
+    !         print*, MRSelem(1:6, i)
+    !     end do
+    !     print*, '----'
+    !     print*, 'END OF XBEAM'
+    ! end if
+
+    ! print*, 'MRSelem ', MRSelem
+    ! print*, '----'
+    ! pause
+
     call xbeam_cgyr (NumNE,rElem0,rElem,rElemDot,Vrel,                  Elem(iElem)%Mass,CRSelem,Options%NumGauss)
     call xbeam_kgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%Mass,KRSelem,Options%NumGauss)
 
@@ -183,13 +217,19 @@ subroutine xbeam_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDefor
       !!!call sparse_addmat (0,6*(i1),Felem(:,6*(i-1)+1:6*i),fs,Frigid)
       call sparse_addmat (0,6*( Elem(iElem)%Conn(i)-1 ),Felem(:,6*(i-1)+1:6*i),fs,Frigid)
       if (i1.ne.0) then
-        call sparse_addmat (0,6*(i1-1),MRSelem(:,6*(i-1)+1:6*i),ms,MRS)
+        ! call sparse_addmat (0,6*(i1-1),MRSelem(:,6*(i-1)+1:6*i),ms,MRS)
+        MRS(:, 6*(i1-1) + 1:6*(i1-1) + 6) =MRS(:, 6*(i1-1) + 1:6*(i1-1) + 6) + (MRSelem(:,6*(i-1)+1:6*i))
         call sparse_addmat (0,6*(i1-1),CRSelem(:,6*(i-1)+1:6*i),cs,CRS)
         call sparse_addmat (0,6*(i1-1),KRSelem(:,6*(i-1)+1:6*i),ks,KRS)
       end if
     end do
 
   end do
+
+  ! do i=1, ms
+  !     print*, i
+  !     print*, MRS(i)%a
+  ! end do
 
 ! Compute tangent matrices for quaternion equations
   CQR(:,:)=0.d0

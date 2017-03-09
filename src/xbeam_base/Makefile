@@ -1,9 +1,9 @@
-#FFLAGS = -g -fPIC -O0 -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow
-FFLAGS = -fPIC -O3
-LINKER_FLAGS = -shared -fbacktrace
+#FFLAGS = -g3 -fPIC -O1 -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow
+FFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fomit-frame-pointer -I/usr/include -Wunused
+LINKER_FLAGS = -shared
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
-FC = gfortran
+FC = gfortran-5
 endif
 ifeq ($(UNAME), Darwin)
 FC = ifort
@@ -54,4 +54,3 @@ clobber: clean
 	rm -rf $(lib_dir)
 
 .PHONY: default clean clobber
-

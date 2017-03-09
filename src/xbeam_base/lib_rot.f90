@@ -40,9 +40,9 @@ module lib_rot
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !-> Subrutine ROT_BETA2MAT
-! 
-!-> Description.- 
-! 
+!
+!-> Description.-
+!
 !  Find the transformation matrix from the director cosines for obliqueness.
 !
 !-> Remarks:
@@ -77,7 +77,7 @@ module lib_rot
   RotMatrix(2,3)=-Beta(2)*Beta(3)*Aux
 !
   RotMatrix(3,1)= Beta(3)
-  RotMatrix(3,2)= RotMatrix(2,3)  
+  RotMatrix(3,2)= RotMatrix(2,3)
   RotMatrix(3,3)= 1.d0 - Beta(3)*Beta(3)*Aux
 !
   return
@@ -97,11 +97,9 @@ module lib_rot
 !  1) The elemental rotations are applied in the following order: Z,Y,X.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- function rot_phi2mat (Phi)
-!
+ pure function rot_phi2mat (Phi)
 ! I/O Variables.
-!
-  real(8),intent(in):: Phi(3)     ! Elemental rotations.
+  real(8),intent(in):: Phi(:)     ! Elemental rotations.
   real(8)::   rot_phi2mat(3,3)   ! Rotation matrix.
 !
 ! Local variables
@@ -110,26 +108,28 @@ module lib_rot
   real(8):: RotY(3,3)
   real(8):: RotZ(3,3)
 
+  RotX = 0.0d0
   RotX(1,1)= 1.d0
-  RotX(2,2)= dcos(Phi(1))
-  RotX(3,3)= dcos(Phi(1))
-  RotX(2,3)=-dsin(Phi(1))
-  RotX(3,2)= dsin(Phi(1))
+  RotX(2,2)= cos(Phi(1))
+  RotX(3,3)= cos(Phi(1))
+  RotX(2,3)=-sin(Phi(1))
+  RotX(3,2)= sin(Phi(1))
 !
+  RotY = 0.0d0
   RotY(2,2)= 1.d0
-  RotY(3,3)= dcos(Phi(2))
-  RotY(1,1)= dcos(Phi(2))
-  RotY(3,1)=-dsin(Phi(2))
-  RotY(1,3)= dsin(Phi(2))
+  RotY(3,3)= cos(Phi(2))
+  RotY(1,1)= cos(Phi(2))
+  RotY(3,1)=-sin(Phi(2))
+  RotY(1,3)= sin(Phi(2))
 !
+  RotZ = 0.0d0
   RotZ(3,3)= 1.d0
-  RotZ(1,1)= dcos(Phi(3))
-  RotZ(2,2)= dcos(Phi(3))
-  RotZ(1,2)=-dsin(Phi(3))
-  RotZ(2,1)= dsin(Phi(3))
+  RotZ(1,1)= cos(Phi(3))
+  RotZ(2,2)= cos(Phi(3))
+  RotZ(1,2)=-sin(Phi(3))
+  RotZ(2,1)= sin(Phi(3))
 !
   rot_phi2mat=matmul(matmul(RotX,RotY),RotZ)
-!
   return
  end function rot_phi2mat
 
@@ -159,8 +159,8 @@ module lib_rot
  subroutine rot_points2mat (Point1, Point2, RotMatrix)
 
 ! I/O Variables.
-  real(8),intent(in) :: Point1(3)       ! Point 1 coordinates.
-  real(8),intent(in) :: Point2(3)       ! Point 2 coordinates.
+  real(8),intent(in) :: Point1(:)       ! Point 1 coordinates.
+  real(8),intent(in) :: Point2(:)       ! Point 2 coordinates.
   real(8),intent(out):: RotMatrix(3,3)  ! Rotation Matrix.
 
 ! Local Variables.
@@ -172,8 +172,8 @@ module lib_rot
 !
 ! Get unit vectors in the direction of point 1 and point2.
 !
-  Unit1=Point1/dsqrt(dot_product(Point1,Point1))
-  Unit2=Point2/dsqrt(dot_product(Point2,Point2))
+  Unit1=Point1/sqrt(dot_product(Point1,Point1))
+  Unit2=Point2/sqrt(dot_product(Point2,Point2))
 !
 ! Vector 0-1 gives b3.
 !
@@ -191,10 +191,11 @@ module lib_rot
 ! The Rotation matrix from A to B is defined by the components of this
 ! orthonormal base.
 !
+  RotMatrix = 0.0d0
   RotMatrix(1,:)=b1
   RotMatrix(2,:)=b2
   RotMatrix(3,:)=b3
-!  
+!
   return
  end subroutine rot_points2mat
 
@@ -208,12 +209,12 @@ module lib_rot
 !   Cross Product of two vectors.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- function rot_cross (Vec1, Vec2)
+pure function rot_cross (Vec1, Vec2)
 !
 ! I/O Variables.
 !
-  real(8),intent(in)  :: Vec1 (3)
-  real(8),intent(in)  :: Vec2 (3)
+  real(8),intent(in)  :: Vec1 (:)
+  real(8),intent(in)  :: Vec2 (:)
   real(8),dimension(3):: rot_cross
 !
 ! Local variables.
@@ -235,11 +236,9 @@ module lib_rot
 !   Compute the Skew-Symmetric Matrix given a vector.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- function rot_skew (Vector)
-
+pure function rot_skew (Vector)
 ! I/O Variables.
-
-  real(8), intent(in)    :: Vector(3)
+  real(8), intent(in)    :: Vector(:)
   real(8), dimension(3,3):: rot_skew
 
   rot_skew=0.0d0
@@ -252,8 +251,8 @@ module lib_rot
 
   return
  end function rot_skew
- 
- 
+
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !->Subroutine ROT_VECT.
@@ -263,16 +262,15 @@ module lib_rot
 !   Extract the vector of a skew-symmetric matrix.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- function rot_vect (SkewMatrix)
+ pure function rot_vect (SkewMatrix)
 
 ! I/O Variables.
-  real(8), intent(in)  :: SkewMatrix(3,3)
+  real(8), intent(in)  :: SkewMatrix(:,:)
   real(8), dimension(3):: rot_vect
 
   rot_vect(1)= SkewMatrix(3,2)
   rot_vect(2)= SkewMatrix(1,3)
   rot_vect(3)= SkewMatrix(2,1)
-
   return
  end function rot_vect
 
@@ -286,25 +284,25 @@ module lib_rot
 !   Compute the outer product of two vectors: a*transpose(b)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- function rot_outprod (a,b)
+ pure function rot_outprod (a,b)
 
 ! I/O Variables.
-  real(8),intent(in)    :: a(3)
-  real(8),intent(in)    :: b(3)
+  real(8),intent(in)    :: a(:)
+  real(8),intent(in)    :: b(:)
   real(8),dimension(3,3):: rot_outprod
 
 ! Local variables.
-  integer :: i,j 
-  
-  do i=1,3
-    do j=1,3
+  integer :: i,j
+
+  do j=1,3
+    do i=1,3
       rot_outprod(i,j)= a(i)*b(j)
     end do
   end do
 
   return
  end function rot_outprod
- 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !->Subroutine ROT_UNIT
@@ -314,10 +312,10 @@ module lib_rot
 !   Compute the unit vector
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- function rot_unit (a)
+ pure function rot_unit (a)
 
 ! I/O Variables.
-  real(8),intent(in)    :: a(3)
+  real(8),intent(in)    :: a(:)
   real(8),dimension(3)  :: rot_unit
 
   rot_unit = a/(sqrt(dot_product(a, a)))

@@ -420,6 +420,7 @@ module cbeam3_asbly
   integer:: NumNE                          ! Number of nodes in an element.
   integer:: NumGaussMass                   ! Number of Gaussian points in the inertia terms.
   integer:: NumDof
+  integer:: tempi1, tempj1, tempi, tempj
   real(8):: Celem (6*MaxElNod,6*MaxElNod)  ! Element damping matrix.
   real(8):: Felem (6*MaxElNod,6*MaxElNod)  ! Element force influence coefficients.
   real(8):: Kelem (6*MaxElNod,6*MaxElNod)  ! Element tangent stiffness matrix.
@@ -437,6 +438,7 @@ module cbeam3_asbly
 ! Loop in all elements in the model.
   NumE=size(Elem)
   NumDof = size(Mvel(:,1))
+  Mvel = 0.0d0
 
   do iElem=1,NumE
     Melem=0.d0; Celem=0.d0; Kelem=0.d0; Felem=0.d0; Qelem=0.d0
@@ -460,28 +462,59 @@ module cbeam3_asbly
     rElemDDot(:,4:6)= PsiDeforDDot(iElem,:,:)
 
     call rotvect_boundscheck2(rElem(1,4:6),rElem(2,4:6))
-    if (NumNE.eq.3) &
-&   call rotvect_boundscheck2(rElem(3,4:6),rElem(2,4:6))
+    if (NumNE.eq.3) call rotvect_boundscheck2(rElem(3,4:6),rElem(2,4:6))
 
 ! Extract current applied forces/moments at the element nodes.
     call fem_glob2loc_extract (Elem(iElem)%Conn,Force,ForceElem,NumNE)
 
 ! Use full integration for mass matrix.
-    if (NumNE.eq.2) then
-        NumGaussMass=NumNE
-    elseif (NumNE.eq.3) then
-        NumGaussMass=NumNE+1
-    end if
+    NumGaussMass=NumNE
 
 ! Compute the element contribution to the mass and damping in the motion of the reference frame.
+    ! if (iElem == 2) then
+    !     print*, 'CBEAM3'
+    !     print*, 'numNE ', NumNE
+    !     print*, 'rElem0', rElem0
+    !     print*, 'rElem', rElem
+    !     print*, 'Elem%mass'
+    !     do i=1, 3
+    !         print*, Elem(iElem)%Mass(i, 1:3)
+    !     end do
+    !     print*, 'NumGaussMass', NumGaussMass
+    ! end if
     call cbeam3_mvel (NumNE,rElem0,rElem,              Elem(iElem)%Mass,Mvelelem,NumGaussMass)
-    call cbeam3_cvel (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Cvelelem,Options%NumGauss)
+    ! if (iElem == 2) then
+    !     print*, 'MSR'
+    !     do i=1, 6
+    !         print*, Mvelelem(i, 1:6)
+    !     end do
+    !     print*, '----'
+    !     print*, 'END OF CBEAM'
+    ! end if
 
+    ! if (any(isnan(MVelelem))) then
+    !     print*, 'Found NaN'
+    !     print*, 'iElem = ', iElem
+    !     do i=1, 6
+    !         print*, Mvelelem(i, 1:6)
+    !     end do
+    !     print*, 'cbeam_asbly, line ', 506
+    !     pause
+    ! end if
+    !   print*, 'cbeam_ably, line', 508
+    !   call flush()
+    call cbeam3_cvel (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Cvelelem,Options%NumGauss)
 ! Contributions of the structural mass to the linearized inertia matrices.
     call cbeam3_mass (NumNE,rElem0,rElem,                                Elem(iElem)%Mass,Melem,NumGaussMass)
-    call cbeam3_cgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%Mass,Celem,Options%NumGauss)
+    call cbeam3_cgyr (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Celem,Options%NumGauss)
     call cbeam3_kgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%Mass,Kelem,Options%NumGauss)
 
+    ! if (any(isnan(Kelem))) then
+    !     print*, 'Found NaN in Kelem'
+    !     print*, 'iElem = ', iElem
+    !     print*, 'line ', 521
+    !     pause
+    ! end if
 ! Compute the gyroscopic force vector.
     call cbeam3_fgyr (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Qelem,Options%NumGauss)
 
@@ -492,11 +525,35 @@ module cbeam3_asbly
       call cbeam3_rbmass (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,Melem)
       call cbeam3_rbcgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,Celem)
       call cbeam3_rbkgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%RBMass,Kelem)
+    ! if (any(isnan(Kelem))) then
+    !     print*, 'Found NaN in Kelem'
+    !     print*, 'iElem = ', iElem
+    !     do i=1, 6
+    !         print*,Kelem(i, 1:6)
+    !     end do
+    !     print*, 'cbeam_asbly, line ', 541
+    !     pause
+    ! end if
       call cbeam3_rbfgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,Qelem)
     end if
 
+    ! if (any(isnan(Kelem))) then
+    !     print*, 'Found NaN in Kelem'
+    !     print*, 'cbeam_asbly, line ', 550
+    !     pause
+    ! end if
 ! Compute the element tangent stiffness matrix and force vectors.
     call cbeam3_kmat  (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Kelem,Options%NumGauss)
+
+    ! if (any(isnan(Kelem))) then
+    !     print*, 'Found NaN in Kelem'
+    !     print*, 'iElem = ', iElem
+    !     do i=1, 6
+    !         print*,Kelem(i, 1:6)
+    !     end do
+    !     print*, 'cbeam_asbly, line ', 555
+    !     pause
+    ! end if
     call cbeam3_kgeom (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Kelem,Options%NumGauss)
     call cbeam3_fstif (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Qelem,Options%NumGauss)
 
@@ -521,18 +578,23 @@ module cbeam3_asbly
     do i=1,NumNE
       i1=Node(Elem(iElem)%Conn(i))%Vdof
       if (i1.ne.0) then
-
-        Qglobal(6*(i1-1)+1:6*i1)   = Qglobal(6*(i1-1)+1:6*i1)    + Qelem   (6*(i-1)+1:6*i)
-        Mvel   (6*(i1-1)+1:6*i1,:) = Mvel   (6*(i1-1)+1:6*i1,:)  + Mvelelem(6*(i-1)+1:6*i,:)
-        Cvel   (6*(i1-1)+1:6*i1,:) = Cvel   (6*(i1-1)+1:6*i1,:)  + Cvelelem(6*(i-1)+1:6*i,:)
+        tempi1 = 6*(i1-1)+1
+        tempi = 6*(i-1)+1
+        Qglobal(tempi1:tempi1+5)   = Qglobal(tempi1:tempi1+5)    + Qelem   (tempi:tempi+5)
+        Mvel   (tempi1:tempi1+5,:) = Mvel   (tempi1:tempi1+5,:)  + Mvelelem(tempi:tempi+5,:)
+        Cvel   (tempi1:tempi1+5,:) = Cvel   (tempi1:tempi1+5,:)  + Cvelelem(tempi:tempi+5,:)
 
         do j=1,NumNE
           j1=Node(Elem(iElem)%Conn(j))%Vdof
           if (j1.ne.0) then
-            call sparse_addmat (6*(i1-1),6*(j1-1),Melem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),ms,Mglobal)
-            call sparse_addmat (6*(i1-1),6*(j1-1),Celem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),cs,Cglobal)
-            call sparse_addmat (6*(i1-1),6*(j1-1),Kelem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),ks,Kglobal)
-            call sparse_addmat (6*(i1-1),6*(j1-1),Felem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),fs,Fglobal)
+            tempi1 = 6*(i1-1)
+            tempj1 = 6*(j1-1)
+            tempi = 6*(i-1)+1
+            tempj = 6*(j-1)+1
+            call sparse_addmat (tempi1, tempj1, Melem(tempi:tempi+5,tempj:tempj+5),ms,Mglobal)
+            call sparse_addmat (tempi1, tempj1, Celem(tempi:tempi+5,tempj:tempj+5),cs,Cglobal)
+            call sparse_addmat (tempi1, tempj1, Kelem(tempi:tempi+5,tempj:tempj+5),ks,Kglobal)
+            call sparse_addmat (tempi1, tempj1, Felem(tempi:tempi+5,tempj:tempj+5),fs,Fglobal)
           end if
         end do
 

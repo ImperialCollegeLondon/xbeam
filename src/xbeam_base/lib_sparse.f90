@@ -30,9 +30,9 @@ module lib_sparse
 
 ! Define derived types.
   type sparse
-    integer i
-    integer j
-    real(8) a
+    integer ::  i = 0
+    integer ::  j = 0
+    real(8) ::  a = 0.0d0
   end type
 
  contains
@@ -82,14 +82,6 @@ module lib_sparse
   integer:: k        ! Counter of element
   real(8):: Val2     ! Modified val
 
-  ! debug
-  if (isnan(Val)) then
-      print*, 'Adding NaN'
-      print*, 'i = ', i
-      print*, 'j = ', j
-      STOP
-  end if
-
   if (present(Factor)) then
     Val2=Val*Factor
   else
@@ -107,10 +99,8 @@ module lib_sparse
   end do
 
 ! If (i,j) was empty, create a new entry.
-
   if (.not.Flag) then
     if (DimArray.eq.size(Matrix)) then
-      call BACKTRACE
       STOP 'ERROR: Not enough memory for sparse matrix allocation defined in solver routine'
     end if
 
@@ -142,9 +132,8 @@ module lib_sparse
 
   integer:: i,j    ! Counter on the element of the matrix.
 
-  do i=1,size(Mat,DIM=1)
-    do j=1,size(Mat,DIM=2)
-    !   if (abs(Mat(i,j)) > 1d-16) then
+  do j=1,size(Mat,DIM=2)
+    do i=1,size(Mat,DIM=1)
       if (Mat(i,j) .ne. 0.0d0) then
         call sparse_addval (i1+i,j1+j,Mat(i,j),DimArray,SprMat)
       end if
@@ -202,17 +191,8 @@ module lib_sparse
   integer,optional,intent(in):: FilterJ(:)  ! Filter on the columns of Submat.
 
   integer:: i,j,k       ! Counters on the elements of the matrix.
-  real(8)::ActualFactor ! Added RPN 25.04.2011 to avoid Factor being used without definition.
-
-  if (present(Factor)) then
-    ActualFactor=Factor
-  else
-    ActualFactor=1.d0
-  end if
 
   do k=1,DimSubmat
-    if (Submat(k)%a.ne.0.d0) then
-
       if (present(FilterI)) then
         i=FilterI(Submat(k)%i)
       else
@@ -226,9 +206,12 @@ module lib_sparse
       end if
 
       if ((i.ne.0).and.(j.ne.0)) then
-        call sparse_addval (i1+i,j1+j,Submat(k)%a,DimMat,Mat,Factor=ActualFactor)
+          if (present(Factor)) then
+            call sparse_addval (i1+i,j1+j,Submat(k)%a,DimMat,Mat,Factor=Factor)
+          else
+            call sparse_addval (i1+i,j1+j,Submat(k)%a,DimMat,Mat)
+          end if
       end if
-    end if
   end do
 
   return
@@ -285,6 +268,7 @@ module lib_sparse
 
   integer :: k  ! Counter on the elements of the array.
 
+  BandedMat = 0.0d0
   do k=1,DimArray
     BandedMat(KL+KU+1+Matrix(k)%i-Matrix(k)%j,Matrix(k)%j) = Matrix(k)%a
   end do
@@ -462,7 +446,7 @@ module lib_sparse
 
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!s!!!!!!!!!!!!!!!!!
 !-> Subroutine sparse_set_rows_unit
 !
 !-> Description:

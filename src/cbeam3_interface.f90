@@ -224,7 +224,6 @@ contains
         real(c_double)                  :: psi_dot_def(n_elem, max_elem_node, 3)
         integer(c_int)                  :: i_out
         integer(c_int)                  :: i
-        integer(c_int)                  :: j
         integer(c_int)                  :: nodes_per_elem
 
 
@@ -362,7 +361,6 @@ contains
 
 
         integer(c_int)                  :: i
-        integer(c_int)                  :: j
         integer(c_int)                  :: nodes_per_elem
         real(c_double)                  :: Vrel(1, 6)
 
@@ -482,13 +480,14 @@ contains
             elements(i)%MemNo       = mem_number(i)
             elements(i)%Conn        = conn(i, :)
             elements(i)%Master      = master(i, :, :)
-            !elements(i)%Length      = 0.5d0 ! TODO quick and ugly solyution
             elements(i)%Length      = 0.0d0  ! dont think it is necessary
             select case (elements(i)%NumNodes)
             case(3)
                 inode_local = 3
             case(2)
                 inode_local = 1
+            case default
+                stop 'Not supported numNodes'
             end select
             inode_global = elements(i)%Conn(inode_local)
             elements(i)%Psi         = psi_ini(i, inode_local, :)

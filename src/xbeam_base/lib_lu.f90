@@ -15,7 +15,7 @@
 !   lu_sparse:    Inverse of Sparse matrix/vector product
 !
 !-> Modifications.-
-! 20120317 A.Da Ronch Subroutine lu_sparse added 
+! 20120317 A.Da Ronch Subroutine lu_sparse added
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module lib_lu
@@ -31,7 +31,7 @@ module lib_lu
 !
 !->Description.-
 !
-!   Solves the set of N linear equations A·X=B. A is given by its LU decomposition.
+!   Solves the set of N linear equations Aï¿½X=B. A is given by its LU decomposition.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  subroutine lu_bksubs (A, INDX, B)
@@ -163,6 +163,42 @@ module lib_lu
   deallocate (VV)
   return
  end subroutine lu_decomp
+
+ function inv(A) result(Ainv)
+  real(8), dimension(:,:), intent(in) :: A
+  real(8), dimension(size(A,1),size(A,2)) :: Ainv
+
+  real(8), dimension(size(A,1)) :: work  ! work array for LAPACK
+  integer, dimension(size(A,1)) :: ipiv   ! pivot indices
+  integer :: n, info
+
+  ! External procedures defined in LAPACK
+  external DGETRF
+  external DGETRI
+
+  ! Store A in Ainv to prevent it from being overwritten by LAPACK
+  Ainv = A
+  n = size(A,1)
+
+  ! DGETRF computes an LU factorization of a general M-by-N matrix A
+  ! using partial pivoting with row interchanges.
+  call DGETRF(n, n, Ainv, n, ipiv, info)
+
+  if (info /= 0) then
+     stop 'Matrix is numerically singular!'
+  end if
+
+  ! DGETRI computes the inverse of a matrix using the LU factorization
+  ! computed by DGETRF.
+  call DGETRI(n, Ainv, n, ipiv, work, n, info)
+
+  if (info /= 0) then
+     stop 'Matrix inversion failed!'
+  end if
+end function inv
+
+
+
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -176,11 +212,11 @@ module lib_lu
  subroutine lu_invers (Matrix, InvMatrix, Det)
 !
 !-> I/O Variable.
-! 
+!
   real(8),intent(in) :: Matrix(:,:)
   real(8),intent(out):: InvMatrix(:,:)
   real(8),optional,intent(out):: Det
-!
+
 !-> Local variables.
 !
   integer::i,N
@@ -191,7 +227,7 @@ module lib_lu
 ! Set dimension and the auxiliary vector.
 !
   N= size(Matrix,1)
-  allocate (Indexes(N))
+  allocate (Indexes(N)); Indexes = 0
   allocate (MatrixLU(N,N))
 !
 ! Initialize InvMatrix as the identity matrix and MatrixLU as Matrix.
@@ -203,7 +239,7 @@ module lib_lu
     InvMatrix(i,i)=1.d0
   end do
 !
-! LU Decomposition. 
+! LU Decomposition.
 !
   call lu_decomp (MatrixLU,Indexes,D)
 !
@@ -237,7 +273,7 @@ module lib_lu
  subroutine lu_determ (Matrix, Det)
 !
 !-> I/O Variable.
-! 
+!
   real(8), intent(in) :: Matrix(:,:)
   real(8), intent(out):: Det
 !
@@ -253,7 +289,7 @@ module lib_lu
   allocate (Indexes(N))
   allocate (MatrixLU(N,N)); MatrixLU=Matrix
 !
-! LU Decomposition. 
+! LU Decomposition.
 !
   call lu_decomp (MatrixLU,Indexes,Det)
 !
@@ -263,6 +299,9 @@ module lib_lu
   do i=1,N
     Det=Det*MatrixLU(i,i)
   end do
+
+  deallocate(MatrixLU)
+  deallocate(Indexes)
 !
   return
  end subroutine lu_determ
@@ -281,9 +320,7 @@ module lib_lu
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     subroutine lu_sparse(dimSprMat, SprMat, b, X)
-
         use lib_sparse
-
         integer,     intent(in) :: dimSprMat     ! Current storage dimension
         type(sparse),intent(in) :: SprMat(:)     ! Sparse matrix
         real(8),     intent(in) :: b(:)          ! Forcing vector
@@ -295,7 +332,7 @@ module lib_lu
         dimb=size(b)
 
         allocate(FulMat(dimb,dimb));    FulMat=0.0d0
-        allocate(invFulMat(dimb,dimb)); invFulMat=0.0d0
+        allocate(invFulMat(dimb,dimb))
 
         ! From sparse to full rank matrix
         do i1=1,dimSprMat
@@ -303,20 +340,19 @@ module lib_lu
         end do
 
         ! Calculate the inverse
-        call lu_invers(FulMat, invFulMat)
+        ! call lu_invers(FulMat, invFulMat)
+        invFulMat = inv(FulMat)
 
         ! Calculate matrix-vector product
         X=0.0d0
         do i1=1,dimb
-            do i2=1,dimb
-                X(i1) = X(i1) + invFulMat(i1,i2) *b(i2)
-            end do
+        !   do i2=1,dimb
+                X(i1) = X(i1) + dot_product(invFulMat(i1,:), b(:))
+            ! end do
         end do
 
         deallocate(FulMat, invFulMat)
-
         return
-
     end subroutine lu_sparse
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
