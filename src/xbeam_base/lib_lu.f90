@@ -331,17 +331,11 @@ end function inv
 
         dimb=size(b)
 
-        allocate(FulMat(dimb,dimb));    FulMat=0.0d0
         allocate(invFulMat(dimb,dimb))
-
-        ! From sparse to full rank matrix
-        do i1=1,dimSprMat
-            FulMat(SprMat(i1)%i,SprMat(i1)%j) = SprMat(i1)%a
-        end do
 
         ! Calculate the inverse
         ! call lu_invers(FulMat, invFulMat)
-        invFulMat = inv(FulMat)
+        invFulMat = inv(SprMat(1)%a)
 
         ! Calculate matrix-vector product
         X=0.0d0
@@ -351,7 +345,7 @@ end function inv
             ! end do
         end do
 
-        deallocate(FulMat, invFulMat)
+        deallocate(invFulMat)
         return
     end subroutine lu_sparse
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

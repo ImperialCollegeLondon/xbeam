@@ -3,7 +3,7 @@ module cbeam3_interface
     use                                 :: xbeam_shared
     use                                 :: cbeam3_solv
     use                                 :: debug_utils
-    use                                 :: interface_lapack
+    ! use                                 :: interface_lapack
     use                                 :: lib_sparse
 
     implicit none
@@ -422,15 +422,8 @@ contains
 
 
       ! inflate Mglobal and Kglobal
-      fullM = 0.0_c_double
-      do i=1, ms
-          fullM(Mglobal(i)%i, Mglobal(i)%j) = Mglobal(i)%a
-      end do
-      fullK = 0.0_c_double
-      do i=1, ks
-          fullK(Kglobal(i)%i, Kglobal(i)%j) = Kglobal(i)%a
-      end do
-
+      fullM = Mglobal(1)%a
+      fullK = Kglobal(1)%a
 
     end subroutine cbeam3_solv_modal_python
 

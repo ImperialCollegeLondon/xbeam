@@ -68,13 +68,13 @@ subroutine xbeam_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDefor
   real(8),      intent(out):: MRS(:,:)            ! mass matrix.
   real(8),      intent(out):: MRR(:,:)          ! Reference system mass matrix.
   integer,      intent(out):: cs                ! Size of the sparse damping matrix.
-  type(sparse), intent(out):: CRS(:)            ! Sparse damping matrix.
+  type(sparse), intent(inout):: CRS(:)            ! Sparse damping matrix.
   real(8),      intent(out):: CRR(:,:)          ! Reference system damping matrix.
   real(8),      intent(out):: CQR(:,:),CQQ(:,:) ! Tangent matrices from linearisation of quaternion equation.
   integer,      intent(out):: ks                ! Size of the sparse stiffness matrix.
-  type(sparse), intent(out):: KRS(:)            ! Sparse stiffness matrix.
+  type(sparse), intent(inout):: KRS(:)            ! Sparse stiffness matrix.
   integer,      intent(out):: fs                ! Size of the sparse stiffness matrix.
-  type(sparse), intent(out):: Frigid   (:)      ! Influence coefficients matrix for applied forces.
+  type(sparse), intent(inout):: Frigid   (:)      ! Influence coefficients matrix for applied forces.
   real(8),      intent(out):: Qrigid   (:)      ! Stiffness and gyroscopic force vector.
   type(xbopts), intent(in) :: Options           ! Solver parameters.
   real(8),      intent(in) :: Cao      (:,:)    ! Rotation operator from reference to inertial frame
@@ -214,8 +214,8 @@ subroutine xbeam_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,PosDefor
       i1=Node(Elem(iElem)%Conn(i))%Vdof
       !!! sm change:
       !!! the global ordering of the node has to be used
-      !!!call sparse_addmat (0,6*(i1),Felem(:,6*(i-1)+1:6*i),fs,Frigid)
       call sparse_addmat (0,6*( Elem(iElem)%Conn(i)-1 ),Felem(:,6*(i-1)+1:6*i),fs,Frigid)
+    !   call sparse_addmat (0,6*(i1),Felem(:,6*(i-1)+1:6*i),fs,Frigid)
       if (i1.ne.0) then
         ! call sparse_addmat (0,6*(i1-1),MRSelem(:,6*(i-1)+1:6*i),ms,MRS)
         MRS(:, 6*(i1-1) + 1:6*(i1-1) + 6) =MRS(:, 6*(i1-1) + 1:6*(i1-1) + 6) + (MRSelem(:,6*(i-1)+1:6*i))

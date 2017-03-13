@@ -154,21 +154,20 @@ module xbeam_solv
   beta =0.25d0*(gamma+0.5d0)*(gamma+0.5d0)
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  allocate (Asys   (4*DimMat*NumDof)); call sparse_zero (as,Asys)
+  call sparse_allocate(Asys, NumDof + 10, NumDof + 10)
 
-  allocate (MSS(DimMat*NumDof)); call sparse_zero (ms,MSS)
-  allocate (CSS(DimMat*NumDof)); call sparse_zero (cs,CSS)
-  allocate (KSS(DimMat*NumDof)); call sparse_zero (ks,KSS)
-  allocate (Felast(DimMat*NumDof)); call sparse_zero (fs,Felast)
+  call sparse_allocate(MSS, NumDof, NumDof)
+  call sparse_allocate(CSS, NumDof, NumDof)
+  call sparse_allocate(KSS, NumDof, NumDof)
+  call sparse_allocate(Felast, NumDof, NumDof)
   allocate (Qelast(NumDof));   Qelast = 0.d0
   allocate (MSR   (NumDof,6)); MSR    = 0.d0
   allocate (CSR   (NumDof,6)); CSR    = 0.d0
 
   allocate (MRS   (6,NumDof)); MRS    = 0.d0
-  ! allocate (MRS(DimMat*NumDof)); call sparse_zero (mr,MRS)
-  allocate (CRS(DimMat*NumDof)); call sparse_zero (cr,CRS)
-  allocate (KRS(DimMat*NumDof)); call sparse_zero (kr,KRS)
-  allocate (Frigid(DimMat*NumDof)); call sparse_zero (fr,Frigid)
+  call sparse_allocate(CRS, 6, NumDof)
+  call sparse_allocate(KRS, 6, NumDof)
+  call sparse_allocate(Frigid, 6, NumDof)
   allocate (Qrigid   (6));      Qrigid      = 0.d0
   allocate (MRR(6,6));    MRR   = 0.d0
   allocate (CRR(6,6));    CRR   = 0.d0
@@ -176,9 +175,9 @@ module xbeam_solv
   allocate (CQR(4,6));    CQR   = 0.d0
   allocate (CQQ(4,4));    CQQ   = 0.d0
 
-  allocate (Mtotal(DimMat*NumDof)); call sparse_zero (mtot,Mtotal)
-  allocate (Ctotal(DimMat*NumDof)); call sparse_zero (ctot,Ctotal)
-  allocate (Ktotal(DimMat*NumDof)); call sparse_zero (ktot,Ktotal)
+  call sparse_allocate(Mtotal, NumDof + 10, NumDof + 10)
+  call sparse_allocate(Ctotal, NumDof + 10, NumDof + 10)
+  call sparse_allocate(Ktotal, NumDof + 10, NumDof + 10)
   allocate (Qtotal(NumDof+10));   Qtotal= 0.d0
 
 ! Updated state vector with rigid body states
@@ -342,9 +341,6 @@ module xbeam_solv
 ! Write information at last time step.
   PosDefor= PosDefor + DeltaPos
   PsiDefor= PsiDefor + DeltaPsi
-
-  deallocate (MSS,MSR,MRS,MRR,CSS,CSR,CRS,CRR,KSS,KRS)
-  deallocate (Mtotal,Ctotal,Ktotal,Qtotal)
   deallocate (Asys,Felast,Qelast,Frigid,Qrigid)
   deallocate (DX,DXDt,DXDDt,DQ,DQDt,DQDDt)
   deallocate (ListIn,Displ,Veloc)
@@ -554,36 +550,35 @@ module xbeam_solv
   sph_rows = (/1,2,3/)+NumDof
 
 
-  gamma=1.d0/2.d0+Options%NewmarkDamp
-  beta =1.d0/4.d0*(gamma+0.5d0)*(gamma+0.5d0)
+  gamma=0.5d0+Options%NewmarkDamp
+  beta =0.25d0*(gamma+0.5d0)*(gamma+0.5d0)
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  allocate (Asys(4*DimMat*NumDof)); call sparse_zero (as,Asys)
+  call sparse_allocate(Asys, NumDof + 10, NumDof + 10)
 
-  allocate (MSS(DimMat*NumDof));    call sparse_zero (ms,MSS)
-  allocate (CSS(DimMat*NumDof));    call sparse_zero (cs,CSS)
-  allocate (KSS(DimMat*NumDof));    call sparse_zero (ks,KSS)
-  allocate (Felast(DimMat*NumDof)); call sparse_zero (fs,Felast)
-  allocate (Qelast(NumDof));        Qelast = 0.d0
-  allocate (MSR   (NumDof,6));      MSR    = 0.d0
-  allocate (CSR   (NumDof,6));      CSR    = 0.d0
+  call sparse_allocate(MSS, NumDof, NumDof)
+  call sparse_allocate(CSS, NumDof, NumDof)
+  call sparse_allocate(KSS, NumDof, NumDof)
+  call sparse_allocate(Felast, NumDof, NumDof)
+  allocate (Qelast(NumDof));   Qelast = 0.d0
+  allocate (MSR   (NumDof,6)); MSR    = 0.d0
+  allocate (CSR   (NumDof,6)); CSR    = 0.d0
 
-  ! allocate (MRS(DimMat*NumDof));    call sparse_zero (mr,MRS)
-  allocate (MRS   (6,NumDof));      MRS    = 0.d0
-  allocate (CRS(DimMat*NumDof));    call sparse_zero (cr,CRS)
-  allocate (KRS(DimMat*NumDof));    call sparse_zero (kr,KRS)
-  allocate (Frigid(DimMat*NumDof)); call sparse_zero (fr,Frigid)
-  allocate (Qrigid(6));             Qrigid = 0.d0
-  allocate (MRR   (6,6));           MRR    = 0.d0
-  allocate (CRR   (6,6));           CRR    = 0.d0
+  allocate (MRS   (6,NumDof)); MRS    = 0.d0
+  call sparse_allocate(CRS, 6, NumDof)
+  call sparse_allocate(KRS, 6, NumDof)
+  call sparse_allocate(Frigid, 6, NumDof + 6 )
+  allocate (Qrigid   (6));      Qrigid      = 0.d0
+  allocate (MRR(6,6));    MRR   = 0.d0
+  allocate (CRR(6,6));    CRR   = 0.d0
 
   allocate (CQR(4,6));    CQR   = 0.d0
   allocate (CQQ(4,4));    CQQ   = 0.d0
 
-  allocate (Mtotal(2*DimMat*NumDof));   call sparse_zero (mtot,Mtotal)
-  allocate (Ctotal(2*DimMat*NumDof));   call sparse_zero (ctot,Ctotal)
-  allocate (Ktotal(2*DimMat*NumDof));   call sparse_zero (ktot,Ktotal)
-  allocate (Qtotal(NumDof+6+4));        Qtotal= 0.d0
+  call sparse_allocate(Mtotal, NumDof + 10, NumDof + 10)
+  call sparse_allocate(Ctotal, NumDof + 10, NumDof + 10)
+  call sparse_allocate(Ktotal, NumDof + 10, NumDof + 10)
+  allocate (Qtotal(NumDof+10));   Qtotal= 0.d0
 
   allocate (X     (NumDof)); X      = 0.d0
   allocate (dXdt  (NumDof)); dXdt   = 0.d0
