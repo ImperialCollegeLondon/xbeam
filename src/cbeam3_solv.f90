@@ -705,15 +705,15 @@ TaPsi =           Psisc *Options%MinDelta
   do k=1,NumN
     ListIN(k)=Node(k)%Vdof
   end do
-  gamma=1.d0/2.d0+Options%NewmarkDamp
-  beta =1.d0/4.d0*(gamma+0.5d0)*(gamma+0.5d0)
+  gamma=0.5d0+Options%NewmarkDamp
+  beta =0.25d0*(gamma+0.5d0)*(gamma+0.5d0)
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  allocate (Asys   (DimMat*NumDof)); call sparse_zero (as,Asys)
-  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
-  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
-  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
-  allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
+  call sparse_allocate (Asys   , NumDof, NumDof)
+  call sparse_allocate (Mglobal, NumDof, NumDof)
+  call sparse_allocate (Cglobal, NumDof, NumDof)
+  call sparse_allocate (Kglobal, NumDof, NumDof)
+  call sparse_allocate (Fglobal, NumDof, NumDof)
   allocate (Qglobal(NumDof));   Qglobal= 0.d0
   allocate (Mvel   (NumDof,6)); Mvel   = 0.d0
   allocate (Cvel   (NumDof,6)); Cvel   = 0.d0
