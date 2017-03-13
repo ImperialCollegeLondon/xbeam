@@ -1,4 +1,4 @@
-#FFLAGS = -g3 -fPIC -O1 -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow
+# FFLAGS = -g3 -fPIC -O1 -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow
 FFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fomit-frame-pointer -I/usr/include -Wunused
 LINKER_FLAGS = -shared
 UNAME := $(shell uname)
@@ -28,7 +28,6 @@ files = xbeam_shared\
 cbeam3_asbly\
 xbeam_shared\
 cbeam3_solv\
-interface_lapack_v3\
 xbeam_asbly\
 xbeam_fdiff\
 xbeam_perturb\

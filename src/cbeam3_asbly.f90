@@ -399,15 +399,15 @@ module cbeam3_asbly
   real(8),     intent(in) :: Vrel(6), VrelDot(6)   ! Velocity of reference frame and derivative.
 
   integer,     intent(out):: ms                ! Size of the sparse mass matrix.
-  type(sparse),intent(out):: Mglobal   (:)     ! Sparse mass matrix.
+  type(sparse),intent(inout):: Mglobal   (:)     ! Sparse mass matrix.
   real(8),     intent(out):: Mvel      (:,:)   ! Reference system mass matrix.
   integer,     intent(out):: cs                ! Size of the sparse damping matrix.
-  type(sparse),intent(out):: Cglobal   (:)     ! Sparse damping matrix.
+  type(sparse),intent(inout):: Cglobal   (:)     ! Sparse damping matrix.
   real(8),     intent(out):: Cvel      (:,:)   ! Reference system damping matrix.
   integer,     intent(out):: ks                ! Size of the sparse stiffness matrix.
-  type(sparse),intent(out):: Kglobal   (:)     ! Sparse stiffness matrix.
+  type(sparse),intent(inout):: Kglobal   (:)     ! Sparse stiffness matrix.
   integer,     intent(out):: fs                ! Size of the sparse stiffness matrix.
-  type(sparse),intent(out):: Fglobal   (:)     ! Influence coefficients matrix for applied forces.
+  type(sparse),intent(inout):: Fglobal   (:)     ! Influence coefficients matrix for applied forces.
   real(8),     intent(out):: Qglobal   (:)     ! Stiffness and gyroscopic force vector.
   type(xbopts),intent(in) :: Options           ! Solver parameters.
   real(8),     intent(in) :: Cao       (:,:)   ! Rotation operator
