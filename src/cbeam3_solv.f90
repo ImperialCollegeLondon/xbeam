@@ -171,13 +171,14 @@ TaPsi =           Psisc *Options%MinDelta
   end do
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrix Kglobal).
-  call sparse_allocate(Kglobal,NumDof,Numdof)
+  call sparse_allocate(Kglobal,NumDof,NumDof)
   if (options%gravity_on) then
-      call sparse_allocate(Mglobal,NumDof,Numdof)
+    !   allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+      call sparse_allocate(Mglobal,NumDof,NumDof)
   end if
   allocate (Qglobal(NumDof));    Qglobal= 0.d0
   allocate (DeltaX (NumDof));    DeltaX = 0.d0
-  call sparse_allocate(Fglobal,6,NumDof)
+  call sparse_allocate(Fglobal,NumDof,NumDof)
 
 
 ! Apply loads in substeps.
@@ -391,8 +392,8 @@ TaPsi =           Psisc *Options%MinDelta
 ! - ks and fs are defined by the sparse_zero call and initialised to zero.
 ! - Kglobal and Fglobal are empty (0 at (0,0) element)
 ! - They are both output
-  call sparse_allocate(Kglobal,NumDof,NumDof)
-  call sparse_allocate(Fglobal,6,NumDof)
+  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+  allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
   allocate (Qglobal(NumDof));        Qglobal= 0.d0
   allocate (DeltaX (NumDof));        DeltaX = 0.d0
 
@@ -492,9 +493,9 @@ TaPsi =           Psisc *Options%MinDelta
 
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  call sparse_allocate(Mglobal,NumDof,NumDof)
-  call sparse_allocate(Cglobal,NumDof,NumDof)
-  call sparse_allocate(Kglobal,NumDof,NumDof)
+  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
+  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
 
 ! Compute tangent matrices at initial time.
   call cbeam3_asbly_modal (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Vrel(1,:), &
@@ -561,15 +562,14 @@ TaPsi =           Psisc *Options%MinDelta
 
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  call sparse_allocate(Mglobal, NumDof, NumDof)
-  call sparse_allocate(Cglobal, NumDof, NumDof)
-  call sparse_allocate(Kglobal, NumDof, NumDof)
+  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
+  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
 
 ! Compute tangent matrices at initial time.
   call cbeam3_asbly_modal (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Vrel(1,:), &
 &                          ms,Mglobal,cs,Cglobal,ks,Kglobal,Options)
 
-  print*, 'NOT FULLY IMPLEMENTED, NEEDS IO'
 ! Write matrices in files.
   ! open (unit=71,file='Msparse',status='replace')
   ! do k=1,ms
@@ -709,11 +709,11 @@ TaPsi =           Psisc *Options%MinDelta
   beta =1.d0/4.d0*(gamma+0.5d0)*(gamma+0.5d0)
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  call sparse_allocate(Asys, NumDof, NumDof)
-  call sparse_allocate(Mglobal, NumDof, NumDof)
-  call sparse_allocate(Cglobal, NumDof, NumDof)
-  call sparse_allocate(Kglobal, NumDof, NumDof)
-  call sparse_allocate(Fglobal, 6, NumDof)
+  allocate (Asys   (DimMat*NumDof)); call sparse_zero (as,Asys)
+  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
+  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+  allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
   allocate (Qglobal(NumDof));   Qglobal= 0.d0
   allocate (Mvel   (NumDof,6)); Mvel   = 0.d0
   allocate (Cvel   (NumDof,6)); Cvel   = 0.d0
@@ -961,11 +961,11 @@ TaPsi =           Psisc *Options%MinDelta
   beta =1.d0/4.d0*(gamma+0.5d0)*(gamma+0.5d0)
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  call sparse_allocate(Asys, NumDof, NumDof)
-  call sparse_allocate(Mglobal, NumDof, NumDof)
-  call sparse_allocate(Cglobal, NumDof, NumDof)
-  call sparse_allocate(Kglobal, NumDof, NumDof)
-  call sparse_allocate(Fglobal, 6, NumDof)
+  allocate (Asys   (DimMat*NumDof)); call sparse_zero (as,Asys)
+  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
+  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+  allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
   allocate (Qglobal(NumDof));   Qglobal= 0.d0
   allocate (Mvel   (NumDof,6)); Mvel   = 0.d0
   allocate (Cvel   (NumDof,6)); Cvel   = 0.d0
@@ -1202,11 +1202,11 @@ TaPsi =           Psisc *Options%MinDelta
   beta =1.d0/4.d0*(gamma+0.5d0)*(gamma+0.5d0)
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  call sparse_allocate(Asys, NumDof, NumDof)
-  call sparse_allocate(Mglobal, NumDof, NumDof)
-  call sparse_allocate(Cglobal, NumDof, NumDof)
-  call sparse_allocate(Kglobal, NumDof, NumDof)
-  call sparse_allocate(Fglobal, 6, NumDof)
+  allocate (Asys   (DimMat*NumDof)); call sparse_zero (as,Asys)
+  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
+  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+  allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
   allocate (Qglobal(NumDof));   Qglobal= 0.d0
   allocate (Mvel   (NumDof,6)); Mvel   = 0.d0
   allocate (Cvel   (NumDof,6)); Cvel   = 0.d0
@@ -1452,11 +1452,11 @@ TaPsi =           Psisc *Options%MinDelta
   beta =1.d0/4.d0*(gamma+0.5d0)*(gamma+0.5d0)
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  call sparse_allocate(Asys, NumDof, NumDof)
-  call sparse_allocate(Mglobal, NumDof, NumDof)
-  call sparse_allocate(Cglobal, NumDof, NumDof)
-  call sparse_allocate(Kglobal, NumDof, NumDof)
-  call sparse_allocate(Fglobal, 6, NumDof)
+  allocate (Asys   (DimMat*NumDof)); call sparse_zero (as,Asys)
+  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
+  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+  allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
   allocate (Qglobal(NumDof));   Qglobal= 0.d0
   allocate (Mvel   (NumDof,6)); Mvel   = 0.d0
   allocate (Cvel   (NumDof,6)); Cvel   = 0.d0
@@ -1687,15 +1687,15 @@ TaPsi =           Psisc *Options%MinDelta
   do k=1,NumN
     ListIN(k)=Node(k)%Vdof
   end do
-  gamma=0.5d0+Options%NewmarkDamp
-  beta =0.25d0*(gamma+0.5d0)*(gamma+0.5d0)
+  gamma=1.d0/2.d0+Options%NewmarkDamp
+  beta =1.d0/4.d0*(gamma+0.5d0)*(gamma+0.5d0)
 
 ! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  call sparse_allocate(Asys, NumDof, NumDof)
-  call sparse_allocate(Mglobal, NumDof, NumDof)
-  call sparse_allocate(Cglobal, NumDof, NumDof)
-  call sparse_allocate(Kglobal, NumDof, NumDof)
-  call sparse_allocate(Fglobal, 6, NumDof)
+  allocate (Asys   (DimMat*NumDof)); call sparse_zero (as,Asys)
+  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
+  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
+  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+  allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
 
   allocate (Qglobal(NumDof));   Qglobal= 0.d0
   allocate (Mvel   (NumDof,6)); Mvel   = 0.d0

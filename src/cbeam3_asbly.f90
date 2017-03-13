@@ -63,12 +63,12 @@ module cbeam3_asbly
   real(8),      intent(in) :: PsiDefor  (:,:,:) ! Current CRV of the nodes in the elements.
   real(8),      intent(in) :: Force     (:,:)   ! Force vector.
   integer,      intent(out):: ks                ! Size of the sparse stiffness matrix.
-  type(sparse), intent(out):: Kglobal   (:)     ! Sparse stiffness matrix.
-  type(sparse), optional, intent(out):: Mglobal   (:)     ! Sparse mass matrix.
+  type(sparse), intent(inout):: Kglobal   (:)     ! Sparse stiffness matrix.
+  type(sparse), optional, intent(inout):: Mglobal   (:)     ! Sparse mass matrix.
   integer, optional, intent(out):: ms                ! Size of the sparse mass matrix.
   real(8),      intent(out):: Qglobal   (:)     ! Discrete force vector.
   integer,      intent(out):: fs                ! Size of the sparse stiffness matrix.
-  type(sparse), intent(out):: Fglobal   (:)     ! Influence coefficients matrix for applied forces.
+  type(sparse), intent(inout):: Fglobal   (:)     ! Influence coefficients matrix for applied forces.
   type(xbopts), intent(in) :: Options           ! Solver parameters.
 
 ! Local variables.
@@ -725,23 +725,26 @@ module cbeam3_asbly
     integer, intent(IN)             :: NumDof
     type(xbopts), intent(IN)        :: options
     real(8), allocatable             :: gravity_vec(:)
-    real(8), optional, intent(INOUT)   :: g(3)
+    real(8), optional, intent(IN)    :: g(3)
 
     ! local variables
     integer                         :: i
     integer                         :: ii
+    real(8)                         :: g_2(3)
 
     if (present(g) .eqv. .FALSE.) then
-        g = rot_unit([options%gravity_dir_x,&
-                      options%gravity_dir_y,&
-                      options%gravity_dir_z])*options%gravity
+        g_2 = rot_unit([options%gravity_dir_x,&
+                        options%gravity_dir_y,&
+                        options%gravity_dir_z])*options%gravity
+    else
+        g_2 = g
     end if
 
     allocate(gravity_vec(NumDof))
     gravity_vec = 0.0d0
     do i=1,NumDof/6
         ii = (i - 1)*6
-        gravity_vec(ii+1: ii+3) = g
+        gravity_vec(ii+1: ii+3) = g_2
     end do
  end function cbeam3_asbly_gravity_static
 
