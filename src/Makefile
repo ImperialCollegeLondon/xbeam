@@ -3,7 +3,7 @@ FFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fomi
 LINKER_FLAGS = -shared
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
-FC = gfortran-5
+FC = gfortran
 endif
 ifeq ($(UNAME), Darwin)
 FC = ifort

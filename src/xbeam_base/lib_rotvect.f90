@@ -358,8 +358,7 @@ pure function rotvect_lintquat (QuatA, QuatB, eta)
 !   1) It returns an error when Theta~=pi.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-pure function rotvect_psi2theta (Psi)
-  use, intrinsic :: IEEE_ARITHMETIC
+function rotvect_psi2theta (Psi)
 ! I/O Variables.
   real(8),intent(in)  :: Psi(:)             ! Rotation Vector.
   real(8),dimension(3):: rotvect_psi2theta  ! Rodrigues Parameters.
@@ -375,7 +374,7 @@ pure function rotvect_psi2theta (Psi)
   if (abs(NormPsi).le.rot_Epsilon) then
     rotvect_psi2theta=Psi
   else if (abs(NormPsi-pi).le.rot_EpsilonMin) then
-      rotvect_psi2theta = IEEE_VALUE(rotvect_psi2theta, IEEE_QUIET_NAN)
+      STOP 'Error in rotvec_psi2theta'
   else
     rotvect_psi2theta= (tan(NormPsi*0.5d0)/(NormPsi*0.5d0))*Psi
   end if

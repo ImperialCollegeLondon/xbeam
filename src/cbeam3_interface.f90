@@ -3,7 +3,6 @@ module cbeam3_interface
     use                                 :: xbeam_shared
     use                                 :: cbeam3_solv
     use                                 :: debug_utils
-    ! use                                 :: interface_lapack
     use                                 :: lib_sparse
 
     implicit none
@@ -78,6 +77,7 @@ contains
         real(c_double)                  :: applied_forces(n_node, 6)!legacy var
 
         integer(c_int)                  :: nodes_per_elem
+        integer(c_int)                  :: i
 
         num_dof = count(vdof > 0)*6
         applied_forces = 0.0_c_double
