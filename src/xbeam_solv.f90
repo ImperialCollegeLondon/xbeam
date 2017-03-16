@@ -495,7 +495,6 @@ module xbeam_solv
   real(8) :: Res, Res0                  ! current and  initial residual
   real(8) :: ResFrc, ResFrc0, ResFrcRel ! absolute, initial and relative residual
   real(8) :: ResMmt, ResMmt0, ResMmtRel ! absolute, initial and relative residual
-  real(8) :: TaRes, TaResFrc, TaResMmt  ! absolute tolerance for Res, ResMmt, ResFrc
 
  ! variables for error based check
   real(8)   :: Possc, Psisc         ! scaling factor for position and rotations (Psi and quaternion)
@@ -505,7 +504,6 @@ module xbeam_solv
   real(8)   :: DX_now, DX_old       ! Norm of DeltaX at current and old iteration
   real(8)   :: DPos_now, DPos_old   ! Norm of translational dofs of DeltaX at current and old iteration
   real(8)   :: DPsi_now, DPsi_old   ! Norm of rotational dofs of DeltaX at current and old iteration
-  real(8)   :: TaX, TaPos, TaPsi    ! Absolute tolerance for DeltaX, DeltaPos and DeltaPsi
 
   ! debug vars
     integer             :: i

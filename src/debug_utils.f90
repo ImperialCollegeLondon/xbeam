@@ -88,7 +88,7 @@ contains
         character(len=*), intent(IN)        :: name
         type(xbnode), intent(IN)           :: matrix(:)
         integer(c_int)                          :: unit
-        integer(c_int)                          :: i, j
+        integer(c_int)                          :: i
 
 
         open(newunit=unit, file='debug_'//name//'.txt')

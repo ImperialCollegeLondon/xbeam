@@ -77,8 +77,6 @@ contains
         integer(c_int)                  :: num_dof
         real(c_double)                  :: applied_forces(n_node, 6)!legacy var
 
-        integer(c_int)                  :: i
-        integer(c_int)                  :: j
         integer(c_int)                  :: nodes_per_elem
 
         num_dof = count(vdof > 0)*6
