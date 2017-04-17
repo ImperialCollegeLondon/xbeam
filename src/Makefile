@@ -1,13 +1,13 @@
 # FFLAGS = -g3 -fPIC -O1 -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow
 FFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fomit-frame-pointer -I/usr/include -Wunused
-LINKER_FLAGS = -shared
+LINKER_FLAGS = -shared -llapack -fopenmp
 UNAME := $(shell uname)
-ifeq ($(UNAME), Linux)
+#ifeq ($(UNAME), Linux)
 FC = gfortran
-endif
-ifeq ($(UNAME), Darwin)
-FC = ifort
-endif
+#endif
+#ifeq ($(UNAME), Darwin)
+#FC = ifort
+#endif
 LINKER = ar cr
 object_dir = obj/
 lib_dir = lib/
