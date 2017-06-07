@@ -27,6 +27,7 @@
 module cbeam3_asbly
   use xbeam_shared
   use lib_solv, only: solv_set_vec_rows_zero
+  use debug_utils
   implicit none
  real(8),parameter,private,dimension(3,3):: Unit= &    ! Unit matrix.
 &         reshape((/1.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,1.d0/),(/3,3/))
@@ -92,6 +93,7 @@ module cbeam3_asbly
 
   integer, allocatable:: row_sphBC(:)      ! row in global matrices/vector associated with weakly enforced hinge BCs
 
+      call print_matrix('asbly_force',Force)
 ! Loop in all elements in the model.
   NumE=size(Elem)
 
@@ -138,6 +140,10 @@ module cbeam3_asbly
 
   ! Extract current applied forces/moments at the element nodes.
     call fem_glob2loc_extract (Elem(iElem)%Conn,Force,ForceElem,NumNE)
+    ! print*, iElem
+    ! print*, Elem(iElem)%Conn
+    ! print*, ForceElem
+    ! pause
 
   !----------------------------------- ADDED SECTION
     if (options%gravity_on .eqv. .TRUE.) then

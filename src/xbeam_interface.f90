@@ -35,9 +35,7 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
                                            psi_ini,&
                                            pos_def,&
                                            psi_def,&
-                                           num_app_forces,&
                                            app_forces,&
-                                           node_app_forces,&
                                            dynamic_forces_amplitude,&
                                            dynamic_forces_time,&
                                            for_vel,&
@@ -87,10 +85,7 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
    real(c_double), intent(OUT)     :: psi_dot_def_history(n_tsteps, n_elem, max_elem_node, 3)
    real(c_double), intent(OUT)     :: quat_history(n_tsteps, 4)
 
-   integer(c_int), intent(IN)      :: num_app_forces
-   real(c_double), intent(IN)      :: app_forces(num_app_forces, 6)
-   ! ADC: careful, forces in master FoR
-   integer(c_int), intent(IN)      :: node_app_forces(num_app_forces)
+   real(c_double), intent(IN)      :: app_forces(n_node, 6)
 
    ! dynamic forces
    real(c_double), intent(IN)      :: dynamic_forces_amplitude(n_node, 6)
@@ -122,10 +117,10 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
    options%NumGauss = nodes_per_elem - 1
 
    num_dof = count(vdof > 0)*6
-   applied_forces = 0.0_c_double
-   do i=1, num_app_forces
-       applied_forces(node_app_forces(i), :) = app_forces(i, :)
-   end do
+   applied_forces = app_forces
+   ! do i=1, num_app_forces
+   !     applied_forces(node_app_forces(i), :) = app_forces(i, :)
+   ! end do
 
    elements = generate_xbelem(n_elem,&
                               num_nodes,&

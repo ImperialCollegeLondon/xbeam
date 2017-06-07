@@ -327,7 +327,7 @@ end function inv
         real(8),     intent(out):: X(:)          ! Solution vector
         real(8),allocatable     :: FulMat(:,:)   ! Full matrix
         real(8),allocatable     :: invFulMat(:,:)! Full matrix
-        integer:: i1, i2, dimb
+        integer:: dimb
 
         dimb=size(b)
 
@@ -338,12 +338,14 @@ end function inv
         invFulMat = inv(SprMat(1)%a)
 
         ! Calculate matrix-vector product
-        X=0.0d0
-        do i1=1,dimb
-        !   do i2=1,dimb
-                X(i1) = X(i1) + dot_product(invFulMat(i1,:), b(:))
-            ! end do
-        end do
+        ! X=0.0d0
+        ! do i1=1,dimb
+        ! !   do i2=1,dimb
+        !         ! original
+        !         X(i1) = X(i1) + dot_product(invFulMat(i1,:), b(:))
+        !     ! end do
+        ! end do
+        X = MATMUL(invFulMat, b)
 
         deallocate(invFulMat)
         return

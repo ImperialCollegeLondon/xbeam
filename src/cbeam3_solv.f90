@@ -27,6 +27,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module cbeam3_solv
   use, intrinsic    :: iso_c_binding
+  use debug_utils
   use xbeam_shared
   implicit none
 
@@ -126,6 +127,8 @@ module cbeam3_solv
   real(8)   :: DPos_now, DPos_old   ! Norm of translational dofs of DeltaX at current and old iteration
   real(8)   :: DPsi_now, DPsi_old   ! Norm of rotational dofs of DeltaX at current and old iteration
   real(8)   :: TaX, TaPos, TaPsi    ! Absolute tolerance for DeltaX, DeltaPos and DeltaPsi
+
+  integer   :: ii
 
  ! Determine scaling factors for convergence test (absolute tolerances)
   Psisc = 1.0_8
@@ -247,6 +250,15 @@ TaPsi =           Psisc *Options%MinDelta
 ! Solve equation and update the global vectors.
       call lu_sparse(ks,Kglobal,-Qglobal,DeltaX)
       call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
+    !   call print_matrix('solv_Kmat', Kglobal(1)%a)
+    !   call print_matrix('solv_appforces', AppForces)
+    !   call print_matrix('solv_PosDefor', PosDefor)
+    !   call print_matrix('solv_PsiDefor1', PsiDefor(:, 1, :))
+    !   call print_matrix('solv_PsiDefor2', PsiDefor(:, 2, :))
+    !   call print_matrix('solv_PsiDefor3', PsiDefor(:, 3, :))
+    !   call print_matrix('solv_Psi0_1', Psi0(:, 1, :))
+    !   call print_matrix('solv_Psi0_2', Psi0(:, 2, :))
+    !   call print_matrix('solv_Psi0_3', Psi0(:, 3, :))
 ! Convergence parameter delta (original):
       call delta_check(Qglobal,DeltaX,Delta,passed_delta,Options%MinDelta,Options%PrintInfo)
  ! Check convergence using the residual:
@@ -1862,7 +1874,8 @@ TaPsi =           Psisc *Options%MinDelta
       !print*,  ' iNode = ', iNode
     iElem=Node(iNode)%Master(1)
       !print*, ' iElem = ', iElem
-    if ((Node(iNode)%Vdof.ne.0).and.(Elem(iElem)%MemNo.eq.0)) then
+    ! if ((Node(iNode)%Vdof.ne.0).and.(Elem(iElem)%MemNo.eq.0)) then
+    if (Node(iNode)%Vdof.ne.0) then
       k=Node(iNode)%Master(2)
 
 ! Nodal displacements.
@@ -1877,7 +1890,7 @@ TaPsi =           Psisc *Options%MinDelta
 !!! Post-processing.
 ! Compute rotation vector at slave nodes of CBEAM3 elements.
   do i=1,size(Elem)
-    if (Elem(i)%MemNo.eq.0) then
+    ! if (Elem(i)%MemNo.eq.0) then
 
 ! Copy rotation from master node for each slave node.
       do j=1,Elem(i)%NumNodes
@@ -1888,7 +1901,7 @@ TaPsi =           Psisc *Options%MinDelta
 
 ! Include master-to-slave initial rotations from the undeformed configuration.
       call cbeam3_projm2s (Elem(i)%NumNodes,Elem(i)%Master,Psi0(i,:,:),Psi0,PsiDefor(i,:,:))
-    end if
+    ! end if
   end do
 
   return

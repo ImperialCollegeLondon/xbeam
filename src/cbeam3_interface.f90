@@ -33,9 +33,8 @@ contains
                                             psi_ini,&
                                             pos_def,&
                                             psi_def,&
-                                            num_app_forces,&
-                                            app_forces,&
-                                            node_app_forces) bind(C)
+                                            app_forces&
+                                            ) bind(C)
         integer(c_int), intent(IN)      :: n_elem
         integer(c_int), intent(IN)      :: n_node
 
@@ -65,13 +64,11 @@ contains
 
         real(c_double), intent(IN)      :: pos_ini(n_node, 3)
         real(c_double), intent(IN)      :: psi_ini(n_elem, max_elem_node, 3)
-        real(c_double), intent(OUT)     :: pos_def(n_node, 3)
-        real(c_double), intent(OUT)     :: psi_def(n_elem, max_elem_node, 3)
+        real(c_double), intent(INOUT)   :: pos_def(n_node, 3)
+        real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
 
-        integer(c_int), intent(IN)      :: num_app_forces
-        real(c_double), intent(IN)      :: app_forces(num_app_forces, 6)
+        real(c_double), intent(IN)      :: app_forces(n_node, 6)
         ! ADC XXX: careful with forces in master FoR
-        integer(c_int), intent(IN)      :: node_app_forces(num_app_forces)
 
         integer(c_int)                  :: num_dof
         real(c_double)                  :: applied_forces(n_node, 6)!legacy var
@@ -79,17 +76,40 @@ contains
         integer(c_int)                  :: nodes_per_elem
         integer(c_int)                  :: i
 
+        ! call print_matrix('conn',conn)
+        ! call print_matrix('pos_ini', pos_ini)
+        ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
+        ! call print_matrix('psi_ini2', psi_ini(:, 2, :))
+        ! call print_matrix('psi_ini3', psi_ini(:, 3, :))
+        ! call print_matrix('app_forces', app_forces)
+        ! call print_matrix('fdof',fdof)
+        ! call print_matrix('vdof',vdof)
+        ! call print_matrix('master1',master(:,:,1))
+        ! call print_matrix('master2',master(:,:,2))
+        ! call print_matrix('masternode',master_node)
+
         num_dof = count(vdof > 0)*6
-        applied_forces = 0.0_c_double
-        do i=1, num_app_forces
-            applied_forces(node_app_forces(i), :) = app_forces(i, :)
-        end do
+        applied_forces = app_forces
+        ! do i=1, n_node
+        !     print*, applied_forces(i,:)
+        ! end do
+        ! do i=1, num_app_forces
+        !     ! applied_forces(node_app_forces(i), :) = app_forces(i, :)
+        !     applied_forces(node_app_forces(i), :) = &
+        !             applied_forces(node_app_forces(i), :) + app_forces(i, :)
+        ! end do
 
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
         options%NumGauss = nodes_per_elem - 1
 
-
+        ! do i=1, n_node
+        !     print*, pos_def(i,:)
+        ! end do
+        ! print*, '---'
+        ! do i=1, n_node
+        !     print*, pos_ini(i,:)
+        ! end do
 
         elements = generate_xbelem(n_elem,&
                                    num_nodes,&
@@ -112,6 +132,8 @@ contains
                                 vdof,&
                                 fdof)
 
+        ! call print_xbelem(elements)
+        ! call print_xbnode(nodes)
        ! overloaded function
        call cbeam3_solv_nlnstatic(num_dof,&
                                   elements,&
@@ -123,7 +145,12 @@ contains
                                   psi_def,&
                                   options &
                                   )
-
+        ! call output_elems (elements,pos_def,psi_def)
+        !
+        ! call print_matrix('pos_def', pos_def)
+        ! call print_matrix('psi_def1', psi_def(:, 1, :))
+        ! call print_matrix('psi_def2', psi_def(:, 2, :))
+        ! call print_matrix('psi_def3', psi_def(:, 3, :))
     end subroutine cbeam3_solv_nlnstatic_python
 
 
@@ -152,9 +179,7 @@ contains
                                             psi_ini,&
                                             pos_def,&
                                             psi_def,&
-                                            num_app_forces,&
                                             app_forces,&
-                                            node_app_forces,&
                                             dynamic_forces_amplitude,&
                                             dynamic_forces_time,&
                                             forced_vel,&
@@ -201,10 +226,8 @@ contains
         real(c_double), intent(OUT)     :: pos_dot_def_history(n_tsteps, n_node, 3)
         real(c_double), intent(OUT)     :: psi_dot_def_history(n_tsteps, n_elem, max_elem_node, 3)
 
-        integer(c_int), intent(IN)      :: num_app_forces
-        real(c_double), intent(IN)      :: app_forces(num_app_forces, 6)
+        real(c_double), intent(IN)      :: app_forces(n_node, 6)
         ! ADC: careful, forces in master FoR
-        integer(c_int), intent(IN)      :: node_app_forces(num_app_forces)
 
         ! dynamic forces
         real(c_double), intent(IN)      :: dynamic_forces_amplitude(n_node, 6)
@@ -226,12 +249,11 @@ contains
 
 
         num_dof = count(vdof > 0)*6
-        applied_forces = 0.0_c_double
-        do i=1, num_app_forces
-            applied_forces(node_app_forces(i), :) = app_forces(i, :)
-        end do
-
-        print*, 'gravity = ', options%gravity
+        ! applied_forces = 0.0_c_double
+        ! do i=1, num_app_forces
+        !     applied_forces(node_app_forces(i), :) = app_forces(i, :)
+        ! end do
+        applied_forces = app_forces
 
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
@@ -261,8 +283,8 @@ contains
 
         i_out = 10  ! random unit for output
         ! updating position vectors
-        pos_def = pos_ini
-        psi_def = psi_ini
+        ! pos_def = pos_ini
+        ! psi_def = psi_ini
         pos_def_history = 0.0_c_double
         pos_def_history(1, :, :) = pos_def
         psi_def_history = 0.0_c_double
@@ -468,7 +490,7 @@ contains
 
         do i=1, n_elem
             elements(i)%NumNodes    = num_nodes(i)
-            elements(i)%MemNo       = mem_number(i)
+            elements(i)%MemNo       = 0*mem_number(i)
             elements(i)%Conn        = conn(i, :)
             elements(i)%Master      = master(i, :, :)
             elements(i)%Length      = 0.0d0  ! dont think it is necessary
@@ -481,8 +503,8 @@ contains
                 stop 'Not supported numNodes'
             end select
             inode_global = elements(i)%Conn(inode_local)
-            elements(i)%Psi         = psi_ini(i, inode_local, :)
-            elements(i)%Vector      = for_delta(inode_global,:)
+            ! elements(i)%Psi         = psi_ini(i, inode_local, :)
+            ! elements(i)%Vector      = for_delta(inode_global,:)
             elements(i)%Mass        = mass_db(mass_indices(i), :, :)
             elements(i)%Stiff       = stiffness_db(stiffness_indices(i), :, :)
             elements(i)%InvStiff    = inv_stiffness_db(stiffness_indices(i),:,:)
@@ -494,21 +516,48 @@ contains
 
 
     subroutine print_xbelem(input)
-        type(xbelem), intent(IN)            :: input
+        type(xbelem), intent(IN)            :: input(:)
+        integer                             :: unit, i, ii
 
-        print*, "-----------------------------------"
-        print*, "NumNodes = ", input%NumNodes
-        print*, "MemNo = ", input%MemNo
-        print*, "Conn = ", input%Conn
-        print*, "Master = ", input%Master
-        print*, "Psi = ", input%Psi
-        print*, "Vector = ", input%Vector
-        print*, "Mass = ", input%Mass
-        print*, "Stiff = ", input%Stiff
-        print*, ""
+        open(newunit=unit, file='debug_elem.txt')
+
+        do i=1, size(input)
+            write(unit,*) "-----------------------------------"
+            write(unit,*) "NumNodes = ", input(i)%NumNodes
+            write(unit,*) "MemNo = ", input(i)%MemNo
+            write(unit,*) "Conn = ", input(i)%Conn
+            write(unit,*) "Master = ", input(i)%Master
+            write(unit,*) "Psi = ", input(i)%Psi
+            write(unit,*) "Vector = ", input(i)%Vector
+            write(unit,*) "Mass = "
+            do ii=1, 6
+                write(unit,*) input(i)%Mass(ii,:)
+            end do
+            write(unit,*) "Stiff = "
+            do ii=1, 6
+                write(unit,*) input(i)%Stiff(ii,:)
+            end do
+            write(unit,*) ""
+        end do
+        close (unit)
     end subroutine print_xbelem
 
 
+    subroutine print_xbnode(input)
+        type(xbnode), intent(IN)            :: input(:)
+        integer                             :: unit, i
+
+        open(newunit=unit, file='debug_node.txt')
+
+        do i=1, size(input)
+            write(unit, *) "-----------------------------------"
+            write(unit, *) "master= ", input(i)%master
+            write(unit, *) "vdof= ", input(i)%vdof
+            write(unit, *) "fdof= ", input(i)%fdof
+            write(unit, *) ""
+        end do
+        close(unit)
+    end subroutine print_xbnode
 
     function generate_xbnode(n_node,&
                              master,&
@@ -530,6 +579,40 @@ contains
             nodes(i)%fdof        = fdof(i)
         end do
     end function generate_xbnode
+
+
+subroutine output_elems (Elem,Coords,Psi)
+  use lib_fem
+
+! I/O Variables.
+  type(xbelem), intent(in)   :: Elem   (:)        ! Element information.
+  real(8),      intent(in)   :: Coords (:,:)      ! Coordinates of the grid points.
+  real(8),      intent(in)   :: Psi    (:,:,:)    ! CRV of the nodes in the elements.
+
+! Local variables.
+  integer:: i                    ! Counter.
+  integer:: iElem                ! Counter on the finite elements.
+  integer:: NumE                 ! Number of elements in the model.
+  integer:: NumNE                ! Number of nodes in an element.
+  real(8):: PosElem (MaxElNod,3) ! Coordinates/CRV of nodes in the element.
+  integer:: unit
+
+  open(newunit=unit, file='output_def.txt', status='replace')
+  NumE=size(Elem)
+
+! Loop in the elements in the model.
+  do iElem=1,NumE
+    ! associates the coordinates of the nn-th node (global) to the ii-th node
+    ! (local) of the element.
+    call fem_glob2loc_extract (Elem(iElem)%Conn,Coords,PosElem,NumNE)
+
+    do i=1,NumNE
+      write (unit,'(2I4,1P6E15.6)') iElem,i,PosElem(i,:),Psi(iElem,i,:)
+    end do
+  end do
+  close(unit)
+
+end subroutine output_elems
 
 
 end module cbeam3_interface
