@@ -27,7 +27,6 @@ base_lib = xbeam_base
 files = xbeam_shared\
 debug_utils\
 cbeam3_asbly\
-xbeam_shared\
 cbeam3_solv\
 xbeam_asbly\
 xbeam_fdiff\
