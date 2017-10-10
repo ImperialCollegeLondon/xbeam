@@ -89,7 +89,7 @@ module lib_solv
 
     !if (print_info .eqv. .true.) write (*,'(2X,A,1PE10.3,A,1PE10.3,$)') &
     !&                           'Res=',Res, ' ResRel=',ResRel
-    if (print_info .eqv. .true.) write (*,'(2X,1PE10.3,2X,1PE10.3,$)') ,Res, Res/Res0
+    if (print_info .eqv. .true.) write (*,'(2X,1PE10.3,2X,1PE10.3,$)') Res, Res/Res0
 
   end subroutine residual_check
 

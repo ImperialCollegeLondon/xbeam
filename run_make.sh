@@ -1,4 +1,5 @@
 #! /bin/sh
+source activate sharpy
 
 # This flag forces gfortran to print exactly when the
 # print statement is, but has some computational overhead.

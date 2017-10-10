@@ -144,11 +144,11 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
                            fdof)
 
 
-   !call print_matrix('Node', nodes)
-   !call print_matrix('Elem', elements)
-   !call print_matrix('PsiIni', psi_ini)
-   !call print_matrix('PosDef', pos_def)
-   !call print_matrix('PsiDef', psi_def)
+   ! call print_matrix('Node', nodes)
+   ! call print_matrix('Elem', elements)
+   ! call print_matrix('PsiIni', psi_ini)
+   ! call print_matrix('PosDef', pos_def)
+   ! call print_matrix('PsiDef', psi_def)
    i_out = 10  ! random unit for output
    ! updating position vectors
    pos_def = pos_ini
@@ -190,4 +190,175 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
 
 end subroutine xbeam_solv_couplednlndyn_python
 
+subroutine xbeam_step_couplednlndyn_python(dt,&
+                                           i_iter,&
+                                           time,&
+                                           n_elem,&
+                                           n_node,&
+                                           num_nodes,&
+                                           mem_number,&
+                                           conn,&
+                                           master,&
+                                           n_mass,&
+                                           mass_db,&
+                                           mass_indices,&
+                                           n_stiffness,&
+                                           stiffness_db,&
+                                           inv_stiffness_db,&
+                                           stiffness_indices,&
+                                           for_delta,&
+                                           rbmass,&
+                                           master_node,&
+                                           vdof,&
+                                           fdof,&
+                                           options,&
+                                           pos_ini,&
+                                           psi_ini,&
+                                           pos_dot_def,&
+                                           psi_dot_def,&
+                                           prev_pos_def,&
+                                           prev_psi_def,&
+                                           prev_pos_dot_def,&
+                                           prev_psi_dot_def,&
+                                           prev_quat,&
+                                           pos_def,&
+                                           psi_def,&
+                                           app_forces,&
+                                           dynamic_app_forces,&
+                                           quat,&
+                                           prev_for_vel,&
+                                           prev_for_acc,&
+                                           for_vel,&
+                                           for_acc,&
+                                           success) bind(C)
+
+   real(c_double), intent(IN)      :: dt
+   integer(c_int), intent(IN)      :: i_iter
+   real(c_double), intent(IN)      :: time
+   integer(c_int), intent(IN)      :: n_elem
+   integer(c_int), intent(IN)      :: n_node
+
+   ! elem data
+   integer(c_int), intent(IN)      :: num_nodes(n_elem)
+   integer(c_int), intent(IN)      :: mem_number(n_elem)
+   integer(c_int), intent(IN)      :: conn(n_elem, max_elem_node)
+   integer(c_int), intent(IN)      :: master(n_elem, max_elem_node, 2)
+   integer(c_int), intent(IN)      :: n_mass
+   real(c_double), intent(IN)      :: mass_db(n_mass, 6, 6)
+   integer(c_int), intent(IN)      :: mass_indices(n_elem)
+   integer(c_int), intent(IN)      :: n_stiffness
+   real(c_double), intent(IN)      :: stiffness_db(n_mass, 6, 6)
+   real(c_double), intent(IN)      :: inv_stiffness_db(n_mass, 6, 6)
+   integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
+   real(c_double), intent(IN)      :: for_delta(n_node, 3)
+   real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
+
+   ! node data
+   integer(c_int), intent(IN)      :: master_node(n_node, 2)
+   integer(c_int), intent(IN)      :: vdof(n_node)
+   integer(c_int), intent(IN)      :: fdof(n_node)
+
+
+   real(c_double), intent(IN)      :: pos_ini(n_node, 3)
+   real(c_double), intent(IN)      :: psi_ini(n_elem, max_elem_node, 3)
+   real(c_double), intent(IN)      :: prev_pos_def(n_node, 3)
+   real(c_double), intent(IN)      :: prev_psi_def(n_elem, max_elem_node, 3)
+   real(c_double), intent(IN)      :: prev_pos_dot_def(n_node, 3)
+   real(c_double), intent(IN)      :: prev_psi_dot_def(n_elem, max_elem_node, 3)
+   real(c_double), intent(IN)      :: prev_quat(4)
+
+   real(c_double), intent(IN)      :: app_forces(n_node, 6)
+   real(c_double), intent(IN)      :: dynamic_app_forces(n_node, 6)
+
+   real(c_double), intent(IN)      :: prev_for_vel(6)
+   real(c_double), intent(IN)      :: prev_for_acc(6)
+
+   type(xbopts), intent(INOUT)     :: options
+
+   real(c_double), intent(OUT)     :: pos_def(n_node, 3)
+   real(c_double), intent(OUT)     :: psi_def(n_elem, max_elem_node, 3)
+   real(c_double), intent(OUT)     :: pos_dot_def(n_node, 3)
+   real(c_double), intent(OUT)     :: psi_dot_def(n_elem, max_elem_node, 3)
+   real(c_double), intent(OUT)     :: quat(4)
+   real(c_double), intent(OUT)     :: for_vel(6)
+   real(c_double), intent(OUT)     :: for_acc(6)
+   logical(c_bool), intent(OUT)    :: success
+
+   ! data structures to be reconstructed
+   type(xbelem)                    :: elements(n_elem)
+   type(xbnode)                    :: nodes(n_node)
+
+   integer(c_int)                  :: num_dof
+   real(c_double)                  :: applied_forces(n_node, 6)! static
+                                                               ! loads
+   integer(c_int)                  :: i_out
+   integer(c_int)                  :: i
+   integer(c_int)                  :: nodes_per_elem
+
+
+   success = .FALSE.
+
+   ! number of nodes per element
+   nodes_per_elem = 0
+   nodes_per_elem = count(conn(1, :) /= 0)
+   options%NumGauss = nodes_per_elem - 1
+
+   num_dof = count(vdof > 0)*6
+   applied_forces = app_forces
+
+   elements = generate_xbelem(n_elem,&
+                              num_nodes,&
+                              mem_number,&
+                              conn,&
+                              master,&
+                              n_mass,&
+                              mass_db,&
+                              mass_indices,&
+                              n_stiffness,&
+                              stiffness_db,&
+                              inv_stiffness_db,&
+                              stiffness_indices,&
+                              for_delta,&
+                              psi_ini,&
+                              rbmass)
+
+   nodes = generate_xbnode(n_node,&
+                           master_node,&
+                           vdof,&
+                           fdof)
+
+
+    i_out = 10  ! random unit for output
+    ! updating position vectors
+    pos_def = prev_pos_def
+    psi_def = prev_psi_def
+    pos_dot_def = prev_pos_dot_def
+    psi_dot_def = prev_psi_dot_def
+    quat = prev_quat
+    for_vel = prev_for_vel
+    for_acc = prev_for_acc
+
+    call xbeam_step_couplednlndyn(dt,&
+                                  i_out,&
+                                  num_dof,&
+                                  Time,&
+                                  elements,&
+                                  nodes,&
+                                  app_forces,&
+                                  dynamic_app_forces,&
+                                  for_vel,&
+                                  for_acc,&
+                                  pos_ini,&
+                                  psi_ini,&
+                                  pos_def,&
+                                  psi_def,&
+                                  pos_dot_def,&
+                                  psi_dot_def,&
+                                  quat,&
+                                  Options,&
+                                  SUCCESS)
+
+
+
+end subroutine xbeam_step_couplednlndyn_python
 end module xbeam_interface
