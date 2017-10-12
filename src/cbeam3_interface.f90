@@ -47,8 +47,8 @@ contains
         real(c_double), intent(IN)      :: mass_db(n_mass, 6, 6)
         integer(c_int), intent(IN)      :: mass_indices(n_elem)
         integer(c_int), intent(IN)      :: n_stiffness
-        real(c_double), intent(IN)      :: stiffness_db(n_mass, 6, 6)
-        real(c_double), intent(IN)      :: inv_stiffness_db(n_mass, 6, 6)
+        real(c_double), intent(IN)      :: stiffness_db(n_stiffness, 6, 6)
+        real(c_double), intent(IN)      :: inv_stiffness_db(n_stiffness, 6, 6)
         integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
         real(c_double), intent(IN)      :: for_delta(n_node, 3)
         real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
@@ -474,8 +474,8 @@ contains
         real(c_double), intent(IN)      :: mass_db(n_mass, 6, 6)
         integer(c_int), intent(IN)      :: mass_indices(n_elem)
         integer(c_int), intent(IN)      :: n_stiffness
-        real(c_double), intent(IN)      :: stiffness_db(n_mass, 6, 6)
-        real(c_double), intent(IN)      :: inv_stiffness_db(n_mass, 6, 6)
+        real(c_double), intent(IN)      :: stiffness_db(n_stiffness, 6, 6)
+        real(c_double), intent(IN)      :: inv_stiffness_db(n_stiffness, 6, 6)
         integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
         real(c_double), intent(IN)      :: for_delta(:,:)
         real(c_double), intent(IN)      :: psi_ini(:,:,:)
