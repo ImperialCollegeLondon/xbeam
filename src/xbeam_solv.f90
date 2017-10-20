@@ -366,8 +366,7 @@ module xbeam_solv
                                               Elem,&
                                               Node,&
                                               F0,&
-                                              Fa,&
-                                              Ftime,&
+                                              Fdyn,&
                                               Vrel,&
                                               VrelDot,&
                                               Coords,&
@@ -402,8 +401,7 @@ module xbeam_solv
   type(xbelem), intent(in)   :: Elem      (:)     ! Element information.
   type(xbnode), intent(in)   :: Node      (:)     ! Nodal information.
   real(8),      intent(in)   :: F0        (:,:)   ! Applied static nodal forces.
-  real(8),      intent(in)   :: Fa        (:,:)   ! Amplitude of the dynamic nodal forces.
-  real(8),      intent(in)   :: Ftime     (:)     ! Time history of the applied forces.
+  real(8),      intent(in)   :: Fdyn      (:,:,:)! Dynamic nodal forces.
   real(8),      intent(out)  :: Vrel      (:,:)   ! Time history of the velocities of the reference frame.
   real(8),      intent(out)  :: VrelDot   (:,:)   ! Time history of the accelerations of the reference frame.
   real(8),      intent(in)   :: Coords    (:,:)   ! Initial coordinates of the grid points.
@@ -511,12 +509,11 @@ module xbeam_solv
     real(8), allocatable:: Mtotal_full(:,:)
   !---------------------------
 
- ! compatibility
-  real(8), allocatable  :: Fdyn      (:,:,:) ! applied dynamic force of size (NumNodes, 6, NumSteps+1)
-  allocate (Fdyn( size(Fa(:,1)),6,size(Time) )); Fdyn=0.0_8;
-  do iStep=1,size(Time)
-    Fdyn(:,:,iStep)=Ftime(iStep)*Fa;
-  end do
+  ! allocate(Fdyn(size(Node), 6, size(Time)))
+  ! Fdyn=0.0_8;
+  ! do iStep=1, size(Time)
+  !     Fdyn(:, : ,iStep) = dynamic_force(iStep, :, :)
+  ! end do
 
 
   ! Determine scaling factors for convergence test (absolute tolerances)
@@ -885,9 +882,11 @@ module xbeam_solv
         !write (*,'(5X,A,I4,A,1PE12.3,$)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qtotal))
       end if
 
-      if (maxval(abs(Qtotal)).lt.MinDelta) then
-          write (*,'(5X,A,I4,A,1PE12.3,$)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qtotal))
-          converged=.true. ! sm
+      if (Options%PrintInfo) then
+          if (maxval(abs(Qtotal)).lt.MinDelta) then
+              write (*,'(5X,A,I4,A,1PE12.3,$)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qtotal))
+              converged=.true. ! sm
+          end if
       end if
 
       ! exit do loop: kept outside in case of other criteria will be introduced

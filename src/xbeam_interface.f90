@@ -33,11 +33,10 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
                                            options,&
                                            pos_ini,&
                                            psi_ini,&
-                                           pos_def,&
-                                           psi_def,&
+                                        !    pos_def,&
+                                        !    psi_def,&
                                            app_forces,&
-                                           dynamic_forces_amplitude,&
-                                           dynamic_forces_time,&
+                                           dynamic_forces,&
                                            for_vel,&
                                            for_acc,&
                                            pos_def_history,&
@@ -88,8 +87,7 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
    real(c_double), intent(IN)      :: app_forces(n_node, 6)
 
    ! dynamic forces
-   real(c_double), intent(IN)      :: dynamic_forces_amplitude(n_node, 6)
-   real(c_double), intent(IN)      :: dynamic_forces_time(n_tsteps)
+   real(c_double), intent(IN)      :: dynamic_forces(n_node, 6, n_tsteps)
    real(c_double), intent(OUT)     :: for_vel(n_tsteps, 6)
    real(c_double), intent(OUT)     :: for_acc(n_tsteps, 6)
 
@@ -168,8 +166,7 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
                                    elements,&
                                    nodes,&
                                    applied_forces,&
-                                   dynamic_forces_amplitude,&
-                                   dynamic_forces_time,&
+                                   dynamic_forces,&
                                    for_vel,&
                                    for_acc,&
                                    pos_ini,&
