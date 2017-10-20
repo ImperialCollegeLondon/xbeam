@@ -882,11 +882,11 @@ module xbeam_solv
         !write (*,'(5X,A,I4,A,1PE12.3,$)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qtotal))
       end if
 
-      if (Options%PrintInfo) then
-          if (maxval(abs(Qtotal)).lt.MinDelta) then
+      if (maxval(abs(Qtotal)).lt.MinDelta) then
+          if (Options%PrintInfo) then
               write (*,'(5X,A,I4,A,1PE12.3,$)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qtotal))
-              converged=.true. ! sm
           end if
+          converged=.true. ! sm
       end if
 
       ! exit do loop: kept outside in case of other criteria will be introduced
