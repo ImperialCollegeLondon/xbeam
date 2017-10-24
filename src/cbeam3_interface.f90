@@ -503,8 +503,8 @@ contains
                 stop 'Not supported numNodes'
             end select
             inode_global = elements(i)%Conn(inode_local)
-            ! elements(i)%Psi         = psi_ini(i, inode_local, :)
-            ! elements(i)%Vector      = for_delta(inode_global,:)
+            elements(i)%Psi         = psi_ini(i, inode_local, :)
+            elements(i)%Vector      = for_delta(inode_global,:)
             elements(i)%Mass        = mass_db(mass_indices(i), :, :)
             elements(i)%Stiff       = stiffness_db(stiffness_indices(i), :, :)
             elements(i)%InvStiff    = inv_stiffness_db(stiffness_indices(i),:,:)

@@ -488,7 +488,7 @@ module cbeam3_asbly
     !     end do
     !     print*, 'NumGaussMass', NumGaussMass
     ! end if
-    call cbeam3_mvel (NumNE,rElem0,rElem,              Elem(iElem)%Mass,Mvelelem,NumGaussMass)
+    call cbeam3_mvel (NumNE,rElem0,rElem,Elem(iElem)%Mass,Mvelelem,NumGaussMass)
     ! if (iElem == 2) then
     !     print*, 'MSR'
     !     do i=1, 6
@@ -571,7 +571,7 @@ module cbeam3_asbly
     end if
 
 ! Project slave degrees of freedom to the orientation of the "master" ones.
-!    call cbeam3_projs2m (NumNE,Elem(iElem)%Master(:,:),Psi0(iElem,:,:),Psi0,SB2B1)
+   ! call cbeam3_projs2m (NumNE,Elem(iElem)%Master(:,:),Psi0(iElem,:,:),Psi0,SB2B1)
     call cbeam3_slave2master (NumNE,Elem(iElem)%Master(:,:),rElem0(:,4:6),Psi0,rElem(:,4:6),PsiDefor,SB2B1)
     Melem=matmul(transpose(SB2B1),matmul(Melem,SB2B1))
     Celem=matmul(transpose(SB2B1),matmul(Celem,SB2B1))
@@ -589,7 +589,6 @@ module cbeam3_asbly
         Qglobal(tempi1:tempi1+5)   = Qglobal(tempi1:tempi1+5)    + Qelem   (tempi:tempi+5)
         Mvel   (tempi1:tempi1+5,:) = Mvel   (tempi1:tempi1+5,:)  + Mvelelem(tempi:tempi+5,:)
         Cvel   (tempi1:tempi1+5,:) = Cvel   (tempi1:tempi1+5,:)  + Cvelelem(tempi:tempi+5,:)
-
         do j=1,NumNE
           j1=Node(Elem(iElem)%Conn(j))%Vdof
           if (j1.ne.0) then
