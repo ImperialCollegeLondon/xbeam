@@ -63,7 +63,7 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
    real(c_double), intent(IN)      :: stiffness_db(n_mass, 6, 6)
    real(c_double), intent(IN)      :: inv_stiffness_db(n_mass, 6, 6)
    integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
-   real(c_double), intent(IN)      :: for_delta(n_node, 3)
+   real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
    real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
 
    ! node data
@@ -247,7 +247,7 @@ subroutine xbeam_step_couplednlndyn_python(dt,&
    real(c_double), intent(IN)      :: stiffness_db(n_mass, 6, 6)
    real(c_double), intent(IN)      :: inv_stiffness_db(n_mass, 6, 6)
    integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
-   real(c_double), intent(IN)      :: for_delta(n_node, 3)
+   real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
    real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
 
    ! node data

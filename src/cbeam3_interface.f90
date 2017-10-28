@@ -50,7 +50,7 @@ contains
         real(c_double), intent(IN)      :: stiffness_db(n_stiffness, 6, 6)
         real(c_double), intent(IN)      :: inv_stiffness_db(n_stiffness, 6, 6)
         integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
-        real(c_double), intent(IN)      :: for_delta(n_node, 3)
+        real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
         real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
 
         ! node data
@@ -206,7 +206,7 @@ contains
         real(c_double), intent(IN)      :: stiffness_db(n_mass, 6, 6)
         real(c_double), intent(IN)      :: inv_stiffness_db(n_mass, 6, 6)
         integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
-        real(c_double), intent(IN)      :: for_delta(n_node, 3)
+        real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
         real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
 
         ! node data
@@ -362,7 +362,7 @@ contains
         real(c_double), intent(IN)      :: stiffness_db(n_mass, 6, 6)
         real(c_double), intent(IN)      :: inv_stiffness_db(n_mass, 6, 6)
         integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
-        real(c_double), intent(IN)      :: for_delta(n_node, 3)
+        real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
         real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
 
         ! node data
@@ -477,7 +477,7 @@ contains
         real(c_double), intent(IN)      :: stiffness_db(n_stiffness, 6, 6)
         real(c_double), intent(IN)      :: inv_stiffness_db(n_stiffness, 6, 6)
         integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
-        real(c_double), intent(IN)      :: for_delta(:,:)
+        real(c_double), intent(IN)      :: for_delta(:,:,:)
         real(c_double), intent(IN)      :: psi_ini(:,:,:)
         real(c_double), intent(IN)      :: RBMass(n_elem, max_elem_node, 6, 6)
 
@@ -504,7 +504,7 @@ contains
             end select
             inode_global = elements(i)%Conn(inode_local)
             elements(i)%Psi         = psi_ini(i, inode_local, :)
-            elements(i)%Vector      = for_delta(inode_global,:)
+            elements(i)%Vector      = for_delta(i, inode_local, :)
             elements(i)%Mass        = mass_db(mass_indices(i), :, :)
             elements(i)%Stiff       = stiffness_db(stiffness_indices(i), :, :)
             elements(i)%InvStiff    = inv_stiffness_db(stiffness_indices(i),:,:)
