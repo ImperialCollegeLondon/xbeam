@@ -93,7 +93,7 @@ module cbeam3_asbly
 
   integer, allocatable:: row_sphBC(:)      ! row in global matrices/vector associated with weakly enforced hinge BCs
 
-      call print_matrix('asbly_force',Force)
+    !   call print_matrix('asbly_force',Force)
 ! Loop in all elements in the model.
   NumE=size(Elem)
 

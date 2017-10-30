@@ -75,7 +75,6 @@ contains
 
         integer(c_int)                  :: nodes_per_elem
         integer(c_int)                  :: i
-
         ! call print_matrix('conn',conn)
         ! call print_matrix('pos_ini', pos_ini)
         ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
