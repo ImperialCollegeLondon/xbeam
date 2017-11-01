@@ -6,18 +6,4 @@ source activate sharpy
 # Use only for debugging the library
 # export GFORTRAN_UNBUFFERED_ALL=1
 
-cd src/xbeam_base/
-mkdir -p obj
-cd obj
-rm *
-cd ..
-make
-cd ..
-mkdir -p obj
-cd obj
-rm *
-cd ..
-make
-cd ..
-make
-cp lib/* ../sharpy/lib/
+make install
