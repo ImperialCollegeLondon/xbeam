@@ -1,4 +1,8 @@
-INCLUDE = -Ixbeam_base
+INCLUDE_DIR = xbeam_base
+INCLUDE = -I$(INCLUDE_DIR)
+
+BASE_SRCS = $(wildcard $(INCLUDE_DIR)/*.f90)
+BASE_OBJS = $(BASE_SRCS:.f90=.o)
 
 FILES = xbeam_shared\
 debug_utils\
@@ -19,7 +23,14 @@ MODS = $(FILES:=.mod)
 all: $(LIBRARY)
 
 $(LIBRARY): $(OBJS)
-	$(FCOMP) $(FCFLAGS) $(INCLUDE) -o $@ $^ $(LDFLAGS)
+	$(FCOMP) $(LDFLAGS) $(INCLUDE) -o $@ $(BASE_OBJS) $^
+	#$(FCOMP) $(FCFLAGS) $(INCLUDE) -o $@ $^ $(LDFLAGS)
+
+$(OBJS): $(BASE_OBJS)
+
+#$(BASE_OBJS): $(wildcard $(INCLUDE_DIR)/*.f90) XBEAM_BASE
+$(BASE_OBJS): $(wildcard $(INCLUDE_DIR)/*.f90)
+	$(FCOMP) $(FCFLAGS) $(INCLUDE) -c $<
 
 %.o: %.f90 XBEAM_BASE
 	$(FCOMP) $(FCFLAGS) $(INCLUDE) -c $<
@@ -39,3 +50,4 @@ clean:
 veryclean: clean
 	rm -f *~ $(LIBRARY)
 
+print-%  : ; @echo $* = $($*)
