@@ -108,6 +108,7 @@ module lib_lu
 !
       n= size(A,1)
       allocate (VV(N))
+      imax = 0
 !
       D = 1.0
       DO I = 1, N

@@ -1526,6 +1526,15 @@ module lib_cbeam3
   real(8) :: DTYpN(6,6*MaxNodCB3)  ! Strain matrix operator.
   real(8) :: N (6,6*MaxNodCB3)     ! Element shape function matrix
 
+  Ri_g = 0.0d0
+  dr0_g = 0.0d0
+  CBa = 0.0d0
+  Rot = 0.0d0
+  Yp = 0.0d0
+  D = 0.0d0
+  dVdotdvrel = 0.0d0
+  DTYpN = 0.0d0
+  N = 0.0d0
 ! Define Gauss points and loop on them.
   allocate (CoordGauss(NumGauss))
   allocate (WeightGauss(NumGauss))
@@ -1761,12 +1770,14 @@ end subroutine cbeam3_rbmvel
     dVdvrel(1:3,4:6)= -matmul(CBa,rot_skew(Ra))
     dVdvrel(4:6,4:6)= CBa
 
+    dVgyrdvrel = 0.0d0
     dVgyrdvrel(1:3,1:3)= -matmul(rot_skew(WB),CBa) + matmul(CBa,rot_skew(Vrel(4:6)))
     dVgyrdvrel(1:3,4:6)= -matmul(CBa,rot_skew(Radot))+matmul(rot_skew(WB),matmul(CBa,rot_skew(Ra))) &
 &                        -matmul(CBa,matmul(rot_skew(Vrel(4:6)),rot_skew(Ra)))
     dVgyrdvrel(4:6,1:3)=  0.d0
     dVgyrdvrel(4:6,4:6)= -matmul(rot_skew(WB),CBa) + matmul(CBa,rot_skew(Vrel(4:6)))
 
+    ADeltaW = 0.0d0
     ADeltaW(1:3,1:3)= rot_skew(WB)
     ADeltaW(1:3,4:6)= 0.d0
     ADeltaW(4:6,1:3)= rot_skew(VB)

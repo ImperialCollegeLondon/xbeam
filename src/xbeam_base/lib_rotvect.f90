@@ -552,6 +552,7 @@ function rotvect_psi2theta (Psi)
   S(4,4)=1.d0-R(1,1)-R(2,2)+R(3,3)
 
 ! Find maximum term in diagonal.
+imax = 0
   SMax=0.d0
   do i=1,4
     if (S(i,i).ge.SMax) then
