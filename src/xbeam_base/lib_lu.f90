@@ -173,14 +173,25 @@ module lib_lu
   integer, dimension(size(A,1)) :: ipiv   ! pivot indices
   integer :: n, info
 
+  integer :: i, j, m
+
   ! External procedures defined in LAPACK
   external DGETRF
   external DGETRI
 
   ! Store A in Ainv to prevent it from being overwritten by LAPACK
   Ainv = A
-  n = size(A,1)
-
+  n = size(A, 1)
+  m = size(A, 2)
+ !  if (maxval(abs(A)) > 1e12) then
+ !      open(unit=2, file='matrix.txt', ACTION="write", STATUS="replace")
+ !      print*, 'UPPPSSSSS'
+ !      do i=1, n
+ !         write(2, '(*(2X e18.7))')((A(i,j)) ,j=1,M)
+ !      end do
+ !     close(2)
+ !     read(*,*)
+ ! end if
   ! DGETRF computes an LU factorization of a general M-by-N matrix A
   ! using partial pivoting with row interchanges.
   call DGETRF(n, n, Ainv, n, ipiv, info)
@@ -351,6 +362,27 @@ end function inv
         deallocate(invFulMat)
         return
     end subroutine lu_sparse
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    subroutine lu_solve(A, b, X)
+        real(8), intent(IN)     :: A(:, :)
+        real(8), intent(in)     :: b(:)          ! Forcing vector
+        real(8), intent(out)    :: X(:)          ! Solution vector
+        real(8),allocatable     :: invFulMat(:,:)! Full matrix
+        integer:: dimb
+
+        dimb=size(b)
+
+        allocate(invFulMat(dimb,dimb))
+
+        ! Calculate the inverse
+        ! call lu_invers(FulMat, invFulMat)
+        invFulMat = inv(A)
+
+        X = MATMUL(invFulMat, b)
+
+        deallocate(invFulMat)
+        return
+    end subroutine lu_solve
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end module lib_lu

@@ -4,6 +4,7 @@ lib_rot\
 lib_rotvect\
 lib_bgeom\
 lib_sparse\
+lib_mat\
 lib_lu\
 lib_cbeam3\
 lib_solv\
@@ -29,4 +30,3 @@ clean:
 
 veryclean: clean
 	rm -f *~
-

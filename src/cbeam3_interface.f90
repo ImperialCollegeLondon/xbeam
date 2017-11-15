@@ -318,36 +318,41 @@ contains
     end subroutine cbeam3_solv_nlndyn_python
 
 
+    subroutine cbeam3_solv_nlndyn_step_python   (n_elem,&
+                                                 n_node,&
+                                                 dt,&
+                                                 num_nodes,&
+                                                 mem_number,&
+                                                 conn,&
+                                                 master,&
+                                                 n_mass,&
+                                                 mass_db,&
+                                                 mass_indices,&
+                                                 n_stiffness,&
+                                                 stiffness_db,&
+                                                 inv_stiffness_db,&
+                                                 stiffness_indices,&
+                                                 for_delta,&
+                                                 rbmass,&
+                                                 master_node,&
+                                                 vdof,&
+                                                 fdof,&
+                                                 options,&
+                                                 pos_ini,&
+                                                 psi_ini,&
+                                                 pos_def,&
+                                                 pos_def_dot,&
+                                                 psi_def,&
+                                                 psi_def_dot,&
+                                                 steady_app_forces,&
+                                                 dynamic_app_forces,&
+                                                 quat,&
+                                                 forced_vel,&
+                                                 forced_acc)bind(C)
 
-    subroutine cbeam3_solv_modal_python(n_elem,&
-                                            n_node,&
-                                            num_dof,&
-                                            num_nodes,&
-                                            mem_number,&
-                                            conn,&
-                                            master,&
-                                            n_mass,&
-                                            mass_db,&
-                                            mass_indices,&
-                                            n_stiffness,&
-                                            stiffness_db,&
-                                            inv_stiffness_db,&
-                                            stiffness_indices,&
-                                            for_delta,&
-                                            rbmass,&
-                                            master_node,&
-                                            vdof,&
-                                            fdof,&
-                                            options,&
-                                            pos_ini,&
-                                            psi_ini,&
-                                            pos_def,&
-                                            psi_def,&
-                                            fullM,&
-                                            fullK) bind(C)
         integer(c_int), intent(IN)      :: n_elem
         integer(c_int), intent(IN)      :: n_node
-        integer(c_int), intent(IN)      :: num_dof
+        real(c_double), intent(IN)      :: dt
 
         ! elem data
         integer(c_int), intent(IN)      :: num_nodes(n_elem)
@@ -369,37 +374,85 @@ contains
         integer(c_int), intent(IN)      :: vdof(n_node)
         integer(c_int), intent(IN)      :: fdof(n_node)
 
+        ! data structures to be reconstructed
         type(xbelem)                    :: elements(n_elem)
         type(xbnode)                    :: nodes(n_node)
         type(xbopts), intent(INOUT)     :: options
 
         real(c_double), intent(IN)      :: pos_ini(n_node, 3)
         real(c_double), intent(IN)      :: psi_ini(n_elem, max_elem_node, 3)
-        real(c_double), intent(OUT)     :: pos_def(n_node, 3)
-        real(c_double), intent(OUT)     :: psi_def(n_elem, max_elem_node, 3)
+        real(c_double), intent(INOUT)   :: pos_def(n_node, 3)
+        real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
+        real(c_double), intent(INOUT)   :: pos_def_dot(n_node, 3)
+        real(c_double), intent(INOUT)   :: psi_def_dot(n_elem, max_elem_node, 3)
 
+        real(c_double), intent(IN)      :: steady_app_forces (n_node, 6)
+        ! ADC: careful, forces in master FoR
 
+        ! dynamic
+        real(c_double), intent(IN)      :: dynamic_app_forces(n_node, 6)
+        real(c_double), intent(IN)      :: quat(4)
+        real(c_double), intent(IN)      :: forced_vel(6)
+        real(c_double), intent(IN)      :: forced_acc(6)
+
+        integer(c_int)                  :: num_dof
+
+        integer(c_int)                  :: i_out
         integer(c_int)                  :: i
         integer(c_int)                  :: nodes_per_elem
-        real(c_double)                  :: Vrel(1, 6)
 
-        type(sparse), allocatable       :: Mglobal(:)
-        type(sparse), allocatable       :: Cglobal(:)
-        type(sparse), allocatable       :: Kglobal(:)
-        integer(c_int)                  :: ms
-        integer(c_int)                  :: cs
-        integer(c_int)                  :: ks
+        integer(c_int), parameter        :: n_tsteps = 1
 
-        real(c_double), intent(OUT)     :: fullM(num_dof, num_dof)
-        real(c_double), intent(OUT)     :: fullK(num_dof, num_dof)
+        ! aux variables
+        real(c_double)                  :: time(n_tsteps + 1)
+        real(c_double)                  :: forced_vel_mat(2, 6)
+        real(c_double)                  :: forced_acc_mat(2, 6)
 
-        Vrel = 0.0_c_double
+
+        forced_vel_mat(1,:) = forced_vel
+        forced_acc_mat(1,:) = forced_acc
+        forced_vel_mat(2,:) = forced_vel
+        forced_acc_mat(2,:) = forced_acc
+        ! print*, 'cbeam3_interface, line 417'
+        ! print*, quat
+        ! fa_fake = 0
+        ! qquat = quat(:,1)
+        ! print*, 'cbeam3_interface, line 417'
+        ! ftime_fake = 0
+        ! print*, 'cbeam3_interface, line 417'
+        ! print*, size(forced_vel)
+        ! print*, (forced_vel)
+        ! print*, 'cbeam3_interface, line 417'
+        !
+        !
+        ! print*, 'cbeam3_interface, line 423'
+        ! print*,  n_node
+        ! call print_matrix('conn',conn)
+        ! call print_matrix('pos_ini', pos_ini)
+        ! call print_matrix('pos_def', pos_def)
+        ! call print_matrix('pos_def_dot', pos_def_dot)
+        ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
+        ! call print_matrix('psi_ini2', psi_ini(:, 2, :))
+        ! call print_matrix('psi_ini3', psi_ini(:, 3, :))
+        ! call print_matrix('psi_def1', psi_def(:, 1, :))
+        ! call print_matrix('psi_def2', psi_def(:, 2, :))
+        ! call print_matrix('psi_def3', psi_def(:, 3, :))
+        ! call print_matrix('fdof',fdof)
+        ! call print_matrix('steady_app_forces',steady_app_forces)
+        ! call print_matrix('dynamic_app_forces',dynamic_app_forces)
+        ! call print_matrix('vdof',vdof)
+        ! call print_matrix('master1',master(:,:,1))
+        ! call print_matrix('master2',master(:,:,2))
+        ! call print_matrix('masternode',master_node)
+        ! call print_matrix('psi_def_dot1',psi_def_dot(:, 1, :))
+        ! call print_matrix('psi_def_dot2',psi_def_dot(:, 2, :))
+        ! call print_matrix('forced_vel', forced_vel)
+        ! call print_matrix('forced_acc', forced_acc)
+        num_dof = count(vdof > 0)*6
 
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
         options%NumGauss = nodes_per_elem - 1
-
-
 
         elements = generate_xbelem(n_elem,&
                                    num_nodes,&
@@ -421,30 +474,162 @@ contains
                                 master_node,&
                                 vdof,&
                                 fdof)
-       ! overloaded function
-       call cbeam3_solv_modal    (num_dof,&
-                                  elements,&
-                                  nodes,&
-                                  Vrel,&
-                                  pos_ini,&
-                                  psi_ini,&
-                                  pos_def,&
-                                  psi_def,&
-                                  options,&
-                                  Mglobal,&
-                                  Cglobal,&
-                                  Kglobal,&
-                                  ms,&
-                                  cs,&
-                                  ks&
-                                  )
 
 
-      ! inflate Mglobal and Kglobal
-      fullM = Mglobal(1)%a
-      fullK = Kglobal(1)%a
+        ! call print_xbelem(elements)
+        ! call print_xbnode(nodes)
+        i_out = 10  ! random unit for output
+        time(1) = 0
+        time(2) = dt
 
-    end subroutine cbeam3_solv_modal_python
+        ! updating position vectors
+        call cbeam3_solv_nlndyn_step (i_out,&
+                                      num_dof,&
+                                      time,&
+                                      elements,&
+                                      nodes,&
+                                      steady_app_forces+dynamic_app_forces,&
+                                      steady_app_forces*0.0_c_double,&
+                                      time*0.0_c_double,&
+                                      forced_vel_mat,&
+                                      forced_acc_mat,&
+                                      pos_ini,&
+                                      psi_ini,&
+                                      pos_def,&
+                                      psi_def,&
+                                      pos_def_dot,&
+                                      psi_def_dot,&
+                                      Options,&
+                                      quat)
+
+    end subroutine cbeam3_solv_nlndyn_step_python
+
+    ! subroutine cbeam3_solv_modal_python(n_elem,&
+    !                                         n_node,&
+    !                                         num_dof,&
+    !                                         num_nodes,&
+    !                                         mem_number,&
+    !                                         conn,&
+    !                                         master,&
+    !                                         n_mass,&
+    !                                         mass_db,&
+    !                                         mass_indices,&
+    !                                         n_stiffness,&
+    !                                         stiffness_db,&
+    !                                         inv_stiffness_db,&
+    !                                         stiffness_indices,&
+    !                                         for_delta,&
+    !                                         rbmass,&
+    !                                         master_node,&
+    !                                         vdof,&
+    !                                         fdof,&
+    !                                         options,&
+    !                                         pos_ini,&
+    !                                         psi_ini,&
+    !                                         pos_def,&
+    !                                         psi_def,&
+    !                                         fullM,&
+    !                                         fullK) bind(C)
+    !     integer(c_int), intent(IN)      :: n_elem
+    !     integer(c_int), intent(IN)      :: n_node
+    !     integer(c_int), intent(IN)      :: num_dof
+    !
+    !     ! elem data
+    !     integer(c_int), intent(IN)      :: num_nodes(n_elem)
+    !     integer(c_int), intent(IN)      :: mem_number(n_elem)
+    !     integer(c_int), intent(IN)      :: conn(n_elem, max_elem_node)
+    !     integer(c_int), intent(IN)      :: master(n_elem, max_elem_node, 2)
+    !     integer(c_int), intent(IN)      :: n_mass
+    !     real(c_double), intent(IN)      :: mass_db(n_mass, 6, 6)
+    !     integer(c_int), intent(IN)      :: mass_indices(n_elem)
+    !     integer(c_int), intent(IN)      :: n_stiffness
+    !     real(c_double), intent(IN)      :: stiffness_db(n_mass, 6, 6)
+    !     real(c_double), intent(IN)      :: inv_stiffness_db(n_mass, 6, 6)
+    !     integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
+    !     real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
+    !     real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
+    !
+    !     ! node data
+    !     integer(c_int), intent(IN)      :: master_node(n_node, 2)
+    !     integer(c_int), intent(IN)      :: vdof(n_node)
+    !     integer(c_int), intent(IN)      :: fdof(n_node)
+    !
+    !     type(xbelem)                    :: elements(n_elem)
+    !     type(xbnode)                    :: nodes(n_node)
+    !     type(xbopts), intent(INOUT)     :: options
+    !
+    !     real(c_double), intent(IN)      :: pos_ini(n_node, 3)
+    !     real(c_double), intent(IN)      :: psi_ini(n_elem, max_elem_node, 3)
+    !     real(c_double), intent(OUT)     :: pos_def(n_node, 3)
+    !     real(c_double), intent(OUT)     :: psi_def(n_elem, max_elem_node, 3)
+    !
+    !
+    !     integer(c_int)                  :: i
+    !     integer(c_int)                  :: nodes_per_elem
+    !     real(c_double)                  :: Vrel(1, 6)
+    !
+    !     type(sparse), allocatable       :: Mglobal(:)
+    !     type(sparse), allocatable       :: Cglobal(:)
+    !     type(sparse), allocatable       :: Kglobal(:)
+    !     integer(c_int)                  :: ms
+    !     integer(c_int)                  :: cs
+    !     integer(c_int)                  :: ks
+    !
+    !     real(c_double), intent(OUT)     :: fullM(num_dof, num_dof)
+    !     real(c_double), intent(OUT)     :: fullK(num_dof, num_dof)
+    !
+    !     Vrel = 0.0_c_double
+    !
+    !     ! gaussian nodes
+    !     nodes_per_elem = count(conn(1,:) /= 0)
+    !     options%NumGauss = nodes_per_elem - 1
+    !
+    !
+    !
+    !     elements = generate_xbelem(n_elem,&
+    !                                num_nodes,&
+    !                                mem_number,&
+    !                                conn,&
+    !                                master,&
+    !                                n_mass,&
+    !                                mass_db,&
+    !                                mass_indices,&
+    !                                n_stiffness,&
+    !                                stiffness_db,&
+    !                                inv_stiffness_db,&
+    !                                stiffness_indices,&
+    !                                for_delta,&
+    !                                psi_ini,&
+    !                                rbmass)
+    !
+    !     nodes = generate_xbnode(n_node,&
+    !                             master_node,&
+    !                             vdof,&
+    !                             fdof)
+    !    ! overloaded function
+    !    call cbeam3_solv_modal    (num_dof,&
+    !                               elements,&
+    !                               nodes,&
+    !                               Vrel,&
+    !                               pos_ini,&
+    !                               psi_ini,&
+    !                               pos_def,&
+    !                               psi_def,&
+    !                               options,&
+    !                               Mglobal,&
+    !                               Cglobal,&
+    !                               Kglobal,&
+    !                               ms,&
+    !                               cs,&
+    !                               ks&
+    !                               )
+    !
+    !
+    !   ! inflate Mglobal and Kglobal
+    !   fullM = Mglobal(1)%a
+    !   fullK = Kglobal(1)%a
+    !
+    ! end subroutine cbeam3_solv_modal_python
 
 
 
