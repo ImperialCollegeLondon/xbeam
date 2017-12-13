@@ -825,7 +825,6 @@ module lib_fem
 ! Extract data from global vector.
   LocVector=0.d0
   LocVector(1:NumNodeElem,:)=GlobVector(ElemNodes(1:NumNodeElem),:)
-
   return
  end subroutine fem_glob2loc_extract
 

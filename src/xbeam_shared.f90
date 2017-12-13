@@ -62,14 +62,14 @@ module xbeam_shared
   logical(c_bool):: FollowerForce   =.true.   ! =T: Follower force.
   logical(c_bool):: FollowerForceRig=.true.   ! =T: Follower force in the body-fixed frame.
   logical(c_bool):: PrintInfo    =.true.      ! =T: Print information on screen.
-  logical(c_bool):: OutInBframe  =.true.      ! =T print velocities in B-frame (if not, use a-frame)
-  logical(c_bool):: OutInaframe  =.false.     ! =T print velocities in a-frame (if not, Inertial frame)
+  logical(c_bool):: OutInBframe  =.false.      ! =T print velocities in B-frame (if not, use a-frame)
+  logical(c_bool):: OutInaframe  =.true.     ! =T print velocities in a-frame (if not, Inertial frame)
   integer(c_int):: ElemProj     = 0          ! =0: Element info computed in the global frame.
                                       ! =1: Element info computed in a fixed element frame.
                                       ! =2: Element info computed in a moving element frame.
   integer(c_int):: MaxIterations=99          ! Maximum number of iterations.
   integer(c_int):: NumLoadSteps=5            ! Number of load increments.
-  integer(c_int):: NumGauss=1                ! Number of Gauss points in the integration.
+  integer(c_int):: NumGauss=2                ! Number of Gauss points in the integration.
   integer(c_int):: Solution=111              ! Solution process:
                                       ! =102/112: cbeam3 linear/nonlinear static.
                                       ! =202/212: cbeam3 linear/nonlinear structural dynamic
@@ -86,6 +86,7 @@ module xbeam_shared
   real(c_double):: gravity_dir_x = 0
   real(c_double):: gravity_dir_y = 0
   real(c_double):: gravity_dir_z = 1
+  logical(c_bool):: balancing = .false.
  end type
 
 end module xbeam_shared

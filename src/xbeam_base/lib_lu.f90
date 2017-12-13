@@ -25,6 +25,7 @@ module lib_lu
 !
  contains
 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !->Subroutine LU_BKSUBS.
@@ -363,24 +364,117 @@ end function inv
         return
     end subroutine lu_sparse
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    subroutine lu_solve(A, b, X)
+    subroutine lu_solve(A, b, X, balancing)
         real(8), intent(IN)     :: A(:, :)
         real(8), intent(in)     :: b(:)          ! Forcing vector
         real(8), intent(out)    :: X(:)          ! Solution vector
         real(8),allocatable     :: invFulMat(:,:)! Full matrix
+        logical, optional       :: balancing
         integer:: dimb
+        real(8)                 :: r(size(A, DIM=1))
+        real(8)                 :: c(size(A, DIM=2))
+        real(8)                 :: rowcnd
+        real(8)                 :: colcnd
+        real(8)                 :: amax
+        real(8)                 :: rcond
+        real(8)                 :: ferr
+        real(8)                 :: berr
+        integer                 :: info
+        integer                 :: ipivot(size(A, DIM=1))
+        character*1             :: equed
+        character*1             :: fact
+        character*1             :: trans
+        integer                 :: unit
+        integer                 :: i
 
-        dimb=size(b)
+        real(8)                 :: A_copy(size(A, dim=1), size(A, dim=2))
+        real(8)                 :: b_copy(size(A, dim=1))
+        real(8)                 :: AF(size(A, dim=1), size(A, dim=2))
+        real(8)                 :: work(size(A, dim=1)*4)
+        integer                 :: iwork(size(A, dim=1))
+        integer                 :: nrows
 
-        allocate(invFulMat(dimb,dimb))
+        A_copy = A
+        X = b
+        b_copy = b
+        nrows = size(b)
+        if (present(balancing) .and. balancing) then
+            fact = 'E'
+        else
+            fact = 'N'
+        end if
+        trans = 'N'
+        equed = 'B'
 
-        ! Calculate the inverse
-        ! call lu_invers(FulMat, invFulMat)
-        invFulMat = inv(A)
+        call DGESVX(fact,&
+                    trans,&
+                    nrows,&
+                    1,&
+                    A_copy,&
+                    nrows,&
+                    AF,&
+                    nrows,&
+                    ipivot,&
+                    equed,&
+                    r,&
+                    c,&
+                    b_copy,&
+                    nrows,&
+                    X,&
+                    nrows,&
+                    rcond,&
+                    ferr,&
+                    berr,&
+                    work,&
+                    iwork,&
+                    info&
+                    )
 
-        X = MATMUL(invFulMat, b)
+        if (info /= 0) then
+            print*, '***INFO is /= 0 in DGESV, something went wrong.'
+            print*, '   Its value is ', info
 
-        deallocate(invFulMat)
+            open(newunit=unit, file='debug_failed_Asys.txt')
+            do i=1, size(A(:,1))
+                write(unit,*)A(i, :)
+            end do
+            close(unit)
+            ! stop
+        end if
+
+
+        ! ! solve system
+        ! call dgesv(size(A_copy, DIM=1),&
+        !            1,&
+        !            A_copy,&
+        !            size(A_copy, DIM=1),&
+        !            ipivot,&
+        !            x,&
+        !            size(A_copy, DIM=1),&
+        !            info)
+        ! if (info /= 0) then
+        !     print*, 'Info in SGESV = ', info
+        ! end if
+        ! call gesv(A_copy,&
+        !            ipivot,&
+        !            x)
+
+
+
+
+
+        !
+        ! dimb=size(b)
+        !
+        ! allocate(invFulMat(dimb,dimb))
+        !
+        ! ! Calculate the inverse
+        ! ! call lu_invers(FulMat, invFulMat)
+        ! invFulMat = inv(A)
+        !
+        ! X = MATMUL(invFulMat, b)
+        !
+        ! deallocate(invFulMat)
         return
     end subroutine lu_solve
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

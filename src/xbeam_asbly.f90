@@ -140,12 +140,12 @@ subroutine xbeam_asbly_dynamic_new_interface (&
 
   real(8),      intent(out)     :: MRS(6, numdof)            ! mass matrix.
   real(8),      intent(out)     :: MRR(6, 6)          ! Reference system mass matrix.
-  real(8),      intent(inout)   :: CRS(6, numdof)            ! Sparse damping matrix.
+  real(8),      intent(out)     :: CRS(6, numdof)            ! Sparse damping matrix.
   real(8),      intent(out)     :: CRR(6, 6)          ! Reference system damping matrix.
   real(8),      intent(out)     :: CQR(4, 6)
   real(8),      intent(out)     :: CQQ(4, 4) ! Tangent matrices from linearisation of quaternion equation.
-  real(8),      intent(inout)   :: KRS(6, numdof)            ! Sparse stiffness matrix.
-  real(8),      intent(inout)   :: Frigid(6, numdof + 6)      ! Influence coefficients matrix for applied forces.
+  real(8),      intent(out)     :: KRS(6, numdof)            ! Sparse stiffness matrix.
+  real(8),      intent(out)     :: Frigid(6, numdof + 6)      ! Influence coefficients matrix for applied forces.
   real(8),      intent(out)     :: Qrigid(6)      ! Stiffness and gyroscopic force vector.
   type(xbopts), intent(in)      :: Options           ! Solver parameters.
   real(8),      intent(in)      :: Cao(3, 3)    ! Rotation operator from reference to inertial frame
@@ -154,7 +154,6 @@ subroutine xbeam_asbly_dynamic_new_interface (&
   logical:: Flags(MaxElNod)                ! Auxiliary flags.
   integer:: i,i1, j                        ! Counters.
   integer:: iElem                          ! Counter on the finite elements.
-  integer:: NumE                           ! Number of elements in the model.
   integer:: NumNE                          ! Number of nodes in an element.
   integer:: NumGaussMass                   ! Number of Gaussian points in the inertia terms.
 
@@ -172,7 +171,7 @@ subroutine xbeam_asbly_dynamic_new_interface (&
   real(8):: rElemDDot (MaxElNod,6)         ! Current Coordinates/CRV of nodes in the element.
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)  ! Transformation from master to rigid node orientations.
 
-  real(8), pointer          :: temp_pointer(:, :)
+  ! real(8), pointer          :: temp_pointer(:, :)
 
   CRS = 0.0d0
   KRS = 0.0d0
@@ -184,10 +183,7 @@ subroutine xbeam_asbly_dynamic_new_interface (&
   CQQ = 0.0d0
   Qrigid = 0.0d0
 
-! Loop in all elements in the model.
-  NumE=size(Elem)
-
-  do iElem=1,NumE
+  do iElem=1,n_elem
     MRSelem=0.d0; CRSelem=0.d0; KRSelem=0.d0; Felem=0.d0; Qelem=0.d0
     MRRelem=0.d0; CRRelem=0.d0; SB2B1=0.d0
 
@@ -219,7 +215,8 @@ subroutine xbeam_asbly_dynamic_new_interface (&
     call xbeam_fgyr (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Qelem,Options%NumGauss)
 
 ! Compute the element mass tangent stiffness matrix (can be neglected).
-    call xbeam_kmass  (NumNE,rElem0,rElem,rElemDDot,VrelDot,Elem(iElem)%Mass,KRSelem,NumGaussMass)
+    ! call xbeam_kmass  (NumNE,rElem0,rElem,rElemDDot,VrelDot,Elem(iElem)%Mass,KRSelem,NumGaussMass)
+    call xbeam_kmass  (NumNE,rElem0,rElem,rElemDDot,VrelDot,Elem(iElem)%Mass,KRSelem,options%NumGauss)
 
 ! Compute the element contribution to the mass and damping in the motion of the reference frame.
     call xbeam_mrr  (NumNE,rElem0,rElem              ,Elem(iElem)%Mass,MRRelem,NumGaussMass)
@@ -237,7 +234,7 @@ subroutine xbeam_asbly_dynamic_new_interface (&
     end if
 
 ! Project slave degrees of freedom to the orientation of the "master" ones.
-    call cbeam3_projs2m (NumNE,Elem(iElem)%Master(:,:),Psi0(iElem,:,:),Psi0,SB2B1)
+    call cbeam3_projs2m (NumNE,Elem(iElem)%Master,Psi0(iElem,:,:),Psi0,SB2B1)
     MRSelem=matmul(MRSelem,SB2B1)
     CRSelem=matmul(CRSelem,SB2B1)
     KRSelem=matmul(KRSelem,SB2B1)
@@ -274,6 +271,80 @@ subroutine xbeam_asbly_dynamic_new_interface (&
   CQQ=0.5d0*xbeam_QuadSkew(Vrel(4:6))
  end subroutine xbeam_asbly_dynamic_new_interface
 
+
+ subroutine xbeam_asbly_MRS_gravity(&
+    numdof, n_node, n_elem, Elem,Node,Coords,Psi0,PosDefor,PsiDefor,  &
+                               MRS,Options)
+  use lib_rotvect
+  use lib_fem
+  use lib_cbeam3
+  use lib_xbeam
+  use lib_mat
+  integer,      intent(IN)      :: numdof
+  integer,      intent(IN)      :: n_node
+  integer,      intent(IN)      :: n_elem
+  type(xbelem), intent(in)      :: Elem(n_elem)               ! Element information.
+  type(xbnode), intent(in)      :: Node(n_node)               ! List of independent nodes.
+  real(8),      intent(in)      :: Coords    (n_node, 3)       ! Initial coordinates of the grid points.
+  real(8),      intent(in)      :: Psi0      (n_elem, 3, 3)     ! Initial CRV of the nodes in the elements.
+  real(8),      intent(in)      :: PosDefor  (n_node, 3)       ! Current coordinates of the grid points
+  real(8),      intent(in)      :: PsiDefor  (n_elem, 3, 3)     ! Current CRV of the nodes in the elements.
+  real(8),      intent(out)     :: MRS(6, numdof + 6)            ! mass matrix.
+  type(xbopts), intent(in)      :: Options           ! Solver parameters.
+
+! Local variables.
+  logical:: Flags(MaxElNod)                ! Auxiliary flags.
+  integer:: i,i1, j                        ! Counters.
+  integer:: iElem                          ! Counter on the finite elements.
+  integer:: NumE                           ! Number of elements in the model.
+  integer:: NumNE                          ! Number of nodes in an element.
+  integer:: NumGaussMass                   ! Number of Gaussian points in the inertia terms.
+  real(8):: MRSelem (6,6*MaxElNod)        ! Element mass matrix.
+  real(8):: rElem0(MaxElNod,6)             ! Initial Coordinates/CRV of nodes in the element.
+  real(8):: rElem (MaxElNod,6)             ! Current Coordinates/CRV of nodes in the element.
+  real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)  ! Transformation from master to rigid node orientations.
+
+  MRS = 0.0d0
+
+! Loop in all elements in the model.
+  NumE=size(Elem)
+
+  do iElem=1,NumE
+    MRSelem=0.d0
+    SB2B1=0.d0
+
+! Extract coords of elem nodes and determine if they are master (Flag=T) or slave.
+    call fem_glob2loc_extract (Elem(iElem)%Conn,Coords,rElem0(:,1:3),NumNE)
+
+    Flags=.false.
+    do i=1,Elem(iElem)%NumNodes
+      if (Node(Elem(iElem)%Conn(i))%Master(1).eq.iElem) Flags(i)=.true.
+    end do
+
+    call fem_glob2loc_extract (Elem(iElem)%Conn,PosDefor,    rElem    (:,1:3),NumNE)
+    rElem0   (:,4:6)= Psi0        (iElem,:,:)
+    rElem    (:,4:6)= PsiDefor    (iElem,:,:)
+
+! Use full integration for mass matrix.
+    NumGaussMass=NumNE
+
+    call xbeam_mrs  (NumNE,rElem0,rElem,Elem(iElem)%Mass,MRSelem,NumGaussMass)
+! Add contributions of non-structural (lumped) mass.
+    if (any(Elem(iElem)%RBMass.ne.0.d0)) then
+      call xbeam_rbmrs  (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,MRSelem)
+    end if
+
+! Project slave degrees of freedom to the orientation of the "master" ones.
+    call cbeam3_projs2m (NumNE,Elem(iElem)%Master,Psi0(iElem,:,:),Psi0,SB2B1)
+    MRSelem=matmul(MRSelem,SB2B1)
+! Add to global matrix. DONT remove columns and rows at clamped points.
+    do i=1,NumNE
+      i1=Node(Elem(iElem)%Conn(i))%Vdof + 1
+        MRS(:, 6*(i1-1) + 1:6*(i1-1) + 6) = MRS(:, 6*(i1-1) + 1:6*(i1-1) + 6) + (MRSelem(:,6*(i-1)+1:6*i))
+    end do
+
+  end do
+end subroutine xbeam_asbly_MRS_gravity
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !-> Subroutine XBEAM_ASBLY_ORIENT
@@ -410,6 +481,7 @@ subroutine xbeam_asbly_orient (Elem,Node,PosDefor,PsiDefor,Vrel,Quat,CQR,CQQ,fs,
   real(8):: ForceElem (MaxElNod,6)              ! Current forces/moments of nodes in the element.
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)       ! Transformation from master to global node orientations.
 
+  print*, 'HERE------------------------------------------------------------------'
 ! Initialise
   call sparse_zero(frf,Frigid_foll)
   call sparse_zero(frd,Frigid_dead)
@@ -438,13 +510,13 @@ subroutine xbeam_asbly_orient (Elem,Node,PosDefor,PsiDefor,Vrel,Quat,CQR,CQQ,fs,
 
     ! Compute the influence coefficients multiplying the vector of external forces.
     call xbeam_fext (NumNE,rElem,Flags(1:NumNE),Felem_foll,.true._c_bool,.true._c_bool,CAG)
-    call xbeam_fext (NumNE,rElem,Flags(1:NumNE),Felem_dead,.false._c_bool,.false._c_bool,CAG)
+    ! call xbeam_fext (NumNE,rElem,Flags(1:NumNE),Felem_dead,.false._c_bool,.false._c_bool,CAG)
 
     ! Add to global matrix. Remove columns and rows at clamped points.
     do i=1,NumNE
       i1=Node(Elem(iElem)%Conn(i))%Vdof
       call sparse_addmat (0,6*(i1),Felem_foll(:,6*(i-1)+1:6*i),frf,Frigid_foll)
-      call sparse_addmat (0,6*(i1),Felem_dead(:,6*(i-1)+1:6*i),frd,Frigid_dead)
+    !   call sparse_addmat (0,6*(i1),Felem_dead(:,6*(i-1)+1:6*i),frd,Frigid_dead)
     end do
 
   end do

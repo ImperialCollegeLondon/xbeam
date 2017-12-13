@@ -1597,6 +1597,7 @@ module lib_xbeam
            ARC(1:3,1:3)= CaB
            ARC(4:6,1:3)= matmul(rot_skew(Ri(iNode,1:3)),CaB)
            ARC(4:6,4:6)= CaB                                            !rotvect_psi2rot(Ri(iNode,4:6))
+        !    ARC(4:6,4:6)= matmul(rotvect_psi2rot(Ri(iNode,4:6)), CaB)
 
            ! Compute influence coefficients for follower forces.
            Fmat(:,6*(iNode-1)+1:6*iNode)= Fmat(:,6*(iNode-1)+1:6*iNode) + ARC
@@ -1649,24 +1650,26 @@ module lib_xbeam
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  function xbeam_Rot (q)
+     use lib_rot
 ! I/O Variables.
   real(8),  intent(inout):: q(:)           ! Quaternion
   real(8)             :: xbeam_Rot(3,3)
 
+  q = q/sqrt(dot_product(q, q))
   xbeam_Rot = 0.d0
 
   xbeam_Rot(1,1) = q(1)*q(1) + q(2)*q(2) - q(3)*q(3) - q(4)*q(4)
   xbeam_Rot(2,2) = q(1)*q(1) - q(2)*q(2) + q(3)*q(3) - q(4)*q(4)
   xbeam_Rot(3,3) = q(1)*q(1) - q(2)*q(2) - q(3)*q(3) + q(4)*q(4)
 
-  xbeam_Rot(1,2) = 2*(q(2)*q(3) + q(1)*q(4))
-  xbeam_Rot(2,1) = 2*(q(2)*q(3) - q(1)*q(4))
+  xbeam_Rot(1,2) = 2.0d0*(q(2)*q(3) + q(1)*q(4))
+  xbeam_Rot(2,1) = 2.0d0*(q(2)*q(3) - q(1)*q(4))
 
-  xbeam_Rot(1,3) = 2*(q(2)*q(4) - q(1)*q(3))
-  xbeam_Rot(3,1) = 2*(q(2)*q(4) + q(1)*q(3))
+  xbeam_Rot(1,3) = 2.0d0*(q(2)*q(4) - q(1)*q(3))
+  xbeam_Rot(3,1) = 2.0d0*(q(2)*q(4) + q(1)*q(3))
 
-  xbeam_Rot(2,3) = 2*(q(3)*q(4) + q(1)*q(2))
-  xbeam_Rot(3,2) = 2*(q(3)*q(4) - q(1)*q(2))
+  xbeam_Rot(2,3) = 2.0d0*(q(3)*q(4) + q(1)*q(2))
+  xbeam_Rot(3,2) = 2.0d0*(q(3)*q(4) - q(1)*q(2))
 
   return
  end function xbeam_Rot

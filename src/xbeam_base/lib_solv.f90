@@ -89,7 +89,7 @@ module lib_solv
 
     !if (print_info .eqv. .true.) write (*,'(2X,A,1PE10.3,A,1PE10.3,$)') &
     !&                           'Res=',Res, ' ResRel=',ResRel
-    if (print_info .eqv. .true.) write (*,'(2X,1PE10.3,2X,1PE10.3,$)') Res, Res/Res0
+    ! if (print_info .eqv. .true.) write (*,'(2X,1PE10.3,2X,1PE10.3,$)') Res, Res/Res0
 
   end subroutine residual_check
 
@@ -151,9 +151,9 @@ module lib_solv
         if ( Er < Ta ) then
             passed = .true.
         end if
-        if (print_info .eqv. .true.) write (*,'(2X,1PE10.3,$)') Er
+        ! if (print_info .eqv. .true.) write (*,'(2X,1PE10.3,$)') Er
     else
-        if (print_info .eqv. .true.) write (*,'(2X,9X,$)')
+        ! if (print_info .eqv. .true.) write (*,'(2X,9X,$)')
     end if
 
     end subroutine error_check
@@ -199,7 +199,7 @@ module lib_solv
 
     !if (print_info .eqv. .true.) write (*,'(2X,A,1PE10.3,A,1PE10.3,$)') &
     ! &                           'DeltaF=',maxval(abs(Qglobal)), ' DeltaX=',maxval(abs(DeltaX))
-    if (print_info .eqv. .true.) write (*,'(2X,1PE10.3,2X,1PE10.3,$)') maxval(abs(r)), maxval(abs(dx))
+    ! if (print_info .eqv. .true.) write (*,'(2X,1PE10.3,2X,1PE10.3,$)') maxval(abs(r)), maxval(abs(dx))
 
   end subroutine delta_check
 
@@ -312,7 +312,7 @@ module lib_solv
 
   do ii=1,Imax
     do jj=1,Jmax
-      write (*,'(2X,F5.2,$)') mat(ii,jj)
+    !   write (*,'(2X,F5.2,$)') mat(ii,jj)
     end do
     print *, ' '
   end do

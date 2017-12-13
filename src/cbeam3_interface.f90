@@ -764,6 +764,158 @@ contains
         end do
     end function generate_xbnode
 
+    subroutine cbeam3_solv_state2disp_python (&
+                                              n_elem,&
+                                              n_node,&
+                                              numdof,&
+                                              pos_ini,&
+                                              psi_ini,&
+                                              pos_def,&
+                                              psi_def,&
+                                              pos_dot,&
+                                              psi_dot,&
+                                              master_node,&
+                                              vdof,&
+                                              num_nodes,&
+                                              master_elem,&
+                                              q,&
+                                              dqdt) bind(C)
+    use lib_fem
+    use lib_rotvect
+    use lib_bgeom
+    use lib_cbeam3
+    use iso_c_binding
+
+    ! I/O Variables.
+    integer(c_int), intent(IN)              :: n_elem
+    integer(c_int), intent(IN)              :: n_node
+    integer(c_int), intent(IN)              :: numdof
+    real(c_double), intent(IN)              :: pos_ini(n_node, 3)
+    real(c_double), intent(IN)              :: psi_ini(n_elem, 3, 3)
+    real(c_double), intent(OUT)             :: pos_def(n_node, 3)
+    real(c_double), intent(OUT)             :: psi_def(n_elem, 3, 3)
+    real(c_double), intent(OUT)             :: pos_dot(n_node, 3)
+    real(c_double), intent(OUT)             :: psi_dot(n_elem, 3, 3)
+    integer(c_int), intent(IN)              :: master_node(n_node, 2)
+    integer(c_int), intent(IN)              :: vdof(n_node)
+    integer(c_int), intent(IN)              :: num_nodes(n_elem)
+    integer(c_int), intent(IN)              :: master_elem(n_elem, 3, 2)
+    real(c_double), intent(IN)              :: q(numdof + 10)
+    real(c_double), intent(IN)              :: dqdt(numdof + 10)
+
+    ! Local variables.
+    integer :: i,j,k               ! Counters.
+    integer :: ix                  ! Counter on the degrees of freedom.
+    integer :: iElem               ! Counter on the elements.
+    integer :: iNode               ! Counter on the nodes.
+
+    ! Store current displacement and its time derivative at all nodes and the
+    ! rotations and its first derivatives at the master nodes of each element.
+    ix = 0
+    do iNode = 1, n_node
+        iElem = master_node(iNode, 1)
+        k = master_node(iNode, 2)
+            ! Constrained nodes.
+            if (Vdof(iNode) == 0) then
+              pos_def(iNode,:) = pos_ini(iNode,:)
+              pos_dot(iNode,:) = 0.d0
+
+              psi_def(iElem,k,:) = psi_ini(iElem, k, :)
+              psi_dot(iElem,k,:) = 0.d0
+
+            ! Unconstrained nodes.
+            else
+              pos_def(iNode, :) = q   (ix+1:ix+3)
+              pos_dot(iNode, :) = dqdt(ix+1:ix+3)
+
+              psi_def(iElem,k,:) = q   (ix+4:ix+6)
+              psi_dot(iElem,k,:) = dqdt(ix+4:ix+6)
+
+              ix=ix+6
+            end if
+        end do
+
+        ! Compute rotation vector and time derivative at slave nodes within elements.
+        do i=1, n_elem
+            do j=1, num_nodes(i)
+            ! Copy rotation and derivative from master node for each slave node.
+              if (master_elem(i, j ,1) /= 0) then
+                psi_def(i,j,:) = psi_def(master_elem(i, j, 1), master_elem(i, j, 2), :)
+                psi_dot(i,j,:) = psi_dot(master_elem(i, j, 1), master_elem(i, j, 2), :)
+              end if
+            end do
+        ! Include master-to-slave initial rotations from the undeformed configuration.
+        call cbeam3_projm2s (num_nodes(i), master_elem(i, :, :), psi_ini(i,:,:), psi_ini, psi_def(i,:,:))
+    end do
+
+end subroutine cbeam3_solv_state2disp_python
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-> Subroutine CBEAM3_SOLV_DISP2STATE_PYTHON
+!
+!-> Description:
+!
+!    Write current state vector from current displacements and rotations.
+!
+!-> Remarks.-
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ subroutine cbeam3_solv_disp2state_python (&
+                                           n_elem,&
+                                           n_node,&
+                                           numdof,&
+                                           pos_def,&
+                                           psi_def,&
+                                           pos_dot,&
+                                           psi_dot,&
+                                           vdof,&
+                                           master_node,&
+                                           q,&
+                                           dqdt) bind(C)
+  use lib_fem
+
+! I/O Variables.
+    integer(c_int), intent(IN)              :: n_elem
+    integer(c_int), intent(IN)              :: n_node
+    integer(c_int), intent(IN)              :: numdof
+    real(c_double), intent(IN)              :: pos_def(n_node, 3)
+    real(c_double), intent(IN)              :: psi_def(n_elem, 3, 3)
+    real(c_double), intent(IN)              :: pos_dot(n_node, 3)
+    real(c_double), intent(IN)              :: psi_dot(n_elem, 3, 3)
+    integer(c_int), intent(IN)              :: vdof(n_node)
+    integer(c_int), intent(IN)              :: master_node(n_node, 2)
+    real(c_double), intent(INOUT)             :: q(numdof + 10)
+    real(c_double), intent(INOUT)             :: dqdt(numdof + 10)
+
+
+! Local variables.
+  integer :: k                   ! Counters.
+  integer :: ix                  ! Counter on the degrees of freedom.
+  integer :: iElem               ! Counter on the elements.
+  integer :: iNode               ! Counter on the nodes.
+
+! Loop in all nodes in the model.
+  ix=0
+  do iNode=1, n_node
+    iElem=master_node(iNode, 1)
+    if (Vdof(iNode) /= 0) then
+      k=master_node(iNode, 2)
+
+! Current nodal displacements and derivatives.
+      q   (ix+1:ix+3)= pos_def(iNode,:)
+      dqdt(ix+1:ix+3)= pos_dot(iNode,:)
+
+! Cartesian rotation vector at master nodes.
+      q   (ix+4:ix+6)=psi_def(iElem,k,:)
+      dqdt(ix+4:ix+6)=psi_dot(iElem,k,:)
+      ix=ix+6
+    end if
+  end do
+
+  return
+ end subroutine cbeam3_solv_disp2state_python
+
+
 
 subroutine output_elems (Elem,Coords,Psi)
   use lib_fem

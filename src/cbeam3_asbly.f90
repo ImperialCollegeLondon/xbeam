@@ -513,10 +513,14 @@ end interface cbeam3_asbly_dynamic
 
 ! Loop in all elements in the model.
   Mvel = 0.0d0
+  Cvel = 0.0d0
+  Qglobal = 0.0d0
 
   do iElem=1,n_elem
     Melem=0.d0; Celem=0.d0; Kelem=0.d0; Felem=0.d0; Qelem=0.d0
     Mvelelem=0.d0; Cvelelem=0.d0; SB2B1=0.d0
+    ! rElem0 = 0.0d0
+    ! rElem = 0.0d0
 
 ! Extract coords of elem nodes and determine if they are master (Flag=T) or slave.
     call fem_glob2loc_extract (Elem(iElem)%Conn,Coords,rElem0(:,1:3),NumNE)
@@ -583,6 +587,7 @@ end interface cbeam3_asbly_dynamic
     Felem=matmul(transpose(SB2B1),Felem)
     Mvelelem=matmul(transpose(SB2B1),Mvelelem)
     Cvelelem=matmul(transpose(SB2B1),Cvelelem)
+
 ! Add to global matrix. Remove columns and rows at clamped points.
     do i=1,NumNE
       i1=Node(Elem(iElem)%Conn(i))%Vdof
@@ -730,7 +735,7 @@ end interface cbeam3_asbly_dynamic
     use lib_rot
     integer, intent(IN)             :: NumDof
     type(xbopts), intent(IN)        :: options
-    real(8), allocatable             :: gravity_vec(:)
+    real(8)                         :: gravity_vec(numdof)
     real(8), optional, intent(IN)    :: g(3)
 
     ! local variables
@@ -746,7 +751,6 @@ end interface cbeam3_asbly_dynamic
         g_2 = g
     end if
 
-    allocate(gravity_vec(NumDof))
     gravity_vec = 0.0d0
     do i=1,NumDof/6
         ii = (i - 1)*6
@@ -759,11 +763,9 @@ end interface cbeam3_asbly_dynamic
     integer, intent(IN)         :: NumDof
     type(xbopts), intent(IN)    :: options
     real(8), intent(IN)         :: Cao(3,3)
-    real(8), allocatable        :: gravity_vec(:)
+    real(8)                      :: gravity_vec(numdof)
 
     ! local vars
-    integer                     :: i
-    integer                     :: ii
     real(8)                     :: g(3)
 
     g = rot_unit([options%gravity_dir_x,&
