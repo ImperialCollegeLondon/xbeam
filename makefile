@@ -27,6 +27,7 @@ install: $(LIBRARY)
 
 $(LIBRARY):
 	$(MAKE) -C src
+	mkdir -p ./lib
 	mv $(FOLDER)$(LIBRARY) ./lib/$(LIBRARY)
 
 .PHONY: clean veryclean

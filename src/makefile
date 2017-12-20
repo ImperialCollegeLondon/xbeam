@@ -24,11 +24,9 @@ all: $(LIBRARY)
 
 $(LIBRARY): $(OBJS)
 	$(FCOMP) $(LDFLAGS) $(INCLUDE) -o $@ $(BASE_OBJS) $^
-	#$(FCOMP) $(FCFLAGS) $(INCLUDE) -o $@ $^ $(LDFLAGS)
 
 $(OBJS): $(BASE_OBJS)
 
-#$(BASE_OBJS): $(wildcard $(INCLUDE_DIR)/*.f90) XBEAM_BASE
 $(BASE_OBJS): $(wildcard $(INCLUDE_DIR)/*.f90)
 	$(FCOMP) $(FCFLAGS) $(INCLUDE) -c $<
 
