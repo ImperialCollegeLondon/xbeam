@@ -1,10 +1,10 @@
 export FCOMP = gfortran
-# export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fomit-frame-pointer
-export FCFLAGS = -g -Og -fPIC -fcheck=all -fbacktrace -pedantic # -Wall
+export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fomit-frame-pointer -ffast-math
+# export FCFLAGS = -g -Og -fPIC -fcheck=all -fbacktrace -pedantic # -Wall
 
 # export FCOMP = ifort
 # export FCFLAGS = -fpic -O0 -g -stand f08    -assume realloc_lhs  -check bounds -traceback  -fstack-protector  -assume protect_parens  -implicitnone -check uninit -ftrapuv -debug all -fpe-all=0 -no-ftz
-# export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -fomit-frame-pointer -xHost
+# export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -fomit-frame-pointer -xHost -fast
 
 export LDFLAGS = -llapack -shared -fopenmp
 FOLDER = src/
