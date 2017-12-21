@@ -1100,14 +1100,10 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     beta = 0.25d0*(gamma + 0.5d0)*(gamma + 0.5d0)
 
     ! ! predictor step
-    ! Q = Q + dt*dQdt + (0.5d0 - beta)*dt*dt*dQddt
-    ! dQdt = dQdt + (1.0d0 - gamma)*dt*dQddt
-    ! dQddt = 0.0d0
-    ! Q = Q + dt*dQdt + 0.5*dQddt*dt*dt
-    ! dQdt = dQdt + dt*dQddt
-    q = 0
-    dqdt = 0
-    dqddt = 0
+     Q = Q + dt*dQdt + (0.5d0 - beta)*dt*dt*dQddt
+     dQdt = dQdt + (1.0d0 - gamma)*dt*dQddt
+     dQddt = 0.0d0
+     
     call cbeam3_solv_disp2state(Node,&
                                 pos_def,&
                                 psi_def,&
