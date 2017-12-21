@@ -1100,6 +1100,10 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     beta = 0.25d0*(gamma + 0.5d0)*(gamma + 0.5d0)
 
     ! ! predictor step
+     ! Q = Q + 0.8*dt*dQdt + (0.5d0 - beta)*0.8*0.8*dt*dt*dQddt
+     ! dQdt = dQdt + (1.0d0 - gamma)*0.8*dt*dQddt
+     ! dQddt = 0.0d0
+     ! print*, 'Predictor 0.8'
      Q = Q + dt*dQdt + (0.5d0 - beta)*dt*dt*dQddt
      dQdt = dQdt + (1.0d0 - gamma)*dt*dQddt
      dQddt = 0.0d0
@@ -1113,7 +1117,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     !                             dqdt(1:numdof))
     ! dqdt(numdof+1:numdof+6) = for_vel
     ! dqdt(numdof+7:numdof+10) = quat
-    ! 
+    !
     ! Iteration loop -----------------------------------------
     converged = .FALSE.
     do iter = 1, options%maxiterations + 1
@@ -1289,7 +1293,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         ! print*, 'maxval(abs(Qtotal)) = ', maxval(abs(Qtotal))
         if (maxval(abs(Qtotal)) < mindelta .AND.&
             maxval(abs(Qtotal)) < MinDeltarigid) then
-            print*, 'converged in ', iter
+            ! print*, 'converged in ', iter
             converged = .TRUE.
         end if
 
