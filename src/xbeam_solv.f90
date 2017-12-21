@@ -1103,17 +1103,17 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
      Q = Q + dt*dQdt + (0.5d0 - beta)*dt*dt*dQddt
      dQdt = dQdt + (1.0d0 - gamma)*dt*dQddt
      dQddt = 0.0d0
-     
-    call cbeam3_solv_disp2state(Node,&
-                                pos_def,&
-                                psi_def,&
-                                pos_dot_def,&
-                                psi_dot_def,&
-                                q(1:numdof),&
-                                dqdt(1:numdof))
-    dqdt(numdof+1:numdof+6) = for_vel
-    dqdt(numdof+7:numdof+10) = quat
 
+    ! call cbeam3_solv_disp2state(Node,&
+    !                             pos_def,&
+    !                             psi_def,&
+    !                             pos_dot_def,&
+    !                             psi_dot_def,&
+    !                             q(1:numdof),&
+    !                             dqdt(1:numdof))
+    ! dqdt(numdof+1:numdof+6) = for_vel
+    ! dqdt(numdof+7:numdof+10) = quat
+    ! 
     ! Iteration loop -----------------------------------------
     converged = .FALSE.
     do iter = 1, options%maxiterations + 1
