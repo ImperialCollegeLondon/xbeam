@@ -25,6 +25,7 @@ module lib_lu
 !
  contains
 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !->Subroutine LU_BKSUBS.
@@ -108,6 +109,7 @@ module lib_lu
 !
       n= size(A,1)
       allocate (VV(N))
+      imax = 0
 !
       D = 1.0
       DO I = 1, N
@@ -172,14 +174,25 @@ module lib_lu
   integer, dimension(size(A,1)) :: ipiv   ! pivot indices
   integer :: n, info
 
+  integer :: i, j, m
+
   ! External procedures defined in LAPACK
   external DGETRF
   external DGETRI
 
   ! Store A in Ainv to prevent it from being overwritten by LAPACK
   Ainv = A
-  n = size(A,1)
-
+  n = size(A, 1)
+  m = size(A, 2)
+ !  if (maxval(abs(A)) > 1e12) then
+ !      open(unit=2, file='matrix.txt', ACTION="write", STATUS="replace")
+ !      print*, 'UPPPSSSSS'
+ !      do i=1, n
+ !         write(2, '(*(2X e18.7))')((A(i,j)) ,j=1,M)
+ !      end do
+ !     close(2)
+ !     read(*,*)
+ ! end if
   ! DGETRF computes an LU factorization of a general M-by-N matrix A
   ! using partial pivoting with row interchanges.
   call DGETRF(n, n, Ainv, n, ipiv, info)
@@ -350,6 +363,120 @@ end function inv
         deallocate(invFulMat)
         return
     end subroutine lu_sparse
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    subroutine lu_solve(A, b, X, balancing)
+        real(8), intent(IN)     :: A(:, :)
+        real(8), intent(in)     :: b(:)          ! Forcing vector
+        real(8), intent(out)    :: X(:)          ! Solution vector
+        real(8),allocatable     :: invFulMat(:,:)! Full matrix
+        logical, optional       :: balancing
+        integer:: dimb
+        real(8)                 :: r(size(A, DIM=1))
+        real(8)                 :: c(size(A, DIM=2))
+        real(8)                 :: rowcnd
+        real(8)                 :: colcnd
+        real(8)                 :: amax
+        real(8)                 :: rcond
+        real(8)                 :: ferr
+        real(8)                 :: berr
+        integer                 :: info
+        integer                 :: ipivot(size(A, DIM=1))
+        character*1             :: equed
+        character*1             :: fact
+        character*1             :: trans
+        integer                 :: unit
+        integer                 :: i
+
+        real(8)                 :: A_copy(size(A, dim=1), size(A, dim=2))
+        real(8)                 :: b_copy(size(A, dim=1))
+        real(8)                 :: AF(size(A, dim=1), size(A, dim=2))
+        real(8)                 :: work(size(A, dim=1)*4)
+        integer                 :: iwork(size(A, dim=1))
+        integer                 :: nrows
+
+        A_copy = A
+        X = b
+        b_copy = b
+        nrows = size(b)
+        if (present(balancing) .and. balancing) then
+            fact = 'E'
+        else
+            fact = 'N'
+        end if
+        trans = 'N'
+        equed = 'B'
+
+        call DGESVX(fact,&
+                    trans,&
+                    nrows,&
+                    1,&
+                    A_copy,&
+                    nrows,&
+                    AF,&
+                    nrows,&
+                    ipivot,&
+                    equed,&
+                    r,&
+                    c,&
+                    b_copy,&
+                    nrows,&
+                    X,&
+                    nrows,&
+                    rcond,&
+                    ferr,&
+                    berr,&
+                    work,&
+                    iwork,&
+                    info&
+                    )
+
+        if (info /= 0) then
+            print*, '***INFO is /= 0 in DGESV, something went wrong.'
+            print*, '   Its value is ', info
+
+            open(newunit=unit, file='debug_failed_Asys.txt')
+            do i=1, size(A(:,1))
+                write(unit,*)A(i, :)
+            end do
+            close(unit)
+            ! stop
+        end if
+
+
+        ! ! solve system
+        ! call dgesv(size(A_copy, DIM=1),&
+        !            1,&
+        !            A_copy,&
+        !            size(A_copy, DIM=1),&
+        !            ipivot,&
+        !            x,&
+        !            size(A_copy, DIM=1),&
+        !            info)
+        ! if (info /= 0) then
+        !     print*, 'Info in SGESV = ', info
+        ! end if
+        ! call gesv(A_copy,&
+        !            ipivot,&
+        !            x)
+
+
+
+
+
+        !
+        ! dimb=size(b)
+        !
+        ! allocate(invFulMat(dimb,dimb))
+        !
+        ! ! Calculate the inverse
+        ! ! call lu_invers(FulMat, invFulMat)
+        ! invFulMat = inv(A)
+        !
+        ! X = MATMUL(invFulMat, b)
+        !
+        ! deallocate(invFulMat)
+        return
+    end subroutine lu_solve
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end module lib_lu

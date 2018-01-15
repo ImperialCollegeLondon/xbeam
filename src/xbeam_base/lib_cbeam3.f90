@@ -355,8 +355,8 @@ module lib_cbeam3
   integer :: i,j                   ! Counters.
   integer :: iGauss                ! Counter on the Gaussian points.
   real(8) :: Jacobian              ! ds/deta, with eta the nondimensional arclength.
-  real(8),allocatable :: CoordGauss (:) ! Coords of Gauss points.
-  real(8),allocatable :: WeightGauss(:) ! Coords of Gauss points.
+  real(8) :: CoordGauss (NumGauss) ! Coords of Gauss points.
+  real(8) :: WeightGauss(NumGauss) ! Coords of Gauss points.
   real(8) :: ShapeFun(MaxNodCB3)    ! Shape functions in a gauss point.
   real(8) :: ShapeDer(MaxNodCB3)    ! Derivatives of ShapeFun in a gauss point.
 
@@ -378,10 +378,30 @@ module lib_cbeam3
   real(8) :: N (6,6*MaxNodCB3)      ! Element shape function matrix
   real(8) :: dN(6,6*MaxNodCB3)      ! Derivatives of shape function.
 
+  Ri_g = 0.0d0
+  r0_g = 0.0d0
+  dRi_g = 0.0d0
+  dr0_g = 0.d00
+
+  CBa = 0.0d0
+  KB = 0.0d0
+  gamma = 0.0d0
+  Forces = 0.0d0
+  Rot = 0.0d0
+  dRot = 0.0d0
+  Strain = 0.0d0
+
+  Ak = 0.0d0
+  D = 0.0d0
+  B = 0.0d0
+  Yp = 0.0d0
+  dYp = 0.0d0
+  N = 0.0d0
+  dN = 0.0d0
 
 ! Define Gauss points and loop on them.
-  allocate (CoordGauss(NumGauss))
-  allocate (WeightGauss(NumGauss))
+  CoordGauss = 0.0d0
+  WeightGauss = 0.0d0
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
 
   do iGauss=1,NumGauss
@@ -464,9 +484,6 @@ module lib_cbeam3
 &                  * matmul(transpose(B),Forces)
 
   end do
-
-  deallocate (CoordGauss,WeightGauss)
-  return
  end subroutine cbeam3_fstif
 
 
@@ -1289,8 +1306,8 @@ module lib_cbeam3
   real(8) :: Jacobian               ! ds/deta, with eta the nondimensional arclength.
   real(8) :: ShapeFun(MaxNodCB3)    ! Shape functions in a gauss point.
   real(8) :: ShapeDer(MaxNodCB3)    ! Derivatives of ShapeFun in a gauss point.
-  real(8),allocatable :: CoordGauss (:) ! Coords of Gauss points.
-  real(8),allocatable :: WeightGauss(:) ! Coords of Gauss points.
+  real(8) :: CoordGauss (NumGauss) ! Coords of Gauss points.
+  real(8) :: WeightGauss(NumGauss) ! Coords of Gauss points.
 
   real(8) :: dr0_g (6)              ! Spacial derivative of r0 at Gauss point.
   real(8) :: Ra(3),Psi(3)           ! Displacement and Rotation vector at Gauss point.
@@ -1306,10 +1323,11 @@ module lib_cbeam3
   real(8) :: N (6,6*MaxNodCB3)      ! Element shape function matrix.
 
 ! Define Gauss points and loop on them.
-  allocate (CoordGauss(NumGauss))
-  allocate (WeightGauss(NumGauss))
+  CoordGauss = 0.0d0
+  WeightGauss = 0.0d0
+  ShapeFun = 0.0d0
+  ShapeDer = 0.0d0
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
-
   do iGauss=1,NumGauss
 
 ! Obtain the shape functions and their derivatives.
@@ -1377,8 +1395,6 @@ module lib_cbeam3
 &        * matmul(transpose(N),matmul(matmul(transpose(Yp),D),Phat))
 
   end do
-  deallocate (CoordGauss,WeightGauss)
-  return
  end subroutine cbeam3_fgyr
 
 
@@ -1512,8 +1528,8 @@ module lib_cbeam3
   integer :: i,j                        ! Counters.
   integer :: iGauss                     ! Counter on the Gaussian points.
   real(8) :: Jacobian                   ! ds/deta, with eta the nondimensional arclength.
-  real(8),allocatable :: CoordGauss (:) ! Coords of Gauss points.
-  real(8),allocatable :: WeightGauss(:) ! Coords of Gauss points.
+  real(8) :: CoordGauss (NumGauss) ! Coords of Gauss points.
+  real(8) :: WeightGauss(NumGauss) ! Coords of Gauss points.
   real(8) :: ShapeFun(MaxNodCB3)        ! Shape functions in a gauss point.
   real(8) :: ShapeDer(MaxNodCB3)        ! Derivatives of ShapeFun in a gauss point.
 
@@ -1526,9 +1542,18 @@ module lib_cbeam3
   real(8) :: DTYpN(6,6*MaxNodCB3)  ! Strain matrix operator.
   real(8) :: N (6,6*MaxNodCB3)     ! Element shape function matrix
 
+  Ri_g = 0.0d0
+  dr0_g = 0.0d0
+  CBa = 0.0d0
+  Rot = 0.0d0
+  Yp = 0.0d0
+  D = 0.0d0
+  dVdotdvrel = 0.0d0
+  DTYpN = 0.0d0
+  N = 0.0d0
 ! Define Gauss points and loop on them.
-  allocate (CoordGauss(NumGauss))
-  allocate (WeightGauss(NumGauss))
+  CoordGauss = 0.0d0
+  WeightGauss = 0.0d0
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
 
   do iGauss=1,NumGauss
@@ -1576,12 +1601,9 @@ module lib_cbeam3
     dVdotdvrel(4:6,4:6)= CBa
 
 ! Compute mass tangent stiffness.
-    Mvel= Mvel + WeightGauss(iGauss)*Jacobian &
-&              * matmul(transpose(DTYpN),matmul(ElemMass,dVdotdvrel))
+    Mvel = Mvel + WeightGauss(iGauss)*Jacobian &
+        * matmul(transpose(DTYpN),matmul(ElemMass,dVdotdvrel))
   end do
-  deallocate (CoordGauss,WeightGauss)
-
-  return
  end subroutine cbeam3_mvel
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1761,12 +1783,14 @@ end subroutine cbeam3_rbmvel
     dVdvrel(1:3,4:6)= -matmul(CBa,rot_skew(Ra))
     dVdvrel(4:6,4:6)= CBa
 
+    dVgyrdvrel = 0.0d0
     dVgyrdvrel(1:3,1:3)= -matmul(rot_skew(WB),CBa) + matmul(CBa,rot_skew(Vrel(4:6)))
     dVgyrdvrel(1:3,4:6)= -matmul(CBa,rot_skew(Radot))+matmul(rot_skew(WB),matmul(CBa,rot_skew(Ra))) &
 &                        -matmul(CBa,matmul(rot_skew(Vrel(4:6)),rot_skew(Ra)))
     dVgyrdvrel(4:6,1:3)=  0.d0
     dVgyrdvrel(4:6,4:6)= -matmul(rot_skew(WB),CBa) + matmul(CBa,rot_skew(Vrel(4:6)))
 
+    ADeltaW = 0.0d0
     ADeltaW(1:3,1:3)= rot_skew(WB)
     ADeltaW(1:3,4:6)= 0.d0
     ADeltaW(4:6,1:3)= rot_skew(VB)

@@ -310,13 +310,14 @@ pure function rot_skew (Vector)
 !->Description.-
 !
 !   Compute the unit vector
+!   Modified: ADC: support for any dimension vector, not only 3
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  pure function rot_unit (a)
 
 ! I/O Variables.
   real(8),intent(in)    :: a(:)
-  real(8),dimension(3)  :: rot_unit
+  real(8)  :: rot_unit(size(a))
 
   rot_unit = a/(sqrt(dot_product(a, a)))
 

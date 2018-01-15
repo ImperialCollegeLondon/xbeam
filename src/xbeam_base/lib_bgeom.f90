@@ -35,7 +35,7 @@ module lib_bgeom
 !
 !-> Remarks.-
 !
-!   1) The element can have an arbitrary number of nodes. Isoparametric 
+!   1) The element can have an arbitrary number of nodes. Isoparametric
 !      interpolation is used.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -95,7 +95,7 @@ module lib_bgeom
 !
 !-> Description:
 !
-!    Compute curvature at the center of a 2-noded beam element for given 
+!    Compute curvature at the center of a 2-noded beam element for given
 !    cartesian rotation vector at its nodes.
 !
 !-> Remarks.-
@@ -138,7 +138,7 @@ module lib_bgeom
 ! Compute value of the rotation vector and its derivative at the center point.
   Psi0 = matmul(ShapeFun,PsiGrids(1:NumNodesElem,:))
   dPsi0= matmul(ShapeDer,PsiGrids(1:NumNodesElem,:))
-  
+
   kb= matmul(rotvect_psi2rot (Psi0),dPsi0)
 
   deallocate (ShapeFun,ShapeDer)
@@ -203,7 +203,7 @@ module lib_bgeom
 !
 !-> Description:
 !
-!    For a given node, compute undeformed coordinate system ('b' frame) at 
+!    For a given node, compute undeformed coordinate system ('b' frame) at
 !    each of the element nodes.
 !
 !-> Remarks.-
@@ -268,6 +268,7 @@ module lib_bgeom
   end select
 
 ! Loop through the element nodes.
+  Phi0 = 0.0
   do iNode=1,NumNodesElem
 
   ! Obtain the shape functions derivatives (at the nodes)
@@ -350,7 +351,7 @@ module lib_bgeom
 !  2) This routine is only valid for 2-noded elements along a single line.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine bgeom_strain2disp (NumElems,PsiIni,Lengths,Gamma,Curvature,PosFin,PsiFin)                                 
+ subroutine bgeom_strain2disp (NumElems,PsiIni,Lengths,Gamma,Curvature,PosFin,PsiFin)
   use lib_fem
   use lib_rotvect
 

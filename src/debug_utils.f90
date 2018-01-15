@@ -141,6 +141,10 @@ contains
 			do j=1,6
 				write(unit,*) matrix(i)%InvStiff(j,:)
 		    end do
+			write(unit,*) 'Stiff'
+			do j=1,6
+				write(unit,*) matrix(i)%Stiff(j,:)
+		    end do
 
         end do
         close(unit)

@@ -35,6 +35,10 @@ module cbeam3_asbly
  interface cbeam3_asbly_static
     module procedure :: cbeam3_asbly_static_old
  end interface cbeam3_asbly_static
+interface cbeam3_asbly_dynamic
+    module procedure :: cbeam3_asbly_dynamic_old_interface,&
+                        cbeam3_asbly_dynamic_new_interface
+end interface cbeam3_asbly_dynamic
  contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !-> Subroutine CBEAM3_ASBLY_STATIC_OLD
@@ -363,24 +367,8 @@ module cbeam3_asbly
   return
  end subroutine cbeam3_asbly_modal
 
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!-> Subroutine CBEAM3_ASBLY_DYNAMIC
-!
-!-> Description:
-!
-!   Assembly matrices for a dynamic problem.
-!
-!-> Remarks.-
-!
-!  1) Acceleration is used to compute the linearized stiffness matrix of the
-!     inertia terms, although this can often be neglected.
-!  2) RPN (20.04.2011) added lumped masses to the model.
-!  3) RPN (20.04.2011) The number of Gauss points has been increased in all the
-!     inertia matrices so that they are consistent among them.
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_asbly_dynamic (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,         &
+ subroutine cbeam3_asbly_dynamic_old_interface&
+      (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,         &
 &                                 PosDeforDot,PsiDeforDot,PosDeforDDot,            &
 &                                 PsiDeforDDot,Force,Vrel,VrelDot,ms,Mglobal,Mvel, &
 &                                 cs,Cglobal,Cvel,ks,Kglobal,fs,Fglobal,           &
@@ -418,14 +406,96 @@ module cbeam3_asbly
   type(xbopts),intent(in) :: Options           ! Solver parameters.
   real(8),     intent(in) :: Cao       (:,:)   ! Rotation operator
 
+  integer                   :: numdof
+  integer                   :: n_node
+  integer                   :: n_elem
+  integer                   :: i
+
+  n_node = size(Node)
+  n_elem = size(Elem)
+
+  ms = 0
+  cs = 0
+  ks = 0
+  fs = 0
+
+
+  numdof = 0
+  do i=1, n_node
+      if (Node(i)%vdof > 0)  then
+          numdof = numdof + 6
+      end if
+  end do
+
+
+  call cbeam3_asbly_dynamic_new_interface(numdof, n_node, n_elem, Elem,Node,Coords,Psi0,PosDefor,PsiDefor,         &
+&                                 PosDeforDot,PsiDeforDot,PosDeforDDot,            &
+&                                 PsiDeforDDot,Force,Vrel,VrelDot,Mglobal(1)%a,Mvel, &
+&                                 Cglobal(1)%a,Cvel,Kglobal(1)%a,Fglobal(1)%a,           &
+&                                 Qglobal,Options,Cao)
+
+  end subroutine cbeam3_asbly_dynamic_old_interface
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-> Subroutine CBEAM3_ASBLY_DYNAMIC
+!
+!-> Description:
+!
+!   Assembly matrices for a dynamic problem.
+!
+!-> Remarks.-
+!
+!  1) Acceleration is used to compute the linearized stiffness matrix of the
+!     inertia terms, although this can often be neglected.
+!  2) RPN (20.04.2011) added lumped masses to the model.
+!  3) RPN (20.04.2011) The number of Gauss points has been increased in all the
+!     inertia matrices so that they are consistent among them.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ subroutine cbeam3_asbly_dynamic_new_interface (numdof, n_node, n_elem, Elem,Node,Coords,Psi0,PosDefor,PsiDefor,         &
+&                                 PosDeforDot,PsiDeforDot,PosDeforDDot,            &
+&                                 PsiDeforDDot,Force,Vrel,VrelDot,Mglobal,Mvel, &
+&                                 Cglobal,Cvel,Kglobal,Fglobal,           &
+&                                 Qglobal,Options,Cao)
+  use lib_rotvect
+  use lib_fem
+  use lib_mat
+  use lib_cbeam3
+
+! I/O variables.
+  integer,      intent(IN)      :: numdof
+  integer,      intent(IN)      :: n_node
+  integer,      intent(IN)      :: n_elem
+  type(xbelem), intent(in)      :: Elem(n_elem)               ! Element information.
+  type(xbnode), intent(in)      :: Node(n_node)               ! List of independent nodes.
+  real(8),      intent(in)      :: Coords(n_node, 3)       ! Initial coordinates of the grid points.
+  real(8),      intent(in)      :: Psi0(n_elem, 3, 3)     ! Initial CRV of the nodes in the elements.
+  real(8),      intent(in)      :: PosDefor(n_node, 3)       ! Current coordinates of the grid points
+  real(8),      intent(in)      :: PsiDefor(n_elem, 3, 3)     ! Current CRV of the nodes in the elements.
+  real(8),      intent(in)      :: PosDeforDot(n_node, 3)    ! Current coordinates of the grid points
+  real(8),      intent(in)      :: PsiDeforDot(n_elem, 3, 3)  ! Current CRV of the nodes in the elements.
+  real(8),      intent(in)      :: PosDeforDDot(n_node, 3)   ! Current coordinates of the grid points
+  real(8),      intent(in)      :: PsiDeforDDot(n_elem, 3, 3) ! Current CRV of the nodes in the elements.
+  real(8),      intent(in)      :: Force(n_node, 6)       ! Force vector.
+  real(8),      intent(in)      :: Vrel(6)
+  real(8),      intent(IN)      :: VrelDot(6)   ! Velocity of reference frame and derivative.
+
+  real(8),     intent(inout)    :: Mglobal   (numdof, numdof)     ! Sparse mass matrix.
+  real(8),     intent(out)      :: Mvel      (numdof, 6)   ! Reference system mass matrix.
+  real(8),     intent(inout)    :: Cglobal   (numdof, numdof)     ! Sparse damping matrix.
+  real(8),     intent(out)      :: Cvel      (numdof, 6)   ! Reference system damping matrix.
+  real(8),     intent(inout)    :: Kglobal   (numdof, numdof)     ! Sparse stiffness matrix.
+  real(8),     intent(inout)    :: Fglobal   (numdof, numdof)     ! Influence coefficients matrix for applied forces.
+  real(8),     intent(out)      :: Qglobal   (numdof)     ! Stiffness and gyroscopic force vector.
+  type(xbopts),intent(in)       :: Options           ! Solver parameters.
+  real(8),     intent(in)       :: Cao       (3, 3)   ! Rotation operator
+
 ! Local variables.
   logical:: Flags(MaxElNod)                ! Auxiliary flags.
   integer:: i,j,i1,j1                      ! Counters.
   integer:: iElem                          ! Counter on the finite elements.
-  integer:: NumE                           ! Number of elements in the model.
   integer:: NumNE                          ! Number of nodes in an element.
   integer:: NumGaussMass                   ! Number of Gaussian points in the inertia terms.
-  integer:: NumDof
   integer:: tempi1, tempj1, tempi, tempj
   real(8):: Celem (6*MaxElNod,6*MaxElNod)  ! Element damping matrix.
   real(8):: Felem (6*MaxElNod,6*MaxElNod)  ! Element force influence coefficients.
@@ -442,13 +512,15 @@ module cbeam3_asbly
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)  ! Transformation from master to global node orientations.
 
 ! Loop in all elements in the model.
-  NumE=size(Elem)
-  NumDof = size(Mvel(:,1))
   Mvel = 0.0d0
+  Cvel = 0.0d0
+  Qglobal = 0.0d0
 
-  do iElem=1,NumE
+  do iElem=1,n_elem
     Melem=0.d0; Celem=0.d0; Kelem=0.d0; Felem=0.d0; Qelem=0.d0
     Mvelelem=0.d0; Cvelelem=0.d0; SB2B1=0.d0
+    ! rElem0 = 0.0d0
+    ! rElem = 0.0d0
 
 ! Extract coords of elem nodes and determine if they are master (Flag=T) or slave.
     call fem_glob2loc_extract (Elem(iElem)%Conn,Coords,rElem0(:,1:3),NumNE)
@@ -462,9 +534,9 @@ module cbeam3_asbly
     call fem_glob2loc_extract (Elem(iElem)%Conn,PosDeforDot, rElemDot (:,1:3),NumNE)
     call fem_glob2loc_extract (Elem(iElem)%Conn,PosDeforDDot,rElemDDot(:,1:3),NumNE)
 
-    rElem0   (:,4:6)= Psi0        (iElem,:,:)
-    rElem    (:,4:6)= PsiDefor    (iElem,:,:)
-    rElemDot (:,4:6)= PsiDeforDot (iElem,:,:)
+    rElem0   (:,4:6)= Psi0(iElem,:,:)
+    rElem    (:,4:6)= PsiDefor(iElem,:,:)
+    rElemDot (:,4:6)= PsiDeforDot(iElem,:,:)
     rElemDDot(:,4:6)= PsiDeforDDot(iElem,:,:)
 
     call rotvect_boundscheck2(rElem(1,4:6),rElem(2,4:6))
@@ -477,53 +549,14 @@ module cbeam3_asbly
     NumGaussMass=NumNE
 
 ! Compute the element contribution to the mass and damping in the motion of the reference frame.
-    ! if (iElem == 2) then
-    !     print*, 'CBEAM3'
-    !     print*, 'numNE ', NumNE
-    !     print*, 'rElem0', rElem0
-    !     print*, 'rElem', rElem
-    !     print*, 'Elem%mass'
-    !     do i=1, 3
-    !         print*, Elem(iElem)%Mass(i, 1:3)
-    !     end do
-    !     print*, 'NumGaussMass', NumGaussMass
-    ! end if
     call cbeam3_mvel (NumNE,rElem0,rElem,Elem(iElem)%Mass,Mvelelem,NumGaussMass)
-    ! if (iElem == 2) then
-    !     print*, 'MSR'
-    !     do i=1, 6
-    !         print*, Mvelelem(i, 1:6)
-    !     end do
-    !     print*, '----'
-    !     print*, 'END OF CBEAM'
-    ! end if
-
-    ! if (any(isnan(MVelelem))) then
-    !     print*, 'Found NaN'
-    !     print*, 'iElem = ', iElem
-    !     do i=1, 6
-    !         print*, Mvelelem(i, 1:6)
-    !     end do
-    !     print*, 'cbeam_asbly, line ', 506
-    !     pause
-    ! end if
-    !   print*, 'cbeam_ably, line', 508
-    !   call flush()
     call cbeam3_cvel (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Cvelelem,Options%NumGauss)
 ! Contributions of the structural mass to the linearized inertia matrices.
     call cbeam3_mass (NumNE,rElem0,rElem,                                Elem(iElem)%Mass,Melem,NumGaussMass)
     call cbeam3_cgyr (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Celem,Options%NumGauss)
     call cbeam3_kgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%Mass,Kelem,Options%NumGauss)
-
-    ! if (any(isnan(Kelem))) then
-    !     print*, 'Found NaN in Kelem'
-    !     print*, 'iElem = ', iElem
-    !     print*, 'line ', 521
-    !     pause
-    ! end if
 ! Compute the gyroscopic force vector.
     call cbeam3_fgyr (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Qelem,Options%NumGauss)
-
 ! Add contributions of non-structural (lumped) mass.
     if (any(Elem(iElem)%RBMass.ne.0.d0)) then
       call cbeam3_rbmvel (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,Mvelelem)
@@ -531,35 +564,10 @@ module cbeam3_asbly
       call cbeam3_rbmass (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,Melem)
       call cbeam3_rbcgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,Celem)
       call cbeam3_rbkgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%RBMass,Kelem)
-    ! if (any(isnan(Kelem))) then
-    !     print*, 'Found NaN in Kelem'
-    !     print*, 'iElem = ', iElem
-    !     do i=1, 6
-    !         print*,Kelem(i, 1:6)
-    !     end do
-    !     print*, 'cbeam_asbly, line ', 541
-    !     pause
-    ! end if
       call cbeam3_rbfgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,Qelem)
     end if
-
-    ! if (any(isnan(Kelem))) then
-    !     print*, 'Found NaN in Kelem'
-    !     print*, 'cbeam_asbly, line ', 550
-    !     pause
-    ! end if
 ! Compute the element tangent stiffness matrix and force vectors.
     call cbeam3_kmat  (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Kelem,Options%NumGauss)
-
-    ! if (any(isnan(Kelem))) then
-    !     print*, 'Found NaN in Kelem'
-    !     print*, 'iElem = ', iElem
-    !     do i=1, 6
-    !         print*,Kelem(i, 1:6)
-    !     end do
-    !     print*, 'cbeam_asbly, line ', 555
-    !     pause
-    ! end if
     call cbeam3_kgeom (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Kelem,Options%NumGauss)
     call cbeam3_fstif (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Qelem,Options%NumGauss)
 
@@ -571,8 +579,7 @@ module cbeam3_asbly
     end if
 
 ! Project slave degrees of freedom to the orientation of the "master" ones.
-   ! call cbeam3_projs2m (NumNE,Elem(iElem)%Master(:,:),Psi0(iElem,:,:),Psi0,SB2B1)
-    call cbeam3_slave2master (NumNE,Elem(iElem)%Master(:,:),rElem0(:,4:6),Psi0,rElem(:,4:6),PsiDefor,SB2B1)
+    call cbeam3_slave2master (NumNE,Elem(iElem)%Master,rElem0(:,4:6),Psi0,rElem(:,4:6),PsiDefor,SB2B1)
     Melem=matmul(transpose(SB2B1),matmul(Melem,SB2B1))
     Celem=matmul(transpose(SB2B1),matmul(Celem,SB2B1))
     Kelem=matmul(transpose(SB2B1),matmul(Kelem,SB2B1))
@@ -580,6 +587,7 @@ module cbeam3_asbly
     Felem=matmul(transpose(SB2B1),Felem)
     Mvelelem=matmul(transpose(SB2B1),Mvelelem)
     Cvelelem=matmul(transpose(SB2B1),Cvelelem)
+
 ! Add to global matrix. Remove columns and rows at clamped points.
     do i=1,NumNE
       i1=Node(Elem(iElem)%Conn(i))%Vdof
@@ -596,18 +604,16 @@ module cbeam3_asbly
             tempj1 = 6*(j1-1)
             tempi = 6*(i-1)+1
             tempj = 6*(j-1)+1
-            call sparse_addmat (tempi1, tempj1, Melem(tempi:tempi+5,tempj:tempj+5),ms,Mglobal)
-            call sparse_addmat (tempi1, tempj1, Celem(tempi:tempi+5,tempj:tempj+5),cs,Cglobal)
-            call sparse_addmat (tempi1, tempj1, Kelem(tempi:tempi+5,tempj:tempj+5),ks,Kglobal)
-            call sparse_addmat (tempi1, tempj1, Felem(tempi:tempi+5,tempj:tempj+5),fs,Fglobal)
+            call mat_addmat (tempi1, tempj1, Melem(tempi:tempi+5,tempj:tempj+5),Mglobal)
+            call mat_addmat (tempi1, tempj1, Celem(tempi:tempi+5,tempj:tempj+5),Cglobal)
+            call mat_addmat (tempi1, tempj1, Kelem(tempi:tempi+5,tempj:tempj+5),Kglobal)
+            call mat_addmat (tempi1, tempj1, Felem(tempi:tempi+5,tempj:tempj+5),Fglobal)
           end if
         end do
-
       end if
     end do
   end do
-  return
- end subroutine cbeam3_asbly_dynamic
+ end subroutine cbeam3_asbly_dynamic_new_interface
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -729,7 +735,7 @@ module cbeam3_asbly
     use lib_rot
     integer, intent(IN)             :: NumDof
     type(xbopts), intent(IN)        :: options
-    real(8), allocatable             :: gravity_vec(:)
+    real(8)                         :: gravity_vec(numdof)
     real(8), optional, intent(IN)    :: g(3)
 
     ! local variables
@@ -745,7 +751,6 @@ module cbeam3_asbly
         g_2 = g
     end if
 
-    allocate(gravity_vec(NumDof))
     gravity_vec = 0.0d0
     do i=1,NumDof/6
         ii = (i - 1)*6
@@ -758,11 +763,9 @@ module cbeam3_asbly
     integer, intent(IN)         :: NumDof
     type(xbopts), intent(IN)    :: options
     real(8), intent(IN)         :: Cao(3,3)
-    real(8), allocatable        :: gravity_vec(:)
+    real(8)                      :: gravity_vec(numdof)
 
     ! local vars
-    integer                     :: i
-    integer                     :: ii
     real(8)                     :: g(3)
 
     g = rot_unit([options%gravity_dir_x,&
