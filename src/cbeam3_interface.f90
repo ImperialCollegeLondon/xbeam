@@ -75,40 +75,13 @@ contains
 
         integer(c_int)                  :: nodes_per_elem
         integer(c_int)                  :: i
-        ! call print_matrix('conn',conn)
-        ! call print_matrix('pos_ini', pos_ini)
-        ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
-        ! call print_matrix('psi_ini2', psi_ini(:, 2, :))
-        ! call print_matrix('psi_ini3', psi_ini(:, 3, :))
-        ! call print_matrix('app_forces', app_forces)
-        ! call print_matrix('fdof',fdof)
-        ! call print_matrix('vdof',vdof)
-        ! call print_matrix('master1',master(:,:,1))
-        ! call print_matrix('master2',master(:,:,2))
-        ! call print_matrix('masternode',master_node)
 
         num_dof = count(vdof > 0)*6
         applied_forces = app_forces
-        ! do i=1, n_node
-        !     print*, applied_forces(i,:)
-        ! end do
-        ! do i=1, num_app_forces
-        !     ! applied_forces(node_app_forces(i), :) = app_forces(i, :)
-        !     applied_forces(node_app_forces(i), :) = &
-        !             applied_forces(node_app_forces(i), :) + app_forces(i, :)
-        ! end do
 
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
         options%NumGauss = nodes_per_elem - 1
-
-        ! do i=1, n_node
-        !     print*, pos_def(i,:)
-        ! end do
-        ! print*, '---'
-        ! do i=1, n_node
-        !     print*, pos_ini(i,:)
-        ! end do
 
         elements = generate_xbelem(n_elem,&
                                    num_nodes,&
@@ -131,8 +104,6 @@ contains
                                 vdof,&
                                 fdof)
 
-        ! call print_xbelem(elements)
-        ! call print_xbnode(nodes)
        ! overloaded function
        call cbeam3_solv_nlnstatic(num_dof,&
                                   elements,&
@@ -144,12 +115,6 @@ contains
                                   psi_def,&
                                   options &
                                   )
-        ! call output_elems (elements,pos_def,psi_def)
-        !
-        ! call print_matrix('pos_def', pos_def)
-        ! call print_matrix('psi_def1', psi_def(:, 1, :))
-        ! call print_matrix('psi_def2', psi_def(:, 2, :))
-        ! call print_matrix('psi_def3', psi_def(:, 3, :))
     end subroutine cbeam3_solv_nlnstatic_python
 
 

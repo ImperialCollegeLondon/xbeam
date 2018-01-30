@@ -250,15 +250,6 @@ TaPsi =           Psisc *Options%MinDelta
 ! Solve equation and update the global vectors.
       call lu_sparse(ks,Kglobal,-Qglobal,DeltaX)
       call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
-    !   call print_matrix('solv_Kmat', Kglobal(1)%a)
-    !   call print_matrix('solv_appforces', AppForces)
-    !   call print_matrix('solv_PosDefor', PosDefor)
-    !   call print_matrix('solv_PsiDefor1', PsiDefor(:, 1, :))
-    !   call print_matrix('solv_PsiDefor2', PsiDefor(:, 2, :))
-    !   call print_matrix('solv_PsiDefor3', PsiDefor(:, 3, :))
-    !   call print_matrix('solv_Psi0_1', Psi0(:, 1, :))
-    !   call print_matrix('solv_Psi0_2', Psi0(:, 2, :))
-    !   call print_matrix('solv_Psi0_3', Psi0(:, 3, :))
 ! Convergence parameter delta (original):
       call delta_check(Qglobal,DeltaX,Delta,passed_delta,Options%MinDelta,Options%PrintInfo)
  ! Check convergence using the residual:
@@ -333,7 +324,7 @@ TaPsi =           Psisc *Options%MinDelta
     end do
   end do
 
-  call flush(6) !Flush stdout buffer so SharPy output looks nice
+  ! call flush(6) !Flush stdout buffer so SharPy output looks nice
 
   deallocate (Kglobal,Qglobal,DeltaX)
   if (options%gravity_on .eqv. .TRUE.) then
