@@ -544,6 +544,7 @@ module xbeam_solv
         end if
     end do
     sph_rows = (/1,2,3/)+NumDof
+    SphFlag = .FALSE.
 
 
     gamma=0.5d0+Options%NewmarkDamp
@@ -723,8 +724,8 @@ module xbeam_solv
         dt= Time(iStep+1)-Time(iStep)
         call out_time(iStep,Time(iStep+1),Text)
         if (Options%PrintInfo) then
-            write (*,'(X)')
-            write (*,'(5X,A,$)') trim(Text)
+            ! write (*,'(X)')
+            ! write (*,'(5X,A,$)') trim(Text)
         end if
 
         ! Predictor step.
@@ -757,7 +758,7 @@ module xbeam_solv
                 SUCCESS=.false.
                 ! always print last iteration delta if crash occurrs
                 if (.not.(Options%PrintInfo)) then
-                    write (*,'(5X,A,$)') trim(Text)
+                    ! write (*,'(5X,A,$)') trim(Text)
                     write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qtotal))
                 end if
                 print *, 'Solution did not converge (18235)'
@@ -866,7 +867,7 @@ module xbeam_solv
 
             if (maxval(abs(Qtotal)).lt.MinDelta) then
                 if (Options%PrintInfo) then
-                    write (*,'(5X,A,I4,A,1PE12.3,$)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qtotal))
+                    ! write (*,'(5X,A,I4,A,1PE12.3,$)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qtotal))
                 end if
                 converged=.true. ! sm
             end if
@@ -912,6 +913,12 @@ module xbeam_solv
             ! end do
             ! deallocate(Mtotal_full)
             ! close(11)
+
+    ! call print_matrix('K', Ktotal(1)%a)
+    ! call print_matrix('C', Ctotal(1)%a)
+    ! call print_matrix('M', Mtotal(1)%a)
+    ! stop
+
             call sparse_zero (as,Asys)
             call sparse_addsparse(0,0,ktot,Ktotal,as,Asys,Factor=1.d0)
             call sparse_addsparse(0,0,ctot,Ctotal,as,Asys,Factor=gamma/(beta*dt))
@@ -993,6 +1000,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                                 psi_dot_def,&
                                                 static_forces,&
                                                 dynamic_forces,&
+                                                gravity_forces,&
                                                 for_vel,&
                                                 for_acc,&
                                                 quat,&
@@ -1026,6 +1034,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     real(c_double), intent(INOUT)                   :: psi_dot_def(n_elem, 3, 3)
     real(c_double), intent(IN)                      :: static_forces(n_node, 6)
     real(c_double), intent(IN)                      :: dynamic_forces(n_node, 6)
+    real(c_double), intent(INOUT)                   :: gravity_forces(n_node, 6)
     real(c_double), intent(INOUT)                   :: for_vel(6)
     real(c_double), intent(INOUT)                   :: for_acc(6)
     real(c_double), intent(INOUT)                   :: quat(4)
@@ -1079,6 +1088,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     real(8)                                         :: previous_q(numdof + 10)
     real(8)                                         :: previous_dqddt(numdof + 10)
     real(8)                                         :: MRS_gravity(6, numdof + 6)
+    real(8)                                         :: MSS_gravity(numdof + 6, numdof + 6)
 
     real(8)                                         :: pos_ddot_def(n_node, 3)
     real(8)                                         :: psi_ddot_def(n_elem, 3, 3)
@@ -1104,6 +1114,8 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
      ! dQdt = dQdt + (1.0d0 - gamma)*0.8*dt*dQddt
      ! dQddt = 0.0d0
      ! print*, 'Predictor 0.8'
+    ! dqdt(numdof+1:numdof+6) = for_vel
+    dqdt(numdof+7:numdof+10) = quat
      Q = Q + dt*dQdt + (0.5d0 - beta)*dt*dt*dQddt
      dQdt = dQdt + (1.0d0 - gamma)*dt*dQddt
      dQddt = 0.0d0
@@ -1115,14 +1127,12 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     !                             psi_dot_def,&
     !                             q(1:numdof),&
     !                             dqdt(1:numdof))
-    ! dqdt(numdof+1:numdof+6) = for_vel
-    ! dqdt(numdof+7:numdof+10) = quat
     !
     ! Iteration loop -----------------------------------------
     converged = .FALSE.
     do iter = 1, options%maxiterations + 1
-        previous_q = q
-        previous_dqddt = dqddt
+        ! previous_q = q
+        ! previous_dqddt = dqddt
         if (iter == options%maxiterations + 1) then
             print*, 'Solver did not converge in ', iter, ' iterations.'
             exit
@@ -1157,6 +1167,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         MRS = 0.0d0
         MRR = 0.0d0
         MRS_gravity = 0.0d0
+        MSS_gravity = 0.0d0
 
         CSS = 0.0d0
         CSR = 0.0d0
@@ -1187,12 +1198,12 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                   psi_dot_def,&
                                   pos_ddot_def,&
                                   psi_ddot_def,&
-                                !   0.0d0*pos_ddot_def,&
-                                !   0.0d0*psi_ddot_def,&
+                                  ! 0.0d0*pos_ddot_def,&
+                                  ! 0.0d0*psi_ddot_def,&
                                   static_forces + dynamic_forces,&
                                   dQdt(numdof+1:numdof+6),&
-                                !   0.0d0*dQddt(numdof+1:numdof+6),&
                                   dQddt(numdof+1:numdof+6),&
+                                  ! 0.0d0*dQddt(numdof+1:numdof+6),&
                                   MSS,&
                                   MSR,&
                                   CSS,&
@@ -1214,13 +1225,13 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                  psi_def,&
                                  pos_dot_def,&
                                  psi_dot_def,&
-                                !  0.0d0*pos_ddot_def,&
-                                !  0.0d0*psi_ddot_def,&
+                                 ! 0.0d0*pos_ddot_def,&
+                                 ! 0.0d0*psi_ddot_def,&
                                  pos_ddot_def,&
                                  psi_ddot_def,&
                                  dQdt(numdof+1:numdof+6),&
-                                !  0.0d0*dQddt(numdof+1:numdof+6),&
                                  dQddt(numdof+1:numdof+6),&
+                                 ! 0.0d0*dQddt(numdof+1:numdof+6),&
                                  dQdt(numdof+7:numdof+10),&
                                  MRS,&
                                  MRR,&
@@ -1233,13 +1244,9 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                  Qrigid,&
                                  options,&
                                  Cao)
-        ! call print_matrix('Qrigid', Qrigid)
-        ! call print_matrix('Frigid', Frigid)
 
         mindelta = options%mindelta*max(1.0d0, maxval(abs(Qelast)))
-        ! print*, 'mindelta = ', mindelta
         mindeltarigid = options%mindelta*max(1.0d0, maxval(abs(Qrigid)))
-        ! print*, 'mindeltarigid = ', mindeltarigid
         ! compute residual
         Qelast = Qelast - matmul(Felast, &
                                  fem_m2v(static_forces + &
@@ -1252,7 +1259,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                          numdof + 6))
 
         if (options%gravity_on) then
-            call xbeam_asbly_MRS_gravity(&
+            call xbeam_asbly_M_gravity(&
                                          numdof,&
                                          n_node,&
                                          n_elem,&
@@ -1263,16 +1270,20 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                          pos_def,&
                                          psi_def,&
                                          MRS_gravity,&
+                                         MSS_gravity,&
                                          options)
             Qrigid = Qrigid + matmul(MRS_gravity, &
                                      cbeam3_asbly_gravity_dynamic(NumDof + 6,&
                                                                   options,&
                                                                   Cao))
-
-            Qelast = Qelast + matmul(MSS, &
-                                     cbeam3_asbly_gravity_dynamic(NumDof,&
-                                                                  options,&
-                                                                  Cao))
+            gravity_forces = -fem_v2m(MATMUL(MSS_gravity,&
+                                      cbeam3_asbly_gravity_dynamic(NumDof + 6,options, Cao)),&
+                                      n_node, 6)
+            Qelast = Qelast - fem_m2v(gravity_forces, numdof, filter=ListIN)
+            ! Qelast = Qelast + matmul(MSS, &
+            !                          cbeam3_asbly_gravity_dynamic(NumDof,&
+            !                                                       options,&
+            !                                                       Cao))
         end if
 
         Qtotal(1:numdof) = Qelast
@@ -1285,8 +1296,6 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         call mat_addmat(numdof, numdof, MRR, Mtotal)
         call mat_addmat(numdof + 6, numdof + 6, unit4, Mtotal)
 
-        ! Qtotal = Qtotal + matmul(Mtotal, (1.0d0/(beta*dt*dt)*q + 1.0d0/(beta*dt)*dqdt + (0.5/beta) - 1.0d0)*dqddt)
-        ! Qtotal = Qtotal - matmul(Ctotal, (gamma/(beta*dt)*q + (gamma/beta - 1.0)*dqdt + (0.5*dt*(gamma/beta - 2.0))*dqddt))
         Qtotal = Qtotal + matmul(Mtotal, dqddt)
 
         ! convergence check
@@ -1321,6 +1330,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         !     call print_elem('failed_elements', elem)
         !     stop
         ! end if
+
         Asys = Ktotal
         Asys = Asys + Ctotal*gamma/(beta*dt)
         Asys = Asys + Mtotal/(beta*dt*dt)

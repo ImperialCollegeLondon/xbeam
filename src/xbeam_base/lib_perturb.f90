@@ -177,8 +177,8 @@ subroutine perturb_rbcss (NumNodesElem,r0,Ri,Vrel,NodalMass,CSSpert)
   do iNode=1,NumNodesElem
 
 ! Compute the current position vector and rotations, and their derivatives.
-	Ra    = Ri   (iNode,1:3)
-	Psi   = Ri   (iNode,4:6)
+  Ra    = Ri   (iNode,1:3)
+  Psi   = Ri   (iNode,4:6)
 
 ! Compute element shape functions at the corrent node.
     N =0.d0
@@ -221,7 +221,7 @@ subroutine perturb_rbcss (NumNodesElem,r0,Ri,Vrel,NodalMass,CSSpert)
   return
  end subroutine perturb_rbcss
 
- 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !-> Subroutine PERTURB_CSR
 !
@@ -362,8 +362,8 @@ subroutine perturb_rbcss (NumNodesElem,r0,Ri,Vrel,NodalMass,CSSpert)
   do iNode=1,NumNodesElem
 
 ! Compute the current position vector and rotations, and their derivatives.
-	Ra    = Ri   (iNode,1:3)
-	Psi   = Ri   (iNode,4:6)
+  Ra    = Ri   (iNode,1:3)
+  Psi   = Ri   (iNode,4:6)
 
 ! Compute element shape functions at the corrent node.
     N =0.d0
@@ -555,8 +555,8 @@ subroutine perturb_rbcss (NumNodesElem,r0,Ri,Vrel,NodalMass,CSSpert)
   do iNode=1,NumNodesElem
 
 ! Compute the current position vector and rotations, and their derivatives.
-	Ra    = Ri   (iNode,1:3)
-	Psi   = Ri   (iNode,4:6)
+  Ra    = Ri   (iNode,1:3)
+  Psi   = Ri   (iNode,4:6)
 
 ! Compute element shape functions at the corrent node.
     N =0.d0
@@ -723,8 +723,8 @@ subroutine perturb_rbcss (NumNodesElem,r0,Ri,Vrel,NodalMass,CSSpert)
   do iNode=1,NumNodesElem
 
 ! Compute the current position vector and rotations, and their derivatives.
-	Ra    = Ri   (iNode,1:3)
-	Psi   = Ri   (iNode,4:6)
+  Ra    = Ri   (iNode,1:3)
+  Psi   = Ri   (iNode,4:6)
 
 ! Compute the current coordinate transformation matrix.
     CBa= rotvect_psi2mat  (Psi)
@@ -874,7 +874,7 @@ subroutine perturb_rbcss (NumNodesElem,r0,Ri,Vrel,NodalMass,CSSpert)
   return
  end subroutine perturb_kss
 
- 
+
  subroutine perturb_rbkss (NumNodesElem,r0,Ri,Vrel,NodalMass,KSSpert)
   use lib_fem
   use lib_rot
@@ -909,8 +909,8 @@ subroutine perturb_rbcss (NumNodesElem,r0,Ri,Vrel,NodalMass,CSSpert)
   do iNode=1,NumNodesElem
 
 ! Compute the current position vector and rotations, and their derivatives.
-	Ra    = Ri   (iNode,1:3)
-	Psi   = Ri   (iNode,4:6)
+  Ra    = Ri   (iNode,1:3)
+  Psi   = Ri   (iNode,4:6)
 
 ! Compute element shape functions at the corrent node.
     N =0.d0
@@ -1077,8 +1077,8 @@ subroutine perturb_rbcss (NumNodesElem,r0,Ri,Vrel,NodalMass,CSSpert)
   deallocate (CoordGauss,WeightGauss)
   return
  end subroutine perturb_krs
- 
- 
+
+
  subroutine perturb_rbkrs (NumNodesElem,r0,Ri,Vrel,NodalMass,KRSpert)
   use lib_fem
   use lib_rot
@@ -1112,8 +1112,8 @@ subroutine perturb_rbcss (NumNodesElem,r0,Ri,Vrel,NodalMass,CSSpert)
   do iNode=1,NumNodesElem
 
 ! Compute the current position vector and rotations, and their derivatives.
-	Ra    = Ri   (iNode,1:3)
-	Psi   = Ri   (iNode,4:6)
+  Ra    = Ri   (iNode,1:3)
+  Psi   = Ri   (iNode,4:6)
 
 ! Compute element shape functions at the corrent node.
     N =0.d0
@@ -1164,4 +1164,3 @@ subroutine perturb_rbcss (NumNodesElem,r0,Ri,Vrel,NodalMass,CSSpert)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end module lib_perturb
-

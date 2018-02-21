@@ -20,6 +20,7 @@ contains
 
     original => mat(i1+1:i1 + size(in_Mat,1), j1+1:j1 + size(in_Mat,2))
     original = original + in_Mat
+    nullify(original)
 end subroutine mat_addmat
 
 end module lib_mat

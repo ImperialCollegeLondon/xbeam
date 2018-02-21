@@ -27,6 +27,7 @@
 module cbeam3_asbly
   use xbeam_shared
   use lib_solv, only: solv_set_vec_rows_zero
+  use lib_mat
   use debug_utils
   implicit none
  real(8),parameter,private,dimension(3,3):: Unit= &    ! Unit matrix.
@@ -50,30 +51,31 @@ end interface cbeam3_asbly_dynamic
 !-> Remarks.-
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_asbly_static_old (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Force, &
-&                                ks,Kglobal,fs,Fglobal,Qglobal,Options,ms,Mglobal)
+ subroutine cbeam3_asbly_static_old (numdof, n_elem, n_node, Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Force, &
+&                                Kglobal,Fglobal,Qglobal,Options,Mglobal)
   use lib_rot
   use lib_rotvect
   use lib_fem
   use lib_sparse
   use lib_cbeam3
+  use debug_utils
 
 
 ! I/O variables.
-  type(xbelem), intent(in) :: Elem(:)           ! Element information.
-  type(xbnode), intent(in) :: Node(:)           ! List of independent nodes.
-  real(8),      intent(in) :: Coords    (:,:)   ! Initial coordinates of the grid points.
-  real(8),      intent(in) :: Psi0      (:,:,:) ! Initial CRV of the nodes in the elements.
-  real(8),      intent(in) :: PosDefor  (:,:)   ! Current coordinates of the grid points
-  real(8),      intent(in) :: PsiDefor  (:,:,:) ! Current CRV of the nodes in the elements.
-  real(8),      intent(in) :: Force     (:,:)   ! Force vector.
-  integer,      intent(out):: ks                ! Size of the sparse stiffness matrix.
-  type(sparse), intent(inout):: Kglobal   (:)     ! Sparse stiffness matrix.
-  type(sparse), optional, intent(inout):: Mglobal   (:)     ! Sparse mass matrix.
-  integer, optional, intent(out):: ms                ! Size of the sparse mass matrix.
-  real(8),      intent(out):: Qglobal   (:)     ! Discrete force vector.
-  integer,      intent(out):: fs                ! Size of the sparse stiffness matrix.
-  type(sparse), intent(inout):: Fglobal   (:)     ! Influence coefficients matrix for applied forces.
+  integer, intent(IN)    :: numdof
+  integer, intent(IN)    :: n_elem
+  integer, intent(IN)    :: n_node
+  type(xbelem), intent(in) :: Elem(n_elem)           ! Element information.
+  type(xbnode), intent(in) :: Node(n_node)           ! List of independent nodes.
+  real(8),      intent(in) :: Coords    (n_node,3)   ! Initial coordinates of the grid points.
+  real(8),      intent(in) :: Psi0      (n_elem,3,3) ! Initial CRV of the nodes in the elements.
+  real(8),      intent(in) :: PosDefor  (n_node,3)   ! Current coordinates of the grid points
+  real(8),      intent(in) :: PsiDefor  (n_elem,3,3) ! Current CRV of the nodes in the elements.
+  real(8),      intent(in) :: Force     (n_node,6)   ! Force vector.
+  real(8), intent(inout):: Kglobal   (numdof,numdof)     ! Sparse stiffness matrix.
+  real(8), optional, intent(OUT)       :: Mglobal   (numdof+6,numdof+6)     ! Sparse mass matrix.
+  real(8),      intent(out):: Qglobal   (numdof)     ! Discrete force vector.
+  real(8), intent(inout):: Fglobal   (numdof,numdof)     ! Influence coefficients matrix for applied forces.
   type(xbopts), intent(in) :: Options           ! Solver parameters.
 
 ! Local variables.
@@ -94,8 +96,17 @@ end interface cbeam3_asbly_dynamic
   real(8):: ForceElem (MaxElNod,6)         ! Current forces/moments of nodes in the element.
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)  ! Transformation from master to global node orientations.
   integer:: NumGaussMass
+  logical:: with_MSS
 
   integer, allocatable:: row_sphBC(:)      ! row in global matrices/vector associated with weakly enforced hinge BCs
+  Qglobal = 0.0d0
+  Fglobal = 0.0d0
+  Kglobal = 0.0d0
+
+  with_MSS = present(Mglobal)
+  if (with_MSS) then
+      Mglobal = 0.0d0
+  end if
 
     !   call print_matrix('asbly_force',Force)
 ! Loop in all elements in the model.
@@ -105,13 +116,15 @@ end interface cbeam3_asbly_dynamic
   do iElem=1,NumE
     Melem = 0.0d0
     Kelem=0.d0; Felem=0.d0; Qelem=0.d0; SB2B1=0.d0
+    rElem = 0.0d0
+    rElem0 = 0.0d0
 
     !print*, iElem
   ! Determine if the element nodes are master (Flag=T) or slave.
     Flags=.false.
     do i=1,Elem(iElem)%NumNodes
-        !print*, '  ', i
-        !print*, Elem(iElem)%Conn(i)
+        ! print*, '  ', i
+        ! print*, Elem(iElem)%Conn(i)
       if (Node(Elem(iElem)%Conn(i))%Master(1).eq.iElem) Flags(i)=.true.
     end do
     !call flush()
@@ -150,10 +163,10 @@ end interface cbeam3_asbly_dynamic
     ! pause
 
   !----------------------------------- ADDED SECTION
-    if (options%gravity_on .eqv. .TRUE.) then
+    if (with_MSS) then
     ! Contributions of the structural mass to the linearized inertia matrices.
-        call cbeam3_mass (NumNE,rElem0,rElem,Elem(iElem)%Mass,Melem,NumGaussMass)
         call cbeam3_rbmass (NumNE,rElem0,rElem,Elem(iElem)%RBMass,Melem)
+        call cbeam3_mass (NumNE,rElem0,rElem,Elem(iElem)%Mass,Melem,NumGaussMass)
     end if
 
   !----------------------------------- END OF ADDED SECTION
@@ -177,8 +190,15 @@ end interface cbeam3_asbly_dynamic
     Kelem=matmul(transpose(SB2B1),matmul(Kelem,SB2B1))
     Felem=matmul(transpose(SB2B1),Felem) !sm: ???
     Qelem=matmul(transpose(SB2B1),Qelem)
-    if (options%gravity_on .eqv. .TRUE.) then
+    if (with_MSS) then
+        ! if (iElem == 1) then
+        !     call print_matrix('Melem_before', Melem)
+        ! end if
         Melem=matmul(transpose(SB2B1),matmul(Melem,SB2B1))
+        ! if (iElem == 1) then
+        !     call print_matrix('Melem_after', Melem)
+        ! end if
+        ! stop
     end if
 
   ! Add to global matrix Mglobal, not remove columns and rows
@@ -210,44 +230,59 @@ end interface cbeam3_asbly_dynamic
             ! in global matrices/vectors minus 1
             cc = 6*(j1-1)
             if (j1.ne.0) then ! not clamped
-              call sparse_addmat (rr, cc,Kelem(6*(i-1)+1:6*i,6*(j-1)+1:6*j), ks,Kglobal)
-              call sparse_addmat (rr, cc,Felem(6*(i-1)+1:6*i,6*(j-1)+1:6*j), fs,Fglobal)
-              if (options%gravity_on .eqv. .TRUE.) then
-                  call sparse_addmat (rr, cc,Melem(6*(i-1)+1:6*i,6*(j-1)+1:6*j), ms,Mglobal)
-              end if
+              call mat_addmat(rr, cc,Kelem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),Kglobal)
+              call mat_addmat(rr, cc,Felem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),Fglobal)
             end if
           end do
       end if
     end do
-  end do
-
+ ! Add to global matrix. Dont remove columns and rows at clamped points.
+ if (with_MSS) then
+    do i=1,NumNE
+      nn = Elem(iElem)%Conn(i)
+    !   i1=Node(nn)%Vdof + 1
+      i1=Node(nn)%Vdof
+        ! rr = 6*(i1-1)
+        rr = 6*i1
+          do j=1,NumNE
+            mm=Elem(iElem)%Conn(j)
+            ! j1=Node(mm)%Vdof + 1
+            j1=Node(mm)%Vdof
+            ! cc = 6*(j1-1)
+            cc = 6*j1
+            call mat_addmat (rr, cc,Melem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),Mglobal)
+          end do
+    end do
+end if
+end do
 
   ! ------------------------------------------------------ Hinged BCs correction
   ! a. determine number of rows to delete
   ! b. determine which rows to eleminate
   ! c. delete themn from sparse matrix and resize it
   ! d. add unitary value to Kglobal and resize)
-  NsphBC = sum(Node%Sflag)
-  if (NsphBC>0) then
-      allocate(row_sphBC (3*NsphBC) )
+  ! NsphBC = sum(Node%Sflag)
+  ! if (NsphBC>0) then
+  !     allocate(row_sphBC (3*NsphBC) )
+  !
+  !     cc=0 ! here cc is a counter for the number of spherical joints
+  !     do nn=1,size(Node)
+  !       if (Node(nn)%Sflag == 1) then
+  !         i1=Node(nn)%Vdof
+  !         rr = 6*(i1-1)
+  !         row_sphBC( 3*cc+1:3*(cc+1) ) = (/ rr+1, rr+2, rr+3 /)
+  !         cc=cc+1
+  !       end if
+  !     end do
+  !
+  !     call sparse_set_rows_zero(row_sphBC,ks,Kglobal)
+  !     call sparse_set_rows_zero(row_sphBC,fs,Fglobal)
+  !     call sparse_set_rows_unit(row_sphBC,ks,Kglobal)
+  !
+  !     deallocate(row_sphBC)
+  !  end if
 
-      cc=0 ! here cc is a counter for the number of spherical joints
-      do nn=1,size(Node)
-        if (Node(nn)%Sflag == 1) then
-          i1=Node(nn)%Vdof
-          rr = 6*(i1-1)
-          row_sphBC( 3*cc+1:3*(cc+1) ) = (/ rr+1, rr+2, rr+3 /)
-          cc=cc+1
-        end if
-      end do
-
-      call sparse_set_rows_zero(row_sphBC,ks,Kglobal)
-      call sparse_set_rows_zero(row_sphBC,fs,Fglobal)
-      call sparse_set_rows_unit(row_sphBC,ks,Kglobal)
-
-      deallocate(row_sphBC)
-   end if
-
+    ! call print_matrix('MSS', Mglobal)
 
 
 
@@ -332,7 +367,7 @@ end interface cbeam3_asbly_dynamic
     call cbeam3_kgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%Mass,Kelem,Options%NumGauss)
 
     ! Add contributions of non-structural (lumped) mass.
-    if (any(Elem(iElem)%RBMass.ne.0.d0)) then
+    if (any(abs(Elem(iElem)%RBMass)>0.d0)) then
       call cbeam3_rbmass (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,Melem)
       call cbeam3_rbcgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,Celem)
       call cbeam3_rbkgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%RBMass,Kelem)
@@ -519,8 +554,8 @@ end interface cbeam3_asbly_dynamic
   do iElem=1,n_elem
     Melem=0.d0; Celem=0.d0; Kelem=0.d0; Felem=0.d0; Qelem=0.d0
     Mvelelem=0.d0; Cvelelem=0.d0; SB2B1=0.d0
-    ! rElem0 = 0.0d0
-    ! rElem = 0.0d0
+    rElem0 = 0.0d0
+    rElem = 0.0d0
 
 ! Extract coords of elem nodes and determine if they are master (Flag=T) or slave.
     call fem_glob2loc_extract (Elem(iElem)%Conn,Coords,rElem0(:,1:3),NumNE)
@@ -558,7 +593,7 @@ end interface cbeam3_asbly_dynamic
 ! Compute the gyroscopic force vector.
     call cbeam3_fgyr (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Qelem,Options%NumGauss)
 ! Add contributions of non-structural (lumped) mass.
-    if (any(Elem(iElem)%RBMass.ne.0.d0)) then
+    if (any(abs(Elem(iElem)%RBMass)>0.0d0)) then
       call cbeam3_rbmvel (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,Mvelelem)
       call cbeam3_rbcvel (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,Cvelelem)
       call cbeam3_rbmass (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,Melem)
@@ -573,7 +608,7 @@ end interface cbeam3_asbly_dynamic
 
 ! Add external forces to the residual, and their derivatives with respect to the nodal
 ! degrees of freedom to the stiffness.
-    if (any(ForceElem.ne.0.d0)) then
+    if (any(abs(ForceElem)>0.0d0)) then
       call cbeam3_fext (NumNE,rElem,Flags(1:NumNE),Felem,Options%FollowerForce,Options%FollowerForceRig,Cao)
       call cbeam3_dqext(NumNE,rElem,ForceElem,Flags(1:NumNE),Kelem,Options%FollowerForce)
     end if
@@ -700,7 +735,7 @@ end interface cbeam3_asbly_dynamic
 
     ! Compute contribution to Kglobal from follower forces
     call fem_glob2loc_extract (Elem(iElem)%Conn,Force,ForceElem,NumNE)
-    if (any(ForceElem.ne.0.d0)) call cbeam3_dqext (NumNE,rElem,ForceElem,Flags(1:NumNE),Kelem_foll,.true._c_bool)
+    if (any(abs(ForceElem)>0.0d0)) call cbeam3_dqext (NumNE,rElem,ForceElem,Flags(1:NumNE),Kelem_foll,.true._c_bool)
 
     ! Project equations to the orientation of the "master" degrees of freedom.
     call cbeam3_slave2master (NumNE,Elem(iElem)%Master(:,:),rElem0(:,4:6),Psi0,rElem(:,4:6),PsiDefor,SB2B1)
@@ -735,8 +770,8 @@ end interface cbeam3_asbly_dynamic
     use lib_rot
     integer, intent(IN)             :: NumDof
     type(xbopts), intent(IN)        :: options
+    real(8), optional, intent(IN)   :: g(3)
     real(8)                         :: gravity_vec(numdof)
-    real(8), optional, intent(IN)    :: g(3)
 
     ! local variables
     integer                         :: i
@@ -763,7 +798,7 @@ end interface cbeam3_asbly_dynamic
     integer, intent(IN)         :: NumDof
     type(xbopts), intent(IN)    :: options
     real(8), intent(IN)         :: Cao(3,3)
-    real(8)                      :: gravity_vec(numdof)
+    real(8)                     :: gravity_vec(numdof)
 
     ! local vars
     real(8)                     :: g(3)

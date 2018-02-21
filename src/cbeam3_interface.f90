@@ -4,6 +4,8 @@ module cbeam3_interface
     use                                 :: cbeam3_solv
     use                                 :: debug_utils
     use                                 :: lib_sparse
+    use                                 :: xbeam_asbly
+    use                                 :: lib_xbeam
 
     implicit none
 
@@ -33,8 +35,10 @@ contains
                                             psi_ini,&
                                             pos_def,&
                                             psi_def,&
-                                            app_forces&
+                                            applied_forces,&
+                                            gravity_forces&
                                             ) bind(C)
+        use, intrinsic :: ieee_exceptions
         integer(c_int), intent(IN)      :: n_elem
         integer(c_int), intent(IN)      :: n_node
 
@@ -67,17 +71,21 @@ contains
         real(c_double), intent(INOUT)   :: pos_def(n_node, 3)
         real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
 
-        real(c_double), intent(IN)      :: app_forces(n_node, 6)
+        real(c_double), intent(IN)      :: applied_forces(n_node, 6)
+        real(c_double), intent(INOUT)   :: gravity_forces(n_node, 6)
         ! ADC XXX: careful with forces in master FoR
 
         integer(c_int)                  :: num_dof
-        real(c_double)                  :: applied_forces(n_node, 6)!legacy var
+        ! real(c_double)                  :: applied_forces(n_node, 6)!legacy var
 
         integer(c_int)                  :: nodes_per_elem
         integer(c_int)                  :: i
 
+        integer                         :: unit
+        Logical                         :: halt
+
         num_dof = count(vdof > 0)*6
-        applied_forces = app_forces
+        ! applied_forces = app_forces
 
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
@@ -103,17 +111,41 @@ contains
                                 master_node,&
                                 vdof,&
                                 fdof)
+        ! call print_matrix('conn',conn)
+        ! call print_matrix('pos_ini', pos_ini)
+        ! call print_matrix('pos_def', pos_def)
+        ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
+        ! call print_matrix('psi_ini2', psi_ini(:, 2, :))
+        ! call print_matrix('psi_ini3', psi_ini(:, 3, :))
+        ! call print_matrix('psi_def1', psi_def(:, 1, :))
+        ! call print_matrix('psi_def2', psi_def(:, 2, :))
+        ! call print_matrix('psi_def3', psi_def(:, 3, :))
+        ! call print_matrix('fdof',fdof)
+        ! call print_matrix('app_forces',applied_forces)
+        ! call print_matrix('gravity_forces',gravity_forces)
+        ! call print_matrix('vdof',vdof)
+        ! print*, 'RBMass:'
+        ! print*, elements(1)%RBMASS(1, 1, :)
+        ! print*, elements(1)%RBMASS(1, 2, :)
+        ! print*, elements(1)%RBMASS(1, 3, :)
+        ! print*, elements(1)%RBMASS(1, 4, :)
+        ! print*, elements(1)%RBMASS(1, 5, :)
+        ! print*, elements(1)%RBMASS(1, 6, :)
 
        ! overloaded function
+       gravity_forces = 0.0d0
        call cbeam3_solv_nlnstatic(num_dof,&
+                                  n_elem,&
+                                  n_node, &
                                   elements,&
                                   nodes,&
                                   applied_forces,&
+                                  gravity_forces,&
                                   pos_ini,&
                                   psi_ini,&
                                   pos_def,&
                                   psi_def,&
-                                  options &
+                                  options&
                                   )
     end subroutine cbeam3_solv_nlnstatic_python
 
@@ -626,13 +658,14 @@ contains
         real(c_double), intent(IN)      :: stiffness_db(n_stiffness, 6, 6)
         real(c_double), intent(IN)      :: inv_stiffness_db(n_stiffness, 6, 6)
         integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
-        real(c_double), intent(IN)      :: for_delta(:,:,:)
-        real(c_double), intent(IN)      :: psi_ini(:,:,:)
+        real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
+        real(c_double), intent(IN)      :: psi_ini(n_elem,3,3)
         real(c_double), intent(IN)      :: RBMass(n_elem, max_elem_node, 6, 6)
 
         type(xbelem)                    :: elements(n_elem)
 
         integer(c_int)                  :: i
+        integer(c_int)                  :: j
         integer(c_int)                  :: inode_global
         integer(c_int)                  :: inode_local
 
@@ -658,6 +691,19 @@ contains
             elements(i)%Stiff       = stiffness_db(stiffness_indices(i), :, :)
             elements(i)%InvStiff    = inv_stiffness_db(stiffness_indices(i),:,:)
             elements(i)%RBMass      = RBMass(i, :, :, :)
+            ! do j=1, 3
+            !     if (any(elements(i)%RBMass(j, :, :) /= 0.0)) then
+            !         print*, 'RBMASS'
+            !         print*, i, j
+            !         print*, elements(i)%RBMass(j, 1, :)
+            !         print*, elements(i)%RBMass(j, 2, :)
+            !         print*, elements(i)%RBMass(j, 3, :)
+            !         print*, elements(i)%RBMass(j, 4, :)
+            !         print*, elements(i)%RBMass(j, 5, :)
+            !         print*, elements(i)%RBMass(j, 6, :)
+            !         print*, '-----'
+            !     end if
+            ! end do
         end do
 
     end function generate_xbelem
@@ -726,6 +772,7 @@ contains
             nodes(i)%Master      = master(i, :)
             nodes(i)%Vdof        = vdof(i)
             nodes(i)%fdof        = fdof(i)
+            nodes(i)%Sflag       = 0
         end do
     end function generate_xbnode
 

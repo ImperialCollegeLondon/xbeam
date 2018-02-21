@@ -223,6 +223,7 @@ end subroutine xbeam_solv_couplednlndyn_python
                                                 psi_def_dot,&
                                                 steady_app_forces,&
                                                 dynamic_app_forces,&
+                                                gravity_forces,&
                                                 quat,&
                                                 for_vel,&
                                                 for_acc,&
@@ -274,6 +275,7 @@ end subroutine xbeam_solv_couplednlndyn_python
 
         ! dynamic
         real(c_double), intent(IN)      :: dynamic_app_forces(n_node, 6)
+        real(c_double), intent(INOUT)   :: gravity_forces(n_node, 6)
         real(c_double), intent(INOUT)   :: quat(4)
         real(c_double), intent(INOUT)   :: for_vel(6)
         real(c_double), intent(INOUT)   :: for_acc(6)
@@ -353,7 +355,7 @@ end subroutine xbeam_solv_couplednlndyn_python
         ! call print_node('node_before_step', nodes)
         ! options%NumGauss = nodes_per_elem - 1
 
-        ! updating position vectors
+        gravity_forces = 0.0d0
         call xbeam_solv_couplednlndyn_step_updated(numdof,&
                                                    dt,&
                                                    n_node,&
@@ -368,6 +370,7 @@ end subroutine xbeam_solv_couplednlndyn_python
                                                    psi_def_dot,&
                                                    steady_app_forces,&
                                                    dynamic_app_forces,&
+                                                   gravity_forces,&
                                                    for_vel,&
                                                    for_acc,&
                                                    quat,&
@@ -375,6 +378,7 @@ end subroutine xbeam_solv_couplednlndyn_python
                                                    dqdt,&
                                                    dqddt,&
                                                    options)
+        
         ! print*, 'for_vel, finish: ', for_vel(1:3)
         ! call print_matrix('q', q)
         ! call print_matrix('dqdt', dqdt)
@@ -496,6 +500,7 @@ end subroutine xbeam_solv_couplednlndyn_python
         real(8)                         :: KRS(6, numdof)      ! rigid stiffness matrix in sparse storage.
         real(8)                         :: MRS(6, numdof)   ! Mass and damping from the motions of reference system.
         real(8)                         :: MRS_gravity(6, numdof + 6)   ! Mass and damping from the motions of reference system.
+        real(8)                         :: MSS_gravity(6, numdof + 6)   ! Mass and damping from the motions of reference system.
         real(8)                         :: Frigid(6, numdof + 6)   ! rigid matrix of applied forces in sparse format
         real(8)                         :: Qrigid(6)   ! rigid vector of discrete generalize forces.
         real(8)                         :: MRR(6, 6)    ! rigid Mass and damping from the motions of reference system.
@@ -680,7 +685,7 @@ end subroutine xbeam_solv_couplednlndyn_python
                                                  dynamic_app_forces, numdof+6))
 
         if (options%gravity_on) then
-            call xbeam_asbly_MRS_gravity(&
+            call xbeam_asbly_M_gravity(&
                                          numdof,&
                                          n_node,&
                                          n_elem,&
@@ -691,6 +696,7 @@ end subroutine xbeam_solv_couplednlndyn_python
                                          pos_def,&
                                          psi_def,&
                                          MRS_gravity,&
+                                         MSS_gravity,&
                                          options)
             Qrigid = Qrigid + matmul(MRS_gravity, &
                                      cbeam3_asbly_gravity_dynamic(NumDof + 6,&

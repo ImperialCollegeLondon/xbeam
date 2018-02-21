@@ -222,8 +222,8 @@ module lib_cbeam3
   real(8) :: Jacobian               ! ds/deta, with eta the nondimensional arclength.
   real(8) :: ShapeFun(MaxNodCB3)    ! Shape functions in a gauss point.
   real(8) :: ShapeDer(MaxNodCB3)    ! Derivatives of ShapeFun in a gauss point.
-  real(8),allocatable :: CoordGauss (:) ! Coords of Gauss points.
-  real(8),allocatable :: WeightGauss(:) ! Coords of Gauss points.
+  real(8) :: CoordGauss (NumGauss) ! Coords of Gauss points.
+  real(8) :: WeightGauss(NumGauss) ! Coords of Gauss points.
 
   real(8) :: r0_g (6)              ! Position vector at the Gauss point.
   real(8) :: dr0_g(6)              ! Derivative of r0_g.
@@ -242,14 +242,16 @@ module lib_cbeam3
   real(8) :: N (6,6*MaxNodCB3)     ! Element shape function matrix
   real(8) :: dN(6,6*MaxNodCB3)     ! Derivatives of shape function.
 
+  ! print*,  r0
+  ! print*,  Ri
+  ! print*,  ElemStiff
+  ! print*, Kgeom
+  ! print*, NumGauss
+  ! print*, '---'
 
 ! Define Gauss points and loop on them.
-  allocate (CoordGauss(NumGauss))
-  allocate (WeightGauss(NumGauss))
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
-
   do iGauss=1,NumGauss
-
 ! Obtain the shape functions and their derivatives.
     call fem_1d_shapefun (NumNodesElem,CoordGauss(iGauss),ShapeFun,ShapeDer)
 
@@ -316,8 +318,6 @@ module lib_cbeam3
 &                +matmul(transpose(dN),matmul((Aq1q0+transpose(Aq0q1))/2.d0,N)))
 
   end do
-  deallocate (CoordGauss,WeightGauss)
-  return
  end subroutine cbeam3_kgeom
 
 

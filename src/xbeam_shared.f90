@@ -43,13 +43,13 @@ module xbeam_shared
 
 ! Nodal information.
  type xbnode
-  integer:: Master (2)             ! Master node for current node.
+  integer:: Master (2) = 0         ! Master node for current node.
                                    ! (1): # master elem.
                                    ! (2): # node within master element.
-  integer:: Vdof                   ! Number of node for which displacements and rotations are unknown
+  integer:: Vdof  = 0                  ! Number of node for which displacements and rotations are unknown
                                    ! (free -internal and not - and clamped) in the velocity/displacements vector
                                    ! For clamped node, this signifies weak enforcement of BCs.
-  integer:: Fdof                   ! Number of node in the force vector for which all the forces/moments need to be computed
+  integer:: Fdof = 0                  ! Number of node in the force vector for which all the forces/moments need to be computed
                                    ! (clamped BC, internal nodes)
   integer:: Sflag=0                ! Flag for spherical joint at the node (1: hinged, 0: no hinge)
                                    ! This will imply weak enforcement of BCs.

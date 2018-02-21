@@ -295,8 +295,8 @@ module lib_fem
 !-> I/O Variables.
 
   integer,intent(in) :: NumGauss        ! Number of Gaussian points.
-  real(8),intent(out):: Coords(:)       ! Local Coordinates of the Points.
-  real(8),intent(out):: Weight(:)       ! Weights of the Gaussian Points.
+  real(8),intent(out):: Coords(NumGauss)       ! Local Coordinates of the Points.
+  real(8),intent(out):: Weight(NumGauss)       ! Weights of the Gaussian Points.
 
 ! Default output values.
   Coords=0.d0
@@ -909,6 +909,29 @@ module lib_fem
 
   return
  end function fem_m2v
+
+ function fem_v2m_filter(vector, nrows, ncols, listin)
+    real(8), intent(IN)             :: vector(:)
+    integer, intent(IN)             :: nrows
+    integer, intent(IN)             :: ncols
+    integer, intent(IN)             :: listin(:)
+
+    real(8)                         :: fem_v2m_filter(nrows, ncols)
+
+    integer                         :: i_node
+    integer                         :: ii
+
+    fem_v2m_filter = 0.0d0
+    ii = 0
+    do i_node=1, nrows
+        if (listin(i_node) <= 0) then
+            cycle
+        end if
+        ii = (listin(i_node) - 1)*ncols
+
+        fem_v2m_filter(i_node, :) = vector(ii+1:ii+6)
+    end do
+end function fem_v2m_filter
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
