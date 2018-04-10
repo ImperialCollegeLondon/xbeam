@@ -581,13 +581,14 @@ imax = 0
 !   Transform a rotation vector to the corresponding coordinate transformation
 !   matrix (transpose of the rotation matrix).
 !
+!   Returns Cba
+!
 !-> Remarks.-
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- pure function rotvect_psi2mat (Psi)
-
+ function rotvect_psi2mat (Psi)
 ! I/O Variables.
-  real(8),intent(in)    :: Psi(:)           ! Rotation Vector.
+  real(8),intent(in)    :: Psi(3)           ! Rotation Vector.
   real(8),dimension(3,3):: rotvect_psi2mat  ! Coord transf matrix.
 
 ! Local variables
@@ -603,7 +604,6 @@ imax = 0
   if (abs(NormPsi).le.rot_Epsilon) then
     SkewPsi=rot_skew(Psi)
     RotMatrix= Unit + SkewPsi + 0.5d0*matmul(SkewPsi,SkewPsi)
-
 ! Larger angles.
   else
     SkewNormal=rot_skew(Psi/NormPsi)
@@ -613,7 +613,6 @@ imax = 0
 
 ! The rotation matrix is the transpose of the coordinate transformation matrix.
   rotvect_psi2mat=transpose(RotMatrix)
-  return
  end function rotvect_psi2mat
 
 
@@ -694,17 +693,28 @@ function rotvect_mat2psi (CoordTransMat) result(Psi)
   NormPsi= sqrt(dot_product(Psi,Psi))
   PsiSkew= rot_skew(Psi)
 
+! ! For small angles, use the linear approximation
+!   if (abs(NormPsi).le.rot_Epsilon) then
+!     K1=1.d0
+!     K2=1.d0/6.d0
+!   else
+!     K1=sin(NormPsi*0.5d0)/(NormPsi*0.5d0)
+!     K2=(1.d0 - sin(NormPsi)/NormPsi)/(NormPsi*NormPsi)
+!   end if
+!
+!   rotvect_psi2rot= Unit - (0.5d0*K1*K1)*PsiSkew + K2*matmul(PsiSkew,PsiSkew)
+!   return
 ! For small angles, use the linear approximation
   if (abs(NormPsi).le.rot_Epsilon) then
     K1=1.d0
     K2=1.d0/6.d0
+    rotvect_psi2rot= Unit - (0.5d0*K1)*PsiSkew + K2*matmul(PsiSkew,PsiSkew)
   else
-    K1=sin(NormPsi*0.5d0)/(NormPsi*0.5d0)
-    K2=(1.d0 - sin(NormPsi)/NormPsi)/(NormPsi*NormPsi)
+      k1 = (cos(normpsi) - 1.0)/(normpsi*normpsi)
+      k2 = (1.0 - sin(normpsi)/normpsi)/(normpsi*normpsi)
+      rotvect_psi2rot = Unit + k1*psiskew + k2*matmul(psiskew, psiskew)
   end if
 
-  rotvect_psi2rot= Unit - (0.5d0*K1*K1)*PsiSkew + K2*matmul(PsiSkew,PsiSkew)
-  return
  end function rotvect_psi2rot
 
 

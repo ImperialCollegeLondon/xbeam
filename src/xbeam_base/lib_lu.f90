@@ -364,19 +364,21 @@ end function inv
         ! X = MATMUL(invFulMat, b)
         !
         ! deallocate(invFulMat)
-        call lu_solve(SprMat(1)%a, b, X)
+        call lu_solve(size(SprMat(1)%a, dim=1), SprMat(1)%a, b, X)
         return
     end subroutine lu_sparse
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    subroutine lu_solve(A, b, X, balancing)
-        real(8), intent(IN)     :: A(:, :)
-        real(8), intent(in)     :: b(:)          ! Forcing vector
-        real(8), intent(out)    :: X(:)          ! Solution vector
-        real(8),allocatable     :: invFulMat(:,:)! Full matrix
+    subroutine lu_solve(numdof,A, b, X, balancing)
+        use, intrinsic :: IEEE_ARITHMETIC
+        integer, intent(IN)     :: numdof
+        real(8), intent(IN)     :: A(numdof, numdof)
+        real(8), intent(in)     :: b(numdof)          ! Forcing vector
+        real(8), intent(out)    :: X(numdof)          ! Solution vector
+        ! real(8),allocatable     :: invFulMat(:,:)! Full matrix
         logical, optional       :: balancing
         integer:: dimb
-        real(8)                 :: r(size(A, DIM=1))
-        real(8)                 :: c(size(A, DIM=2))
+        real(8)                 :: r(numdof)
+        real(8)                 :: c(numdof)
         real(8)                 :: rowcnd
         real(8)                 :: colcnd
         real(8)                 :: amax
@@ -384,20 +386,25 @@ end function inv
         real(8)                 :: ferr
         real(8)                 :: berr
         integer                 :: info
-        integer                 :: ipivot(size(A, DIM=1))
+        integer                 :: ipivot(numdof)
         character               :: equed
         character               :: fact
         character               :: trans
         integer                 :: unit
         integer                 :: i
 
-        real(8)                 :: A_copy(size(A, dim=1), size(A, dim=2))
-        real(8)                 :: b_copy(size(A, dim=1))
-        real(8)                 :: AF(size(A, dim=1), size(A, dim=2))
-        real(8)                 :: work(size(A, dim=1)*4)
-        integer                 :: iwork(size(A, dim=1))
+        real(8),allocatable     :: A_copy(:,:)
+        real(8)                 :: b_copy(numdof)
+        ! real(8)                 :: AF(numdof, numdof)
+        ! real(8)                 :: work(size(A, dim=1)*4)
+        ! integer                 :: iwork(size(A, dim=1))
         integer                 :: nrows
 
+        if (any(ieee_is_nan(A))) then
+            STOP 'NaN in lu_solve'
+        end if
+
+        allocate(A_copy(numdof, numdof))
         A_copy = A
         X = b
         b_copy = b
@@ -454,16 +461,21 @@ end function inv
 
 
         ! solve system
-        call dgesv(size(A_copy, DIM=1),&
+        call dgesv(numdof,&
                    1,&
                    A_copy,&
-                   size(A_copy, DIM=1),&
+                   numdof,&
                    ipivot,&
                    x,&
-                   size(A_copy, DIM=1),&
+                   numdof,&
                    info)
         if (info /= 0) then
             print*, 'Info in DGESV = ', info
+             open(newunit=unit, file='debug_failed_Asys.txt')
+             do i=1, size(A(:,1))
+                 write(unit,*)A(i, :)
+             end do
+             close(unit)
             stop
         end if
         ! call gesv(A_copy,&
@@ -486,6 +498,7 @@ end function inv
         ! X = MATMUL(invFulMat, b)
         !
         ! deallocate(invFulMat)
+        deallocate(A_copy)
         return
     end subroutine lu_solve
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

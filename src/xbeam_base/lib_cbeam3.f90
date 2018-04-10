@@ -78,18 +78,18 @@ module lib_cbeam3
 
 ! I/O Variables.
   integer,intent(in)   :: NumNodesElem      ! Number of nodes in the element.
-  real(8),intent(in)   :: r0       (:,:)    ! Initial position/orientation of grid points.
-  real(8),intent(in)   :: Ri       (:,:)    ! Current position/orientation of grid points.
-  real(8),intent(in)   :: ElemStiff(:,:)    ! Stiffness properties in the element.
-  real(8),intent(inout):: Kmat     (:,:)   ! Material tangent stiffness matrix.
+  real(8),intent(in)   :: r0       (MaxNodCB3,6)    ! Initial position/orientation of grid points.
+  real(8),intent(in)   :: Ri       (MaxNodCB3,6)    ! Current position/orientation of grid points.
+  real(8),intent(in)   :: ElemStiff(6, 6)    ! Stiffness properties in the element.
+  real(8),intent(inout):: Kmat     (6*MaxNodCB3,6*MaxNodCB3)   ! Material tangent stiffness matrix.
   integer,intent(in)   :: NumGauss          ! Number of Gauss points in the element.
 
 ! Local variables.
   integer :: i,j                   ! Counters.
   integer :: iGauss                ! Counter on the Gaussian points.
   real(8) :: Jacobian              ! ds/deta, with eta the nondimensional arclength.
-  real(8),allocatable :: CoordGauss (:) ! Coords of Gauss points.
-  real(8),allocatable :: WeightGauss(:) ! Coords of Gauss points.
+  real(8) :: CoordGauss (NumGauss) ! Coords of Gauss points.
+  real(8) :: WeightGauss(NumGauss) ! Coords of Gauss points.
   real(8) :: ShapeFun(MaxNodCB3)    ! Shape functions in a gauss point.
   real(8) :: ShapeDer(MaxNodCB3)    ! Derivatives of ShapeFun in a gauss point.
 
@@ -113,12 +113,8 @@ module lib_cbeam3
 ! Define Gauss points and loop on them.
 ! sm: because the local frame goes from (-1,1), the result of this call does only
 ! depend on the NumGauss
-  allocate (CoordGauss(NumGauss))
-  allocate (WeightGauss(NumGauss))
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
-
   do iGauss=1,NumGauss
-
 ! Obtain the shape functions and their derivatives.
     call fem_1d_shapefun (NumNodesElem,CoordGauss(iGauss),ShapeFun,ShapeDer)
 
@@ -184,11 +180,7 @@ module lib_cbeam3
 &             * matmul(transpose(B),matmul(ElemStiff,B))
 
   end do
-  deallocate (CoordGauss,WeightGauss)
-
-  return
  end subroutine cbeam3_kmat
-
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -210,10 +202,10 @@ module lib_cbeam3
 
 ! I/O Variables.
   integer,intent(in)      :: NumNodesElem     ! Number of nodes in the element.
-  real(8),intent(in)      :: r0       (:,:)   ! Initial position/orientation of grid points.
-  real(8),intent(in)      :: Ri       (:,:)   ! Current position/orientation of grid points.
-  real(8),intent(in)      :: ElemStiff(:,:)   ! Stiffness properties in the element.
-  real(8),intent(inout)   :: Kgeom    (:,:)   ! Geometric tangent stiffness matrix.
+  real(8),intent(in)      :: r0       (MaxNodCB3,6)   ! Initial position/orientation of grid points.
+  real(8),intent(in)      :: Ri       (MaxNodCB3,6)   ! Current position/orientation of grid points.
+  real(8),intent(in)      :: ElemStiff(6, 6)   ! Stiffness properties in the element.
+  real(8),intent(inout)   :: Kgeom    (6*MaxNodCB3, 6*MaxNodCB3)   ! Geometric tangent stiffness matrix.
   integer,intent(in)      :: NumGauss         ! Number of Gauss points in the element.
 
 ! Local variables.
@@ -345,10 +337,10 @@ module lib_cbeam3
 
 ! I/O Variables.
   integer,intent(in)   :: NumNodesElem       ! Number of nodes in the element.
-  real(8),intent(in)   :: r0       (:,:)     ! Initial position/orientation of grid points.
-  real(8),intent(in)   :: Ri       (:,:)     ! Current position/orientation of grid points.
-  real(8),intent(in)   :: ElemStiff(:,:)     ! Stiffness properties in the element.
-  real(8),intent(inout):: Qstiff   (:)       ! Discrete generalized stiffness forces.
+  real(8),intent(in)   :: r0       (MaxNodCB3,6)     ! Initial position/orientation of grid points.
+  real(8),intent(in)   :: Ri       (MaxNodCB3,6)     ! Current position/orientation of grid points.
+  real(8),intent(in)   :: ElemStiff(6, 6)     ! Stiffness properties in the element.
+  real(8),intent(inout):: Qstiff   (6*MaxNodCB3)       ! Discrete generalized stiffness forces.
   integer,intent(in)   :: NumGauss           ! Number of Gauss points in the element.
 
 ! Local variables.
@@ -660,9 +652,9 @@ module lib_cbeam3
 
 ! I/O Variables.
   integer,intent(in)   :: NumNodesElem      ! Number of nodes in the element.
-  real(8),intent(in)   :: r0       (:,:)    ! Initial position/orientation of grid points.
-  real(8),intent(in)   :: Ri       (:,:)    ! Current position/orientation of grid points.
-  real(8),intent(in)   :: NodalMass(:,:,:)  ! Inertia tensor of lumped masses at element nodes.
+  real(8),intent(in)   :: r0       (MaxNodCB3, 6)    ! Initial position/orientation of grid points.
+  real(8),intent(in)   :: Ri       (MaxNodCB3, 6)    ! Current position/orientation of grid points.
+  real(8),intent(in)   :: NodalMass(MaxNodCB3,6,6)  ! Inertia tensor of lumped masses at element nodes.
   real(8),intent(inout):: Mass     (:,:)    ! Tangent mass matrix.
 
 ! Local variables.
@@ -2069,27 +2061,40 @@ end subroutine cbeam3_rbmvel
   real(8) :: Rot (3,3)             ! Tangential operator.
   real(8) :: Kbar(6,6)             ! Matrix at current node.
 
+  ! print*, 'Fi = ', Fi
+
 ! This routine gives an output only for follower forces.
   if (FollowerForce) then
+    ! Loop in the element nodes.
+      do iNode=1,NumNodesElem
+        !   print*, iNode
+          if (Flags(iNode)) then
+        ! Compute the current coordinate transformation matrix and rotational operator.
+            CBa= rotvect_psi2mat(Ri(iNode,4:6))
+            ! if (any(isnan(CBA))) then
+            !     print*, '2072'
+            ! end if
+            Rot= rotvect_psi2rot(Ri(iNode,4:6))
+            ! if (any(isnan(rot))) then
+            !     print*, '2076'
+            ! end if
 
-! Loop in the element nodes.
-  do iNode=1,NumNodesElem
-  if (Flags(iNode)) then
+        ! Compute Kbar for the tangent matrix at the current Gauss point.
+            Kbar= 0.d0
+            Kbar(1:3,4:6)= matmul(transpose(CBa),matmul(rot_skew(Fi(iNode,1:3)),Rot))
+            ! if (any(isnan(matmul(transpose(CBa),matmul(rot_skew(Fi(iNode,1:3)),Rot))))) then
+            !     print*, 'rot_wkew() = ', rot_skew(Fi(iNode,1:3))
+            !     print*, '2083'
+            ! end if
+            Kbar(4:6,4:6)=-rotvect_a2(Ri(iNode,4:6),Fi(iNode,4:6))
+            ! if (any(isnan(-rotvect_a2(Ri(iNode,4:6),Fi(iNode,4:6))))) then
+            !     print*, '2087'
+            ! end if
 
-! Compute the current coordinate transformation matrix and rotational operator.
-    CBa= rotvect_psi2mat(Ri(iNode,4:6))
-    Rot= rotvect_psi2rot(Ri(iNode,4:6))
-
-! Compute Kbar for the tangent matrix at the current Gauss point.
-    Kbar= 0.d0
-    Kbar(1:3,4:6)= matmul(transpose(CBa),matmul(rot_skew(Fi(iNode,1:3)),Rot))
-    Kbar(4:6,4:6)=-rotvect_a2(Ri(iNode,4:6),Fi(iNode,4:6))
-
-! Compute influence coefficients for follower forces.
-    Kmat(6*(iNode-1)+1:6*iNode,6*(iNode-1)+1:6*iNode)= Kmat(6*(iNode-1)+1:6*iNode,6*(iNode-1)+1:6*iNode) + Kbar
-
-  end if
-  end do
+        ! Compute influence coefficients for follower forces.
+            Kmat(6*(iNode-1)+1:6*iNode,6*(iNode-1)+1:6*iNode)= Kmat(6*(iNode-1)+1:6*iNode,6*(iNode-1)+1:6*iNode) + Kbar
+          end if
+      end do
   end if
 
   return

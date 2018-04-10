@@ -498,7 +498,7 @@ subroutine xbeam_asbly_orient (Elem,Node,PosDefor,PsiDefor,Vrel,Quat,CQR,CQQ,fs,
   real(8):: ForceElem (MaxElNod,6)              ! Current forces/moments of nodes in the element.
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)       ! Transformation from master to global node orientations.
 
-  print*, 'HERE------------------------------------------------------------------'
+  ! print*, 'HERE------------------------------------------------------------------'
 ! Initialise
   call sparse_zero(frf,Frigid_foll)
   call sparse_zero(frd,Frigid_dead)

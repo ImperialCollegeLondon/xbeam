@@ -136,38 +136,40 @@ module cbeam3_solv
   integer   :: ii
 
  ! Determine scaling factors for convergence test (absolute tolerances)
-  Psisc = 1.0_8
-  Possc = maxval(abs(Coords))
-  Fsc = maxval(abs( AppForces(:,1:3) ));
-  Msc = maxval(abs( AppForces(:,4:6) ));
+!   Psisc = 1.0_8
+!   Possc = maxval(abs(Coords))
+!   Fsc = maxval(abs( AppForces(:,1:3) ));
+!   Msc = maxval(abs( AppForces(:,4:6) ));
+!
+!   ! Correct Msc accounting for forces contribution. It is assumed that the
+!   ! beam is constrained at Node 1 and that here the coordinates are (0,0,0)
+!   do i =1,3
+!       !print *, 'i=', 1, ' Msc=', Msc
+!       do j = 1,3
+!           if (i /= j) then
+!               MSc = max(Msc,maxval(abs( AppForces(:,i)*Coords(:,j) )))
+!           end if
+!       end do
+!   end do
+!
+!   ! avoid zero scaling factors
+!   if (abs(Fsc) < 1e-8) then
+!       Fsc=1.0_8
+!   end if
+!   if (abs(Msc) < 1e-8) then
+!       Msc=1.0_8
+!   end if
+!
+! ! Determine Absolute tolerances
+! TaRes    = max(Fsc,Msc) *Options%MinDelta ! this could be made more severe picking the minimum.
+! TaResFrc =     Fsc      *Options%MinDelta
+! TaResMmt =         Msc  *Options%MinDelta
+!
+! TaX   = max(Possc,Psisc)*Options%MinDelta
+! TaPos =     Possc       *Options%MinDelta
+! TaPsi =           Psisc *Options%MinDelta
 
-  ! Correct Msc accounting for forces contribution. It is assumed that the
-  ! beam is constrained at Node 1 and that here the coordinates are (0,0,0)
-  do i =1,3
-      !print *, 'i=', 1, ' Msc=', Msc
-      do j = 1,3
-          if (i /= j) then
-              MSc = max(Msc,maxval(abs( AppForces(:,i)*Coords(:,j) )))
-          end if
-      end do
-  end do
-
-  ! avoid zero scaling factors
-  if (abs(Fsc) < 1e-8) then
-      Fsc=1.0_8
-  end if
-  if (abs(Msc) < 1e-8) then
-      Msc=1.0_8
-  end if
-
-! Determine Absolute tolerances
-TaRes    = max(Fsc,Msc) *Options%MinDelta ! this could be made more severe picking the minimum.
-TaResFrc =     Fsc      *Options%MinDelta
-TaResMmt =         Msc  *Options%MinDelta
-
-TaX   = max(Possc,Psisc)*Options%MinDelta
-TaPos =     Possc       *Options%MinDelta
-TaPsi =           Psisc *Options%MinDelta
+DX_old = 1.0d0*options%mindelta
 
 ! Initialize geometric constants and system state.
   ListIN = 0
@@ -184,7 +186,6 @@ TaPsi =           Psisc *Options%MinDelta
 
 ! Apply loads in substeps.
   do iLoadStep=1,Options%NumLoadSteps
-
     Iter  = 0
     Delta = Options%MinDelta+1.d0
 
@@ -220,110 +221,109 @@ TaPsi =           Psisc *Options%MinDelta
       Qglobal=0.d0
       Kglobal=0.0d0
       Fglobal=0.0d0
-      ! if (options%gravity_on .eqv. .FALSE.) then
-      !     call cbeam3_asbly_static (Elem,Node,Coords,Psi0,&
-      !                               PosDefor,PsiDefor,&
-      !                               AppForces*dble(iLoadStep)/dble(Options%NumLoadSteps), &
-      !                               Kglobal,Fglobal,Qglobal,Options)
-      !
-      ! else
-      Mglobal = 0.0
+      Mglobal = 0.0d0
       call cbeam3_asbly_static (numdof, n_elem, n_node,Elem,Node,Coords,Psi0,&
                                 PosDefor,PsiDefor,&
                                 AppForces*dble(iLoadStep)/dble(Options%NumLoadSteps), &
                                 Kglobal,Fglobal,Qglobal,Options,Mglobal)
-      ! end if
 
       Qglobal= Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps) * &
       &              MATMUL(Fglobal,fem_m2v(AppForces,NumDof,Filter=ListIN))
 
       if (options%gravity_on) then
-        ! gravity_forces = -fem_v2m(MATMUL(Mglobal,&
-        !                                  cbeam3_asbly_gravity_static(NumDof + 6,&
-        !                                                              options)),&
-        !                           numdof + 6, 6)
         gravity_forces = -fem_v2m(MATMUL(Mglobal,&
                                          cbeam3_asbly_gravity_static(NumDof + 6,&
                                                                      options)),&
                                   n_node, 6)
-        Qglobal= Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps)*&
-            fem_m2v(gravity_forces, numdof, filter=ListIN)
+        Qglobal = Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps)*&
+                  fem_m2v(gravity_forces, numdof, filter=ListIN)
       end if
 
 ! Solve equation and update the global vectors.
       ! call lu_sparse(ks,Kglobal,-Qglobal,DeltaX)
-      call lu_solve(Kglobal,-Qglobal,DeltaX)
+      DeltaX = 0.0d0
+      call lu_solve(size(Kglobal, dim=1), Kglobal,-Qglobal,DeltaX)
 
       call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
-! Convergence parameter delta (original):
-      call delta_check(Qglobal,DeltaX,Delta,passed_delta,Options%MinDelta,Options%PrintInfo)
- ! Check convergence using the residual:
-      call separate_dofs(Qglobal,(/1,2,3/),(/4,5,6/),QglFrc,QglMmt)
 
-      call residual_check(Iter,Qglobal,Res,Res0,passed_res,Options%MinDelta,&
-                         &TaRes,Options%PrintInfo  )
-
-      if ( (iLoadStep .eq. 1) .and. (Iter.eq.2) ) then
-          ! update forcesd and moments residual at 2nd iteration to avoid zero
-          ! due to trivial solution
-          if (maxval(abs( AppForces(:,1:3))) < 1e-8) then
-              ! jump first iteration
-              call residual_check(1,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
-                                 &TaResFrc, Options%PrintInfo)
-          else
-              call residual_check(Iter  ,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
-                                 &TaResFrc, Options%PrintInfo)
+      if (iter > 1) then
+          if (maxval(abs(DeltaX)) < DX_old) then
+              converged = .TRUE.
           end if
-
-          if (maxval(abs( AppForces(:,4:6))) < 1e-8) then
-              call residual_check(1,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
-                                 &TaResMmt, Options%PrintInfo)
-          else
-              call residual_check(Iter,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
-                                 &TaResMmt, Options%PrintInfo)
-          end if
-
-      else
-          call residual_check(Iter  ,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
-                             &TaResFrc, Options%PrintInfo)
-          call residual_check(Iter,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
-                             &TaResMmt, Options%PrintInfo)
       end if
 
- ! SuperLinear Convergence Test
-      call separate_dofs(DeltaX,(/1,2,3/),(/4,5,6/),DeltaPos,DeltaPsi)
-
-      call error_check(Iter,DeltaX  ,DX_old  ,DX_now  ,ErrX  ,passed_err   ,TaX  , Options%PrintInfo)
-      call error_check(Iter,DeltaPos,DPos_old,DPos_now,ErrPos,passed_errpos,TaPos, Options%PrintInfo)
-      call error_check(Iter,DeltaPsi,DPsi_old,DPsi_now,ErrPsi,passed_errpsi,TaPsi, Options%PrintInfo)
-
-      DX_old   = DX_now
-      DPos_old = DPos_now
-      DPsi_old = DPsi_now
-
-      if (Options%PrintInfo) write (*,'(1X)')
-
- ! Global Convergence
-    if (passed_res .eqv. .true.) then
-        converged=.true.
-        if (Options%PrintInfo) write (*,'(A)') 'Global residual converged!'
+    if (iter == 1) then
+      DX_old = max(1.0d0, maxval(abs(DeltaX)))*options%mindelta
     end if
-
-    if  (passed_err .eqv. .true. ) then
-        converged=.true.
-        if (Options%PrintInfo) write (*,'(A)') 'Global error converged!'
-    end if
-
-
-    if ( (passed_resfrc .eqv. .true.) .and. (passed_resmmt .eqv. .true.) ) then
-        converged=.true.
-        if (Options%PrintInfo) write (*,'(A)') 'Forces and Moments residual converged!'
-    end if
-
-    if ( (passed_errpos .eqv. .true.) .and. (passed_errpsi .eqv. .true.) ) then
-        converged=.true.
-        if (Options%PrintInfo) write (*,'(A)') 'Displacements and Rotations error converged!'
-    end if
+! Convergence parameter delta (original):
+ !      call delta_check(Qglobal,DeltaX,Delta,passed_delta,Options%MinDelta,Options%PrintInfo)
+ ! ! Check convergence using the residual:
+ !      call separate_dofs(Qglobal,(/1,2,3/),(/4,5,6/),QglFrc,QglMmt)
+ !
+ !      call residual_check(Iter,Qglobal,Res,Res0,passed_res,Options%MinDelta,&
+ !                         &TaRes,Options%PrintInfo  )
+ !
+ !      if ( (iLoadStep .eq. 1) .and. (Iter.eq.2) ) then
+ !          ! update forcesd and moments residual at 2nd iteration to avoid zero
+ !          ! due to trivial solution
+ !          if (maxval(abs( AppForces(:,1:3))) < 1e-8) then
+ !              ! jump first iteration
+ !              call residual_check(1,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
+ !                                 &TaResFrc, Options%PrintInfo)
+ !          else
+ !              call residual_check(Iter  ,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
+ !                                 &TaResFrc, Options%PrintInfo)
+ !          end if
+ !
+ !          if (maxval(abs( AppForces(:,4:6))) < 1e-8) then
+ !              call residual_check(1,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
+ !                                 &TaResMmt, Options%PrintInfo)
+ !          else
+ !              call residual_check(Iter,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
+ !                                 &TaResMmt, Options%PrintInfo)
+ !          end if
+ !
+ !      else
+ !          call residual_check(Iter  ,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
+ !                             &TaResFrc, Options%PrintInfo)
+ !          call residual_check(Iter,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
+ !                             &TaResMmt, Options%PrintInfo)
+ !      end if
+ !
+ ! ! SuperLinear Convergence Test
+ !      call separate_dofs(DeltaX,(/1,2,3/),(/4,5,6/),DeltaPos,DeltaPsi)
+ !
+ !      call error_check(Iter,DeltaX  ,DX_old  ,DX_now  ,ErrX  ,passed_err   ,TaX  , Options%PrintInfo)
+ !      call error_check(Iter,DeltaPos,DPos_old,DPos_now,ErrPos,passed_errpos,TaPos, Options%PrintInfo)
+ !      call error_check(Iter,DeltaPsi,DPsi_old,DPsi_now,ErrPsi,passed_errpsi,TaPsi, Options%PrintInfo)
+ !
+ !      DX_old   = DX_now
+ !      DPos_old = DPos_now
+ !      DPsi_old = DPsi_now
+ !
+ !      if (Options%PrintInfo) write (*,'(1X)')
+ !
+ ! ! Global Convergence
+ !    if (passed_res .eqv. .true.) then
+ !        converged=.true.
+ !        if (Options%PrintInfo) write (*,'(A)') 'Global residual converged!'
+ !    end if
+ !
+ !    if  (passed_err .eqv. .true. ) then
+ !        converged=.true.
+ !        if (Options%PrintInfo) write (*,'(A)') 'Global error converged!'
+ !    end if
+ !
+ !
+ !    if ( (passed_resfrc .eqv. .true.) .and. (passed_resmmt .eqv. .true.) ) then
+ !        converged=.true.
+ !        if (Options%PrintInfo) write (*,'(A)') 'Forces and Moments residual converged!'
+ !    end if
+ !
+ !    if ( (passed_errpos .eqv. .true.) .and. (passed_errpsi .eqv. .true.) ) then
+ !        converged=.true.
+ !        if (Options%PrintInfo) write (*,'(A)') 'Displacements and Rotations error converged!'
+ !    end if
 
     end do
   end do
@@ -1014,6 +1014,8 @@ TaPsi =           Psisc *Options%MinDelta
 
   real(8),allocatable:: dXdt(:),dXddt(:)  ! Generalized coordinates and derivatives.
   real(8),allocatable:: X(:), DX(:)
+  real(8)               :: residual
+  real(8)               :: previous_residual
 
   integer,allocatable::  ListIN     (:)    ! List of independent nodes.
 
@@ -1155,6 +1157,8 @@ TaPsi =           Psisc *Options%MinDelta
     dXddt= 0.d0
 
 ! Iteration until convergence.
+
+    previous_residual = 1e10
     do Iter=1,Options%MaxIterations+1
       if (Iter.gt.Options%MaxIterations) then
         ! write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
@@ -1238,7 +1242,7 @@ TaPsi =           Psisc *Options%MinDelta
   end if
 
 ! Compute admissible error.
-      MinDelta=Options%MinDelta*max(1.d0,maxval(abs(Qglobal)))
+      MinDelta=Options%MinDelta
 
 ! Compute the residual.
       Qglobal= Qglobal + sparse_matvmul(ms,Mglobal,NumDof,dXddt) + matmul(Mvel,Vreldot(iStep+1,:))
@@ -1246,12 +1250,17 @@ TaPsi =           Psisc *Options%MinDelta
 
 
 ! Check convergence.
-      if (maxval(abs(DX)+abs(Qglobal)).lt.MinDelta) then
+    !   if (maxval(abs(DX)).lt.MinDelta) then
+    residual = maxval(abs(DX)+maxval(abs(Qglobal)))
+    if (Iter > 1) then
+      if ((residual - previous_residual)/previous_residual.lt.MinDelta) then
         if (Options%PrintInfo) then
           write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
         end if
         exit
       end if
+    end if
+    previous_residual = residual
 
 ! Compute Jacobian
       call sparse_zero (as,Asys)

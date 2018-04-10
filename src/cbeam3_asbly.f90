@@ -82,7 +82,8 @@ end interface cbeam3_asbly_dynamic
   logical:: Flags(MaxElNod)                ! Auxiliary flags.
   integer:: i,j,i1,j1                      ! Counters.
   integer:: nn, mm                         ! Counter for node number in global ordering
-  integer:: rr, cc                         ! Counters for rows (rr) and column (cc) - for Kglobal only - in Kglobal, Qglobal and Fglobal
+  integer:: rr, cc
+    ! Counters for rows (rr) and column (cc) - for Kglobal only - in Kglobal, Qglobal and Fglobal
   integer:: iElem                          ! Counter on the finite elements.
   integer:: NumE                           ! Number of elements in the model.
   integer:: NumNE                          ! Number of nodes in an element.
@@ -579,6 +580,12 @@ end do
 
 ! Extract current applied forces/moments at the element nodes.
     call fem_glob2loc_extract (Elem(iElem)%Conn,Force,ForceElem,NumNE)
+    ! if (any(isnan(ForceElem))) then
+    !     print*, 'Force elem Nan!'
+    !     print*, Force
+    !     print*, '---'
+    !     STOP
+    ! end if
 
 ! Use full integration for mass matrix.
     NumGaussMass=NumNE
@@ -590,6 +597,17 @@ end do
     call cbeam3_mass (NumNE,rElem0,rElem,                                Elem(iElem)%Mass,Melem,NumGaussMass)
     call cbeam3_cgyr (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Celem,Options%NumGauss)
     call cbeam3_kgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%Mass,Kelem,Options%NumGauss)
+    ! if (any(isnan(Kelem))) then
+    !     print*, 'Cbeam asbly, line 595'
+    !     print*, NumNE
+    !     print*, rElem0
+    !     print*, rElem
+    !     print*, rElemDot
+    !     print*, rElemDDot
+    !     print*, Vrel
+    !     print*, VrelDot
+    ! end if
+
 ! Compute the gyroscopic force vector.
     call cbeam3_fgyr (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,Qelem,Options%NumGauss)
 ! Add contributions of non-structural (lumped) mass.
@@ -599,18 +617,48 @@ end do
       call cbeam3_rbmass (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,Melem)
       call cbeam3_rbcgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,Celem)
       call cbeam3_rbkgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%RBMass,Kelem)
+    ! if (any(isnan(Kelem))) then
+    !     print*, 'Cbeam asbly, line 615'
+    !     print*, NumNE
+    !     print*, rElem0
+    !     print*, rElem
+    !     print*, rElemDot
+    !     print*, rElemDDot
+    !     print*, Vrel
+    !     print*, VrelDot
+    ! end if
       call cbeam3_rbfgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,Qelem)
     end if
 ! Compute the element tangent stiffness matrix and force vectors.
     call cbeam3_kmat  (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Kelem,Options%NumGauss)
+    ! if (any(isnan(Kelem))) then
+    !     print*, 'Cbeam asbly, line 629'
+    !     print*, NumNE
+    !     print*, rElem0
+    !     print*, rElem
+    ! end if
     call cbeam3_kgeom (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Kelem,Options%NumGauss)
+    ! if (any(isnan(Kelem))) then
+    !     print*, 'Cbeam asbly, line 636'
+    !     print*, NumNE
+    !     print*, rElem0
+    !     print*, rElem
+    ! end if
     call cbeam3_fstif (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Qelem,Options%NumGauss)
 
 ! Add external forces to the residual, and their derivatives with respect to the nodal
 ! degrees of freedom to the stiffness.
     if (any(abs(ForceElem)>0.0d0)) then
       call cbeam3_fext (NumNE,rElem,Flags(1:NumNE),Felem,Options%FollowerForce,Options%FollowerForceRig,Cao)
+    !   print*, 'Elem = ', iElem
       call cbeam3_dqext(NumNE,rElem,ForceElem,Flags(1:NumNE),Kelem,Options%FollowerForce)
+        ! if (any(isnan(Kelem))) then
+        !     print*, 'Cbeam asbly, line 649'
+        !     print*, NumNE
+        !     print*, rElem
+        !     print*, ForceElem
+        !     print*, Flags
+        ! end if
     end if
 
 ! Project slave degrees of freedom to the orientation of the "master" ones.

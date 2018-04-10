@@ -112,8 +112,8 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
    logical(c_bool), intent(INOUT)  :: success
 
    success = .TRUE.
-   quat_history = 0.0_c_double
-   quat_history(1, 1) = 1.0_c_double
+   ! quat_history = 0.0_c_double
+   ! quat_history(1, 1) = 1.0_c_double
 
    ! number of nodes per element
    nodes_per_elem = 0
@@ -287,6 +287,15 @@ end subroutine xbeam_solv_couplednlndyn_python
         integer(c_int)                  :: nodes_per_elem
 
 
+    ! if (any(isnan(steady_app_forces))) then
+    !     print*, 'xbeamint, 291'
+    !     stop
+    ! end if
+    !
+    ! if (any(isnan(dynamic_app_forces))) then
+    !     print*, 'xbeamint, 296'
+    !     stop
+    ! end if
         ! print*, quat
         ! fa_fake = 0
         ! qquat = quat(:,1)
@@ -378,7 +387,7 @@ end subroutine xbeam_solv_couplednlndyn_python
                                                    dqdt,&
                                                    dqddt,&
                                                    options)
-        
+
         ! print*, 'for_vel, finish: ', for_vel(1:3)
         ! call print_matrix('q', q)
         ! call print_matrix('dqdt', dqdt)
@@ -719,7 +728,7 @@ end subroutine xbeam_solv_couplednlndyn_python
         Mtotal(numdof+1:numdof+6, numdof+1:numdof+6) = MRR
         Mtotal(numdof+7:numdof+10, numdof+7:numdof+10) = unit4
 
-        call lu_solve(Mtotal, -Qtotal, dQddt)
+        call lu_solve(numdof, Mtotal, -Qtotal, dQddt)
         ! ! Predictor step.
         ! Q    = Q + dt*dQdt + (0.5d0-beta)*dt*dt*dQddt
         ! ! Q    = initialQ + dt*dQdt + (0.5d0-beta)*dt*dt*dQddt

@@ -26,7 +26,8 @@ module xbeam_shared
  type xbelem
   integer:: NumNodes = 0               ! Number of nodes in the element.
   integer:: MemNo = 0                 ! Member to which the element belongs.
-  integer:: Conn   (MaxElNod) = 0      ! Connectivities (i.e., for each node, contains the local number to global number association)
+  integer:: Conn   (MaxElNod) = 0
+    ! Connectivities (i.e., for each node, contains the local number to global number association)
   integer:: Master (MaxElNod,2) = 0   ! Master node for each node j in the element.
                                    ! (j,1): # master elem  (or 0 if current is master).
                                    ! (j,2): Node within master element (or 0 if current is master).
@@ -68,7 +69,7 @@ module xbeam_shared
                                       ! =1: Element info computed in a fixed element frame.
                                       ! =2: Element info computed in a moving element frame.
   integer(c_int):: MaxIterations=99          ! Maximum number of iterations.
-  integer(c_int):: NumLoadSteps=5            ! Number of load increments.
+  integer(c_int):: NumLoadSteps=1            ! Number of load increments.
   integer(c_int):: NumGauss=2                ! Number of Gauss points in the integration.
   integer(c_int):: Solution=111              ! Solution process:
                                       ! =102/112: cbeam3 linear/nonlinear static.

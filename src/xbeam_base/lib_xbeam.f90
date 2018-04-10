@@ -216,7 +216,6 @@ module lib_xbeam
 ! Compute mass tangent stiffness.
     Mass= Mass + matmul(ARC,matmul(NodalMass(iNode,:,:),DTYpN))
   end do
-  return
  end subroutine xbeam_rbmrs
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

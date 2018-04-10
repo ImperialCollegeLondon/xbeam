@@ -38,7 +38,6 @@ contains
                                             applied_forces,&
                                             gravity_forces&
                                             ) bind(C)
-        use, intrinsic :: ieee_exceptions
         integer(c_int), intent(IN)      :: n_elem
         integer(c_int), intent(IN)      :: n_node
 
@@ -76,7 +75,6 @@ contains
         ! ADC XXX: careful with forces in master FoR
 
         integer(c_int)                  :: num_dof
-        ! real(c_double)                  :: applied_forces(n_node, 6)!legacy var
 
         integer(c_int)                  :: nodes_per_elem
         integer(c_int)                  :: i
@@ -85,7 +83,6 @@ contains
         Logical                         :: halt
 
         num_dof = count(vdof > 0)*6
-        ! applied_forces = app_forces
 
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
@@ -122,8 +119,10 @@ contains
         ! call print_matrix('psi_def3', psi_def(:, 3, :))
         ! call print_matrix('fdof',fdof)
         ! call print_matrix('app_forces',applied_forces)
-        ! call print_matrix('gravity_forces',gravity_forces)
+        ! ! call print_matrix('gravity_forces',gravity_forces)
         ! call print_matrix('vdof',vdof)
+        ! call print_xbelem(elements)
+        ! call print_xbnode(nodes)
         ! print*, 'RBMass:'
         ! print*, elements(1)%RBMASS(1, 1, :)
         ! print*, elements(1)%RBMASS(1, 2, :)
