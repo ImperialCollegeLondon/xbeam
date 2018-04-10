@@ -7,8 +7,8 @@ BASE_OBJS = $(BASE_SRCS:.f90=.o)
 FILES = xbeam_shared\
 debug_utils\
 cbeam3_asbly\
-cbeam3_solv\
 xbeam_asbly\
+cbeam3_solv\
 xbeam_fdiff\
 xbeam_perturb\
 xbeam_solv\

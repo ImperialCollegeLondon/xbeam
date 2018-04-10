@@ -26,7 +26,8 @@ module xbeam_shared
  type xbelem
   integer:: NumNodes = 0               ! Number of nodes in the element.
   integer:: MemNo = 0                 ! Member to which the element belongs.
-  integer:: Conn   (MaxElNod) = 0      ! Connectivities (i.e., for each node, contains the local number to global number association)
+  integer:: Conn   (MaxElNod) = 0
+    ! Connectivities (i.e., for each node, contains the local number to global number association)
   integer:: Master (MaxElNod,2) = 0   ! Master node for each node j in the element.
                                    ! (j,1): # master elem  (or 0 if current is master).
                                    ! (j,2): Node within master element (or 0 if current is master).
@@ -43,13 +44,13 @@ module xbeam_shared
 
 ! Nodal information.
  type xbnode
-  integer:: Master (2)             ! Master node for current node.
+  integer:: Master (2) = 0         ! Master node for current node.
                                    ! (1): # master elem.
                                    ! (2): # node within master element.
-  integer:: Vdof                   ! Number of node for which displacements and rotations are unknown
+  integer:: Vdof  = 0                  ! Number of node for which displacements and rotations are unknown
                                    ! (free -internal and not - and clamped) in the velocity/displacements vector
                                    ! For clamped node, this signifies weak enforcement of BCs.
-  integer:: Fdof                   ! Number of node in the force vector for which all the forces/moments need to be computed
+  integer:: Fdof = 0                  ! Number of node in the force vector for which all the forces/moments need to be computed
                                    ! (clamped BC, internal nodes)
   integer:: Sflag=0                ! Flag for spherical joint at the node (1: hinged, 0: no hinge)
                                    ! This will imply weak enforcement of BCs.
@@ -68,7 +69,7 @@ module xbeam_shared
                                       ! =1: Element info computed in a fixed element frame.
                                       ! =2: Element info computed in a moving element frame.
   integer(c_int):: MaxIterations=99          ! Maximum number of iterations.
-  integer(c_int):: NumLoadSteps=5            ! Number of load increments.
+  integer(c_int):: NumLoadSteps=1            ! Number of load increments.
   integer(c_int):: NumGauss=2                ! Number of Gauss points in the integration.
   integer(c_int):: Solution=111              ! Solution process:
                                       ! =102/112: cbeam3 linear/nonlinear static.

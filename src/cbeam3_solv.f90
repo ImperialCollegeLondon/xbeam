@@ -29,6 +29,9 @@ module cbeam3_solv
   use, intrinsic    :: iso_c_binding
   use debug_utils
   use xbeam_shared
+  use                                 :: debug_utils
+  use xbeam_asbly
+  use lib_rot
   implicit none
 
 ! Private variables.
@@ -63,7 +66,7 @@ module cbeam3_solv
 !-> Remarks.-
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_solv_nlnstatic_old (NumDof,Elem,Node,AppForces,Coords,Psi0, &
+ subroutine cbeam3_solv_nlnstatic_old (NumDof,n_elem,n_node,Elem,Node,AppForces,gravity_forces,Coords,Psi0, &
 &                                  PosDefor,PsiDefor,Options)
   use lib_fem
   use lib_sparse
@@ -74,13 +77,16 @@ module cbeam3_solv
 
 ! I/O Variables.
   integer,      intent(in)   :: NumDof            ! Number of independent DoFs.
-  type(xbelem),intent(in)    :: Elem(:)           ! Element information.
-  type(xbnode),intent(in)    :: Node(:)           ! Nodal information.
-  real(8),      intent(in)   :: AppForces (:,:)   ! Applied nodal forces.
-  real(8),      intent(in)   :: Coords   (:,:)    ! Initial coordinates of the grid points.
-  real(8),      intent(in)   :: Psi0     (:,:,:)  ! Initial CRV of the nodes in the elements.
-  real(8),      intent(inout):: PosDefor (:,:)    ! Current coordinates of the grid points
-  real(8),      intent(inout):: PsiDefor (:,:,:)  ! Current CRV of the nodes in the elements.
+  integer,      intent(in)   :: n_elem ! Number of independent DoFs.
+  integer,      intent(in)   :: n_node ! Number of independent DoFs.
+  type(xbelem),intent(in)    :: Elem(n_elem)           ! Element information.
+  type(xbnode),intent(in)    :: Node(n_node)           ! Nodal information.
+  real(8),      intent(in)   :: AppForces (n_node,6)   ! Applied nodal forces.
+  real(8),      intent(INOUT):: gravity_forces(n_node,6)   ! Applied nodal forces.
+  real(8),      intent(in)   :: Coords   (n_node,3)    ! Initial coordinates of the grid points.
+  real(8),      intent(in)   :: Psi0     (n_elem,3,3)  ! Initial CRV of the nodes in the elements.
+  real(8),      intent(inout):: PosDefor (n_node, 3)    ! Current coordinates of the grid points
+  real(8),      intent(inout):: PsiDefor (n_elem, 3, 3)  ! Current CRV of the nodes in the elements.
   type(xbopts),intent(in)    :: Options           ! Solver parameters.
 
 ! Local variables.
@@ -92,13 +98,12 @@ module cbeam3_solv
   integer:: i,j,k                          ! Auxiliary integer.
   integer:: ks                             ! Current storage size of stiffness matrix.
 
-  integer,allocatable::      ListIN (:)    ! List of independent nodes.
-  real(8),allocatable::      Qglobal(:)    ! Global vector of discrete generalize forces.
-  real(8),allocatable::      DeltaX (:)    ! Unknown in the linearized system.
-  type(sparse),allocatable:: Kglobal(:)    ! Global stiffness matrix in sparse storage.
-  type(sparse),allocatable:: Fglobal(:)    ! Influence coefficients matrix for applied forces.
-  type(sparse),allocatable:: Mglobal(:)    ! Global stiffness matrix in sparse storage.
-  real(8), allocatable    :: gravity_vec(:)! gravity vector to be multiplied by mass matrix
+  integer::      ListIN (n_node)    ! List of independent nodes.
+  real(8)::      Qglobal(numdof)    ! Global vector of discrete generalize forces.
+  real(8)::      DeltaX (numdof)    ! Unknown in the linearized system.
+  real(8):: Kglobal(numdof,numdof)    ! Global stiffness matrix in sparse storage.
+  real(8):: Fglobal(numdof,numdof)    ! Influence coefficients matrix for applied forces.
+  real(8):: Mglobal(numdof + 6,numdof + 6)    ! Global stiffness matrix in sparse storage.
 
   ! Parameters to Check Convergence
   logical :: converged = .false.
@@ -131,58 +136,53 @@ module cbeam3_solv
   integer   :: ii
 
  ! Determine scaling factors for convergence test (absolute tolerances)
-  Psisc = 1.0_8
-  Possc = maxval(abs(Coords))
-  Fsc = maxval(abs( AppForces(:,1:3) ));
-  Msc = maxval(abs( AppForces(:,4:6) ));
+!   Psisc = 1.0_8
+!   Possc = maxval(abs(Coords))
+!   Fsc = maxval(abs( AppForces(:,1:3) ));
+!   Msc = maxval(abs( AppForces(:,4:6) ));
+!
+!   ! Correct Msc accounting for forces contribution. It is assumed that the
+!   ! beam is constrained at Node 1 and that here the coordinates are (0,0,0)
+!   do i =1,3
+!       !print *, 'i=', 1, ' Msc=', Msc
+!       do j = 1,3
+!           if (i /= j) then
+!               MSc = max(Msc,maxval(abs( AppForces(:,i)*Coords(:,j) )))
+!           end if
+!       end do
+!   end do
+!
+!   ! avoid zero scaling factors
+!   if (abs(Fsc) < 1e-8) then
+!       Fsc=1.0_8
+!   end if
+!   if (abs(Msc) < 1e-8) then
+!       Msc=1.0_8
+!   end if
+!
+! ! Determine Absolute tolerances
+! TaRes    = max(Fsc,Msc) *Options%MinDelta ! this could be made more severe picking the minimum.
+! TaResFrc =     Fsc      *Options%MinDelta
+! TaResMmt =         Msc  *Options%MinDelta
+!
+! TaX   = max(Possc,Psisc)*Options%MinDelta
+! TaPos =     Possc       *Options%MinDelta
+! TaPsi =           Psisc *Options%MinDelta
 
-  ! Correct Msc accounting for forces contribution. It is assumed that the
-  ! beam is constrained at Node 1 and that here the coordinates are (0,0,0)
-  do i =1,3
-      !print *, 'i=', 1, ' Msc=', Msc
-      do j = 1,3
-          if (i /= j) then
-              !print *, 'product for i,j=(', i,',',j,') equal to: ', AppForces(:,i)*Coords(:,j)
-              MSc = max(Msc,maxval(abs( AppForces(:,i)*Coords(:,j) )))
-              !print *, 'i=', 1, 'j=',j, ' Msc=', Msc
-          end if
-      end do
-  end do
-  !print *, ' Msc final=', Msc
-
-  ! avoid zero scaling factors
-  if (Fsc .eq. 0.0_8) then
-      Fsc=1.0_8
-  end if
-  if (Msc .eq. 0.0_8) then
-      Msc=1.0_8
-  end if
-
-! Determine Absolute tolerances
-TaRes    = max(Fsc,Msc) *Options%MinDelta ! this could be made more severe picking the minimum.
-TaResFrc =     Fsc      *Options%MinDelta
-TaResMmt =         Msc  *Options%MinDelta
-
-TaX   = max(Possc,Psisc)*Options%MinDelta
-TaPos =     Possc       *Options%MinDelta
-TaPsi =           Psisc *Options%MinDelta
+DX_old = 1.0d0*options%mindelta
 
 ! Initialize geometric constants and system state.
-  allocate (ListIN (size(Node)))
+  ListIN = 0
   do k=1,size(Node)
     ListIN(k)=Node(k)%Vdof
   end do
 
-! Allocate memory for solver (Use a conservative estimate of the size of the matrix Kglobal).
-  call sparse_allocate(Kglobal,NumDof,NumDof)
-  if (options%gravity_on) then
-    !   allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
-      call sparse_allocate(Mglobal,NumDof,NumDof)
-  end if
-  allocate (Qglobal(NumDof));    Qglobal= 0.d0
-  allocate (DeltaX (NumDof));    DeltaX = 0.d0
-  call sparse_allocate(Fglobal,NumDof,NumDof)
-
+  Kglobal = 0.0d0
+  Mglobal = 0.0d0
+  gravity_forces = 0.0d0
+  Qglobal= 0.d0
+  DeltaX = 0.d0
+  Fglobal = 0.0d0
 
 ! Apply loads in substeps.
   do iLoadStep=1,Options%NumLoadSteps
@@ -201,12 +201,12 @@ TaPsi =           Psisc *Options%MinDelta
               & 'Res','ResRel', 'ResFrc','ResRelFrc','ResMmt','ResRelMmt',   &
               & 'ErX','ErPos ','ErPsi'
 
-          write (*,'(A16,$)') 'Tolerance'
-          write (*,'(2X,1PE10.3,2X,1PE10.3,2X,$)') Options%MinDelta,Options%MinDelta
-          write (*,'(2X,1PE10.3,2X,1PE10.3,2X,$)') TaRes,   Options%MinDelta
-          write (*,'(2X,1PE10.3,2X,1PE10.3,2X,$)') TaResFrc,Options%MinDelta
-          write (*,'(2X,1PE10.3,2X,1PE10.3,2X,$)') TaResMmt,Options%MinDelta
-          write (*,'(2X,1PE10.3,2X,1PE10.3,2X,1PE10.3,2X)') TaX,TaPos,TaPsi
+          ! write (*,'(A16,$)') 'Tolerance'
+          ! write (*,'(2X,1PE10.3,2X,1PE10.3,2X,$)') Options%MinDelta,Options%MinDelta
+          ! write (*,'(2X,1PE10.3,2X,1PE10.3,2X,$)') TaRes,   Options%MinDelta
+          ! write (*,'(2X,1PE10.3,2X,1PE10.3,2X,$)') TaResFrc,Options%MinDelta
+          ! write (*,'(2X,1PE10.3,2X,1PE10.3,2X,$)') TaResMmt,Options%MinDelta
+          ! write (*,'(2X,1PE10.3,2X,1PE10.3,2X,1PE10.3,2X)') TaX,TaPos,TaPsi
 
           write (*,'(A8,A8,A13,A11,A12,A12,A12,A12,A12,A12,A12,A13,A11)')      &
               & 'LoadStep','Subiter',                                          &
@@ -215,123 +215,118 @@ TaPsi =           Psisc *Options%MinDelta
               & 'ErX','ErPos ','ErPsi'
 
       end if
-      if (Options%PrintInfo) write(*,'(I8,I8,$)')  iLoadStep, Iter
-
+      ! if (Options%PrintInfo) write(*,'(I8,I8,$)')  iLoadStep, Iter
 
 ! Assembly matrices and functional.
       Qglobal=0.d0
-      call sparse_zero (ks,Kglobal)
-      call sparse_zero (fs,Fglobal)
-      if (options%gravity_on .eqv. .FALSE.) then
-          call cbeam3_asbly_static (Elem,Node,Coords,Psi0,&
-                                    PosDefor,PsiDefor,&
-                                    AppForces*dble(iLoadStep)/dble(Options%NumLoadSteps), &
-                                    ks,Kglobal,fs,Fglobal,Qglobal,Options)
-      else
-          call sparse_zero(ms, Mglobal)
-          call cbeam3_asbly_static (Elem,Node,Coords,Psi0,&
-                                    PosDefor,PsiDefor,&
-                                    AppForces*dble(iLoadStep)/dble(Options%NumLoadSteps), &
-                                    ks,Kglobal,fs,Fglobal,Qglobal,Options, ms,&
-                                    Mglobal)
-      end if
+      Kglobal=0.0d0
+      Fglobal=0.0d0
+      Mglobal = 0.0d0
+      call cbeam3_asbly_static (numdof, n_elem, n_node,Elem,Node,Coords,Psi0,&
+                                PosDefor,PsiDefor,&
+                                AppForces*dble(iLoadStep)/dble(Options%NumLoadSteps), &
+                                Kglobal,Fglobal,Qglobal,Options,Mglobal)
 
-      if (options%gravity_on .eqv. .FALSE.) then
-        ! Add forces on the unconstrained nodes.
-              Qglobal= Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps) * &
-        &              sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(AppForces,NumDof,Filter=ListIN))
-      else
-              gravity_vec = cbeam3_asbly_gravity_static(NumDof, options)
-              Qglobal= Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps) * (&
-        &              sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(AppForces,NumDof,Filter=ListIN)) - &
-                       sparse_matvmul(ms,Mglobal,NumDof,gravity_vec))
+      Qglobal= Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps) * &
+      &              MATMUL(Fglobal,fem_m2v(AppForces,NumDof,Filter=ListIN))
+
+      if (options%gravity_on) then
+        gravity_forces = -fem_v2m(MATMUL(Mglobal,&
+                                         cbeam3_asbly_gravity_static(NumDof + 6,&
+                                                                     options)),&
+                                  n_node, 6)
+        Qglobal = Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps)*&
+                  fem_m2v(gravity_forces, numdof, filter=ListIN)
       end if
 
 ! Solve equation and update the global vectors.
-      call lu_sparse(ks,Kglobal,-Qglobal,DeltaX)
+      ! call lu_sparse(ks,Kglobal,-Qglobal,DeltaX)
+      DeltaX = 0.0d0
+      call lu_solve(size(Kglobal, dim=1), Kglobal,-Qglobal,DeltaX)
+
       call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
-! Convergence parameter delta (original):
-      call delta_check(Qglobal,DeltaX,Delta,passed_delta,Options%MinDelta,Options%PrintInfo)
- ! Check convergence using the residual:
-      call separate_dofs(Qglobal,(/1,2,3/),(/4,5,6/),QglFrc,QglMmt)
 
-      call residual_check(Iter,Qglobal,Res,Res0,passed_res,Options%MinDelta,&
-                         &TaRes,Options%PrintInfo  )
-
-      if ( (iLoadStep .eq. 1) .and. (Iter.eq.2) ) then
-          ! update forcesd and moments residual at 2nd iteration to avoid zero
-          ! due to trivial solution
-          if (maxval(abs( AppForces(:,1:3))).eq. 0.0_8) then
-              ! jump first iteration
-              call residual_check(1,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
-                                 &TaResFrc, Options%PrintInfo)
-          else
-              call residual_check(Iter  ,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
-                                 &TaResFrc, Options%PrintInfo)
+      if (iter > 1) then
+          if (maxval(abs(DeltaX)) < DX_old) then
+              converged = .TRUE.
           end if
-
-          if (maxval(abs( AppForces(:,4:6))).eq.0.0_8) then
-              call residual_check(1,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
-                                 &TaResMmt, Options%PrintInfo)
-          else
-              call residual_check(Iter,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
-                                 &TaResMmt, Options%PrintInfo)
-          end if
-
-      else
-          call residual_check(Iter  ,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
-                             &TaResFrc, Options%PrintInfo)
-          call residual_check(Iter,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
-                             &TaResMmt, Options%PrintInfo)
       end if
 
-
- ! SuperLinear Convergence Test
-      call separate_dofs(DeltaX,(/1,2,3/),(/4,5,6/),DeltaPos,DeltaPsi)
-
-      call error_check(Iter,DeltaX  ,DX_old  ,DX_now  ,ErrX  ,passed_err   ,TaX  , Options%PrintInfo)
-      call error_check(Iter,DeltaPos,DPos_old,DPos_now,ErrPos,passed_errpos,TaPos, Options%PrintInfo)
-      call error_check(Iter,DeltaPsi,DPsi_old,DPsi_now,ErrPsi,passed_errpsi,TaPsi, Options%PrintInfo)
-
-      DX_old   = DX_now
-      DPos_old = DPos_now
-      DPsi_old = DPsi_now
-
-      if (Options%PrintInfo) write (*,'(1X)')
-
- ! Global Convergence
-    if (passed_res .eqv. .true.) then
-        converged=.true.
-        if (Options%PrintInfo) write (*,'(A)') 'Global residual converged!'
+    if (iter == 1) then
+      DX_old = max(1.0d0, maxval(abs(DeltaX)))*options%mindelta
     end if
-
-    if  (passed_err .eqv. .true. ) then
-        converged=.true.
-        if (Options%PrintInfo) write (*,'(A)') 'Global error converged!'
-    end if
-
-
-    if ( (passed_resfrc .eqv. .true.) .and. (passed_resmmt .eqv. .true.) ) then
-        converged=.true.
-        if (Options%PrintInfo) write (*,'(A)') 'Forces and Moments residual converged!'
-    end if
-
-    if ( (passed_errpos .eqv. .true.) .and. (passed_errpsi .eqv. .true.) ) then
-        converged=.true.
-        if (Options%PrintInfo) write (*,'(A)') 'Displacements and Rotations error converged!'
-    end if
+! Convergence parameter delta (original):
+ !      call delta_check(Qglobal,DeltaX,Delta,passed_delta,Options%MinDelta,Options%PrintInfo)
+ ! ! Check convergence using the residual:
+ !      call separate_dofs(Qglobal,(/1,2,3/),(/4,5,6/),QglFrc,QglMmt)
+ !
+ !      call residual_check(Iter,Qglobal,Res,Res0,passed_res,Options%MinDelta,&
+ !                         &TaRes,Options%PrintInfo  )
+ !
+ !      if ( (iLoadStep .eq. 1) .and. (Iter.eq.2) ) then
+ !          ! update forcesd and moments residual at 2nd iteration to avoid zero
+ !          ! due to trivial solution
+ !          if (maxval(abs( AppForces(:,1:3))) < 1e-8) then
+ !              ! jump first iteration
+ !              call residual_check(1,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
+ !                                 &TaResFrc, Options%PrintInfo)
+ !          else
+ !              call residual_check(Iter  ,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
+ !                                 &TaResFrc, Options%PrintInfo)
+ !          end if
+ !
+ !          if (maxval(abs( AppForces(:,4:6))) < 1e-8) then
+ !              call residual_check(1,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
+ !                                 &TaResMmt, Options%PrintInfo)
+ !          else
+ !              call residual_check(Iter,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
+ !                                 &TaResMmt, Options%PrintInfo)
+ !          end if
+ !
+ !      else
+ !          call residual_check(Iter  ,QglFrc,ResFrc,ResFrc0,passed_resfrc,Options%MinDelta,&
+ !                             &TaResFrc, Options%PrintInfo)
+ !          call residual_check(Iter,QglMmt,ResMmt,ResMmt0,passed_resmmt,Options%MinDelta,&
+ !                             &TaResMmt, Options%PrintInfo)
+ !      end if
+ !
+ ! ! SuperLinear Convergence Test
+ !      call separate_dofs(DeltaX,(/1,2,3/),(/4,5,6/),DeltaPos,DeltaPsi)
+ !
+ !      call error_check(Iter,DeltaX  ,DX_old  ,DX_now  ,ErrX  ,passed_err   ,TaX  , Options%PrintInfo)
+ !      call error_check(Iter,DeltaPos,DPos_old,DPos_now,ErrPos,passed_errpos,TaPos, Options%PrintInfo)
+ !      call error_check(Iter,DeltaPsi,DPsi_old,DPsi_now,ErrPsi,passed_errpsi,TaPsi, Options%PrintInfo)
+ !
+ !      DX_old   = DX_now
+ !      DPos_old = DPos_now
+ !      DPsi_old = DPsi_now
+ !
+ !      if (Options%PrintInfo) write (*,'(1X)')
+ !
+ ! ! Global Convergence
+ !    if (passed_res .eqv. .true.) then
+ !        converged=.true.
+ !        if (Options%PrintInfo) write (*,'(A)') 'Global residual converged!'
+ !    end if
+ !
+ !    if  (passed_err .eqv. .true. ) then
+ !        converged=.true.
+ !        if (Options%PrintInfo) write (*,'(A)') 'Global error converged!'
+ !    end if
+ !
+ !
+ !    if ( (passed_resfrc .eqv. .true.) .and. (passed_resmmt .eqv. .true.) ) then
+ !        converged=.true.
+ !        if (Options%PrintInfo) write (*,'(A)') 'Forces and Moments residual converged!'
+ !    end if
+ !
+ !    if ( (passed_errpos .eqv. .true.) .and. (passed_errpsi .eqv. .true.) ) then
+ !        converged=.true.
+ !        if (Options%PrintInfo) write (*,'(A)') 'Displacements and Rotations error converged!'
+ !    end if
 
     end do
   end do
-
-  ! call flush(6) !Flush stdout buffer so SharPy output looks nice
-
-  deallocate (Kglobal,Qglobal,DeltaX)
-  if (options%gravity_on .eqv. .TRUE.) then
-      deallocate(Mglobal)
-  end if
-
-  return
  end subroutine cbeam3_solv_nlnstatic_old
 
 
@@ -350,103 +345,103 @@ TaPsi =           Psisc *Options%MinDelta
 !    c. Psi0 (PsiIni is main): CRV at the nodes [Psi0(NumElems,MaxElNod,3)].
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_solv_linstatic (NumDof,Elem,Node,AppForces,Coords,Psi0, &
-&                                  PosDefor,PsiDefor,Options)
-
-  use lib_fem
-  use lib_sparse
-  use lib_lu
-  use cbeam3_asbly
-
-! I/O Variables.
-  integer,      intent(in)   :: NumDof            ! Number of independent DoFs.
-  type(xbelem),intent(in)    :: Elem(:)           ! Element information.
-  type(xbnode),intent(in)    :: Node(:)           ! Nodal information.
-  real(8),      intent(in)   :: AppForces (:,:)   ! Applied nodal forces.
-  real(8),      intent(in)   :: Coords   (:,:)    ! Initial coordinates of the grid points.
-  real(8),      intent(in)   :: Psi0     (:,:,:)  ! Initial CRV of the nodes in the elements.
-  real(8),      intent(inout):: PosDefor (:,:)    ! Current coordinates of the grid points
-  real(8),      intent(inout):: PsiDefor (:,:,:)  ! Current CRV of the nodes in the elements.
-  type(xbopts),intent(in)    :: Options           ! Solver parameters.
-
-! Local variables.
-  integer:: fs                             ! Current storage size of force matrix.
-  integer:: k                              ! Auxiliary integer.
-  integer:: ks                             ! Current storage size of stiffness matrix.
-  integer:: NumN                           ! Number of nodes in the model.
-
-  integer,allocatable::      ListIN (:)    ! List of independent nodes.
-  real(8),allocatable::      DeltaX (:)    ! Unknown in the linearized system.
-  real(8),allocatable::      Qglobal(:)    ! Global vector of discrete generalize forces.
-  type(sparse),allocatable:: Fglobal(:)    ! Influence coefficients matrix for applied forces.
-  type(sparse),allocatable:: Kglobal(:)    ! Global stiffness matrix in sparse storage.
-
-  print*, "In cbeam3_solv_linstatic"
-
-! Initialize.
-  NumN=size(Node)
-  allocate (ListIN (NumN));
-  do k=1,NumN
-    ListIN(k)=Node(k)%Vdof
-  end do
-
-! Allocate memory for solver (Use a conservative estimate of the size of the matrix Kglobal).
-! - DimMat=24 is a parameter
-! - ks and fs are defined by the sparse_zero call and initialised to zero.
-! - Kglobal and Fglobal are empty (0 at (0,0) element)
-! - They are both output
-  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
-  allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
-  allocate (Qglobal(NumDof));        Qglobal= 0.d0
-  allocate (DeltaX (NumDof));        DeltaX = 0.d0
-
- do k=1, size(AppForces(:,1))
-     print*, AppForces(k, :)
- end do
-
-! Assembly matrices and functional.
-  Qglobal=0.d0
-  call sparse_zero (ks,Kglobal) ! sm BUG: isn't this repeated?
-  call sparse_zero (fs,Fglobal)
-
-  call cbeam3_asbly_static (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,AppForces, & ! input
-&                           ks,Kglobal,fs,Fglobal,Qglobal,Options)               ! output (except for Options)
-
-  ! Check Kglobal is filled correctly
-  ! do k=1,size(Kglobal) ! ADC: CHANGED (was size(Kglobal) + 1)
-  !   if ((Kglobal(k)%i>NumDof) .or. (Kglobal(k)%j>NumDof)) then
-  !     print *, 'Out of Bounds!!! Allocated: (', Kglobal(k)%i,',',Kglobal(k)%j,')'
-  !     stop 'Execution terminated!'
-  !   end if
-  ! end do
-
-! Forces on the unconstrained nodes.
-! sm: AppForces has shape (Nodes,6), where the columns contain forces and moments.
-! fem_m2v reorders them into a vector (i.e. for node ii, (ii-1)+1 will be the x
-! force and (ii-1)+6 the z moment. Nodes for which the solution has not to be
-! found will not be counted.
-  Qglobal= sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(AppForces,NumDof,Filter=ListIN))
-
-!stop 'sparse_matvmul ok!'
-
-! Solve equation and update the global vectors.
-! Kglobal * deltaX = Qglobal
-!#ifdef NOLAPACK
-!  call lu_sparse(ks,Kglobal,Qglobal,DeltaX)
-!#else
-!  call lapack_sparse (ks,Kglobal,Qglobal,DeltaX)
-!#endif
-  call lu_sparse(ks,Kglobal,Qglobal,DeltaX)
-
-  ! sm: PosDefor and PsiDefor are the only one being updated
-  call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
-  print*, "RUN"
-
-  deallocate (Kglobal,Qglobal,DeltaX)
-  print*, Coords(size(Coords(:,1)),:)
-  print*, PosDefor(size(Coords(:,1)),:)
-  return
- end subroutine cbeam3_solv_linstatic
+!  subroutine cbeam3_solv_linstatic (NumDof,Elem,Node,AppForces,Coords,Psi0, &
+! &                                  PosDefor,PsiDefor,Options)
+!
+!   use lib_fem
+!   use lib_sparse
+!   use lib_lu
+!   use cbeam3_asbly
+!
+! ! I/O Variables.
+!   integer,      intent(in)   :: NumDof            ! Number of independent DoFs.
+!   type(xbelem),intent(in)    :: Elem(:)           ! Element information.
+!   type(xbnode),intent(in)    :: Node(:)           ! Nodal information.
+!   real(8),      intent(in)   :: AppForces (:,:)   ! Applied nodal forces.
+!   real(8),      intent(in)   :: Coords   (:,:)    ! Initial coordinates of the grid points.
+!   real(8),      intent(in)   :: Psi0     (:,:,:)  ! Initial CRV of the nodes in the elements.
+!   real(8),      intent(inout):: PosDefor (:,:)    ! Current coordinates of the grid points
+!   real(8),      intent(inout):: PsiDefor (:,:,:)  ! Current CRV of the nodes in the elements.
+!   type(xbopts),intent(in)    :: Options           ! Solver parameters.
+!
+! ! Local variables.
+!   integer:: fs                             ! Current storage size of force matrix.
+!   integer:: k                              ! Auxiliary integer.
+!   integer:: ks                             ! Current storage size of stiffness matrix.
+!   integer:: NumN                           ! Number of nodes in the model.
+!
+!   integer,allocatable::      ListIN (:)    ! List of independent nodes.
+!   real(8),allocatable::      DeltaX (:)    ! Unknown in the linearized system.
+!   real(8),allocatable::      Qglobal(:)    ! Global vector of discrete generalize forces.
+!   type(sparse),allocatable:: Fglobal(:)    ! Influence coefficients matrix for applied forces.
+!   type(sparse),allocatable:: Kglobal(:)    ! Global stiffness matrix in sparse storage.
+!
+!   print*, "In cbeam3_solv_linstatic"
+!
+! ! Initialize.
+!   NumN=size(Node)
+!   allocate (ListIN (NumN));
+!   do k=1,NumN
+!     ListIN(k)=Node(k)%Vdof
+!   end do
+!
+! ! Allocate memory for solver (Use a conservative estimate of the size of the matrix Kglobal).
+! ! - DimMat=24 is a parameter
+! ! - ks and fs are defined by the sparse_zero call and initialised to zero.
+! ! - Kglobal and Fglobal are empty (0 at (0,0) element)
+! ! - They are both output
+!   allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+!   allocate (Fglobal(DimMat*NumDof)); call sparse_zero (fs,Fglobal)
+!   allocate (Qglobal(NumDof));        Qglobal= 0.d0
+!   allocate (DeltaX (NumDof));        DeltaX = 0.d0
+!
+!  do k=1, size(AppForces(:,1))
+!      print*, AppForces(k, :)
+!  end do
+!
+! ! Assembly matrices and functional.
+!   Qglobal=0.d0
+!   call sparse_zero (ks,Kglobal) ! sm BUG: isn't this repeated?
+!   call sparse_zero (fs,Fglobal)
+!
+!   call cbeam3_asbly_static (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,AppForces, & ! input
+! &                           Kglobal,Fglobal,Qglobal,Options)               ! output (except for Options)
+!
+!   ! Check Kglobal is filled correctly
+!   ! do k=1,size(Kglobal) ! ADC: CHANGED (was size(Kglobal) + 1)
+!   !   if ((Kglobal(k)%i>NumDof) .or. (Kglobal(k)%j>NumDof)) then
+!   !     print *, 'Out of Bounds!!! Allocated: (', Kglobal(k)%i,',',Kglobal(k)%j,')'
+!   !     stop 'Execution terminated!'
+!   !   end if
+!   ! end do
+!
+! ! Forces on the unconstrained nodes.
+! ! sm: AppForces has shape (Nodes,6), where the columns contain forces and moments.
+! ! fem_m2v reorders them into a vector (i.e. for node ii, (ii-1)+1 will be the x
+! ! force and (ii-1)+6 the z moment. Nodes for which the solution has not to be
+! ! found will not be counted.
+!   Qglobal= sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(AppForces,NumDof,Filter=ListIN))
+!
+! !stop 'sparse_matvmul ok!'
+!
+! ! Solve equation and update the global vectors.
+! ! Kglobal * deltaX = Qglobal
+! !#ifdef NOLAPACK
+! !  call lu_sparse(ks,Kglobal,Qglobal,DeltaX)
+! !#else
+! !  call lapack_sparse (ks,Kglobal,Qglobal,DeltaX)
+! !#endif
+!   call lu_sparse(ks,Kglobal,Qglobal,DeltaX)
+!
+!   ! sm: PosDefor and PsiDefor are the only one being updated
+!   call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
+!   print*, "RUN"
+!
+!   deallocate (Kglobal,Qglobal,DeltaX)
+!   print*, Coords(size(Coords(:,1)),:)
+!   print*, PosDefor(size(Coords(:,1)),:)
+!   return
+!  end subroutine cbeam3_solv_linstatic
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -805,7 +800,7 @@ TaPsi =           Psisc *Options%MinDelta
     dt= Time(iStep+1)-Time(iStep)
     if (Options%PrintInfo) then
       call out_time(iStep,Time(iStep+1),Text)
-      write (*,'(5X,A,$)') trim(Text)
+      ! write (*,'(5X,A,$)') trim(Text)
     end if
 ! Update transformation matrix for given angular velocity
     call lu_invers ((Unit4+0.25d0*xbeam_QuadSkew(Vrel(iStep+1,4:6))*(Time(iStep+1)-Time(iStep))),Temp)
@@ -922,6 +917,7 @@ TaPsi =           Psisc *Options%MinDelta
       call sparse_addsparse(0,0,cs,Cglobal,as,Asys,Factor=gamma/(beta*dt))
       call sparse_addsparse(0,0,ms,Mglobal,as,Asys,Factor=1.d0/(beta*dt*dt))
 
+
 ! Calculation of the correction.
       call lu_sparse(as,Asys,-Qglobal,DX)
 
@@ -1018,6 +1014,8 @@ TaPsi =           Psisc *Options%MinDelta
 
   real(8),allocatable:: dXdt(:),dXddt(:)  ! Generalized coordinates and derivatives.
   real(8),allocatable:: X(:), DX(:)
+  real(8)               :: residual
+  real(8)               :: previous_residual
 
   integer,allocatable::  ListIN     (:)    ! List of independent nodes.
 
@@ -1146,7 +1144,7 @@ TaPsi =           Psisc *Options%MinDelta
     dt= Time(iStep+1)-Time(iStep)
     if (Options%PrintInfo) then
       call out_time(iStep,Time(iStep+1),Text)
-      write (*,'(5X,A,$)') trim(Text)
+      ! write (*,'(5X,A,$)') trim(Text)
     end if
 ! Update transformation matrix for given angular velocity
     call lu_invers ((Unit4+0.25d0*xbeam_QuadSkew(Vrel(iStep+1,4:6))*(Time(iStep+1)-Time(iStep))),Temp)
@@ -1159,9 +1157,11 @@ TaPsi =           Psisc *Options%MinDelta
     dXddt= 0.d0
 
 ! Iteration until convergence.
+
+    previous_residual = 1e10
     do Iter=1,Options%MaxIterations+1
       if (Iter.gt.Options%MaxIterations) then
-        write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
+        ! write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
         STOP 'Solution did not converge (18235)'
       end if
 
@@ -1242,7 +1242,7 @@ TaPsi =           Psisc *Options%MinDelta
   end if
 
 ! Compute admissible error.
-      MinDelta=Options%MinDelta*max(1.d0,maxval(abs(Qglobal)))
+      MinDelta=Options%MinDelta
 
 ! Compute the residual.
       Qglobal= Qglobal + sparse_matvmul(ms,Mglobal,NumDof,dXddt) + matmul(Mvel,Vreldot(iStep+1,:))
@@ -1250,12 +1250,17 @@ TaPsi =           Psisc *Options%MinDelta
 
 
 ! Check convergence.
-      if (maxval(abs(DX)+abs(Qglobal)).lt.MinDelta) then
+    !   if (maxval(abs(DX)).lt.MinDelta) then
+    residual = maxval(abs(DX)+maxval(abs(Qglobal)))
+    if (Iter > 1) then
+      if ((residual - previous_residual)/previous_residual.lt.MinDelta) then
         if (Options%PrintInfo) then
           write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
         end if
         exit
       end if
+    end if
+    previous_residual = residual
 
 ! Compute Jacobian
       call sparse_zero (as,Asys)
@@ -1663,7 +1668,7 @@ TaPsi =           Psisc *Options%MinDelta
     dt= Time(iStep+1)-Time(iStep)
     if (Options%PrintInfo) then
       call out_time(iStep,Time(iStep+1),Text)
-      write (*,'(5X,A,$)') trim(Text)
+      ! write (*,'(5X,A,$)') trim(Text)
     end if
 ! Update transformation matrix for given angular velocity
     call lu_invers ((Unit4+0.25d0*xbeam_QuadSkew(Vrel(iStep+1,4:6))*(Time(iStep+1)-Time(iStep))),Temp)
@@ -2138,7 +2143,7 @@ TaPsi =           Psisc *Options%MinDelta
     dt= Time(iStep+1)-Time(iStep)
     if (Options%PrintInfo) then
       call out_time(iStep,Time(iStep+1),Text)
-      write (*,'(5X,A,$)') trim(Text)
+      ! write (*,'(5X,A,$)') trim(Text)
     end if
 ! Update transformation matrix for given angular velocity
     call lu_invers ((Unit4+0.25d0*xbeam_QuadSkew(Vrel(iStep+1,4:6))*(Time(iStep+1)-Time(iStep))),Temp)

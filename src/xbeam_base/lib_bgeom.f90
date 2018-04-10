@@ -406,7 +406,6 @@ module lib_bgeom
     PsiFin(iElem,2,:)= rotvect_mat2psi(transpose(C_aB))
   end do
 
-  return
  end subroutine bgeom_strain2disp
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -79,8 +79,8 @@ contains
         do i=1, size(matrix(:,1,1))
             write(unit,*) 'i = ', i
             do j=1, size(matrix(i,:,1))
-				write(unit,*) matrix(i, j, :)
-			end do
+          write(unit,*) matrix(i, j, :)
+      end do
         end do
         close(unit)
     end subroutine
@@ -123,7 +123,7 @@ contains
             write(unit,*) matrix(i)%Conn
             write(unit,*) 'Master'
             do j=1,matrix(i)%NumNodes
-				write(unit,*) matrix(i)%Master(j, :)
+                write(unit,*) matrix(i)%Master(j, :)
             end do
             write(unit,*) 'Length'
             write(unit,*) matrix(i)%Length
@@ -135,16 +135,16 @@ contains
             write(unit,*) matrix(i)%Vector
             write(unit,*) 'Mass'
             do j=1,6
-				write(unit,*) matrix(i)%Mass(j,:)
-			end do
-			write(unit,*) 'InvStiff'
-			do j=1,6
-				write(unit,*) matrix(i)%InvStiff(j,:)
-		    end do
-			write(unit,*) 'Stiff'
-			do j=1,6
-				write(unit,*) matrix(i)%Stiff(j,:)
-		    end do
+        write(unit,*) matrix(i)%Mass(j,:)
+      end do
+      write(unit,*) 'InvStiff'
+      do j=1,6
+        write(unit,*) matrix(i)%InvStiff(j,:)
+        end do
+      write(unit,*) 'Stiff'
+      do j=1,6
+        write(unit,*) matrix(i)%Stiff(j,:)
+        end do
 
         end do
         close(unit)

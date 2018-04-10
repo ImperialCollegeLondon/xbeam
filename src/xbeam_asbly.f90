@@ -223,7 +223,7 @@ subroutine xbeam_asbly_dynamic_new_interface (&
     call xbeam_crr  (NumNE,rElem0,rElem,rElemDot,Vrel,Elem(iElem)%Mass,CRRelem,Options%NumGauss)
 
 ! Add contributions of non-structural (lumped) mass.
-    if (any(Elem(iElem)%RBMass.ne.0.d0)) then
+    if (any(abs(Elem(iElem)%RBMass)>0.d0)) then
       call xbeam_rbmrs  (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,MRSelem)
       call xbeam_rbcgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,CRSelem)
       call xbeam_rbkgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%RBMass,KRSelem)
@@ -272,9 +272,9 @@ subroutine xbeam_asbly_dynamic_new_interface (&
  end subroutine xbeam_asbly_dynamic_new_interface
 
 
- subroutine xbeam_asbly_MRS_gravity(&
+ subroutine xbeam_asbly_M_gravity(&
     numdof, n_node, n_elem, Elem,Node,Coords,Psi0,PosDefor,PsiDefor,  &
-                               MRS,Options)
+                               MRS,MSS,Options)
   use lib_rotvect
   use lib_fem
   use lib_cbeam3
@@ -290,6 +290,7 @@ subroutine xbeam_asbly_dynamic_new_interface (&
   real(8),      intent(in)      :: PosDefor  (n_node, 3)       ! Current coordinates of the grid points
   real(8),      intent(in)      :: PsiDefor  (n_elem, 3, 3)     ! Current CRV of the nodes in the elements.
   real(8),      intent(out)     :: MRS(6, numdof + 6)            ! mass matrix.
+  real(8),      intent(out)     :: MSS(numdof + 6, numdof + 6)            ! mass matrix.
   type(xbopts), intent(in)      :: Options           ! Solver parameters.
 
 ! Local variables.
@@ -300,17 +301,22 @@ subroutine xbeam_asbly_dynamic_new_interface (&
   integer:: NumNE                          ! Number of nodes in an element.
   integer:: NumGaussMass                   ! Number of Gaussian points in the inertia terms.
   real(8):: MRSelem (6,6*MaxElNod)        ! Element mass matrix.
+  real(8):: Melem (6*MaxElNod,6*MaxElNod)  ! Element mass matrix.
   real(8):: rElem0(MaxElNod,6)             ! Initial Coordinates/CRV of nodes in the element.
   real(8):: rElem (MaxElNod,6)             ! Current Coordinates/CRV of nodes in the element.
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)  ! Transformation from master to rigid node orientations.
 
+  integer   :: nn, rr, mm, j1, cc
+
   MRS = 0.0d0
+  MSS = 0.d0
 
 ! Loop in all elements in the model.
   NumE=size(Elem)
 
   do iElem=1,NumE
     MRSelem=0.d0
+    Melem = 0.0d0
     SB2B1=0.d0
 
 ! Extract coords of elem nodes and determine if they are master (Flag=T) or slave.
@@ -325,26 +331,37 @@ subroutine xbeam_asbly_dynamic_new_interface (&
     rElem0   (:,4:6)= Psi0        (iElem,:,:)
     rElem    (:,4:6)= PsiDefor    (iElem,:,:)
 
-! Use full integration for mass matrix.
+! Use full integration for mass_xbs matrix.
     NumGaussMass=NumNE
 
     call xbeam_mrs  (NumNE,rElem0,rElem,Elem(iElem)%Mass,MRSelem,NumGaussMass)
 ! Add contributions of non-structural (lumped) mass.
-    if (any(Elem(iElem)%RBMass.ne.0.d0)) then
+    if (any(abs(Elem(iElem)%RBMass)>0.d0)) then
       call xbeam_rbmrs  (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,MRSelem)
+      call cbeam3_rbmass (NumNE,rElem0,rElem,Elem(iElem)%RBMass,Melem)
     end if
+
+    call cbeam3_mass (NumNE,rElem0,rElem,Elem(iElem)%Mass,Melem,NumGaussMass)
 
 ! Project slave degrees of freedom to the orientation of the "master" ones.
     call cbeam3_projs2m (NumNE,Elem(iElem)%Master,Psi0(iElem,:,:),Psi0,SB2B1)
     MRSelem=matmul(MRSelem,SB2B1)
+    Melem=matmul(transpose(SB2B1),matmul(Melem,SB2B1))
 ! Add to global matrix. DONT remove columns and rows at clamped points.
     do i=1,NumNE
       i1=Node(Elem(iElem)%Conn(i))%Vdof + 1
         MRS(:, 6*(i1-1) + 1:6*(i1-1) + 6) = MRS(:, 6*(i1-1) + 1:6*(i1-1) + 6) + (MRSelem(:,6*(i-1)+1:6*i))
+        rr = 6*(i1-1)
+          do j=1,NumNE
+            mm=Elem(iElem)%Conn(j)
+            j1=Node(mm)%Vdof + 1
+            cc = 6*(j1-1)
+            call mat_addmat (rr, cc,Melem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),MSS)
+          end do
     end do
 
   end do
-end subroutine xbeam_asbly_MRS_gravity
+end subroutine xbeam_asbly_M_gravity
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !-> Subroutine XBEAM_ASBLY_ORIENT
@@ -481,7 +498,7 @@ subroutine xbeam_asbly_orient (Elem,Node,PosDefor,PsiDefor,Vrel,Quat,CQR,CQQ,fs,
   real(8):: ForceElem (MaxElNod,6)              ! Current forces/moments of nodes in the element.
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)       ! Transformation from master to global node orientations.
 
-  print*, 'HERE------------------------------------------------------------------'
+  ! print*, 'HERE------------------------------------------------------------------'
 ! Initialise
   call sparse_zero(frf,Frigid_foll)
   call sparse_zero(frd,Frigid_dead)

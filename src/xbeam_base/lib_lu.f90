@@ -60,7 +60,7 @@ module lib_lu
           DO J = II, I-1
             SUM = SUM - A(I, J)*B(J)
           END DO
-        ELSEIF(SUM.NE.0)THEN
+      ELSEIF(abs(SUM)>1e-20)THEN
           II = I
         ENDIF
         B(I) = SUM
@@ -117,7 +117,10 @@ module lib_lu
         DO J = 1, N
           IF(ABS(A(I,J)).GT.AAMAX) AAMAX=ABS(A(I,J))
         END DO
-        IF(AAMAX.EQ.0.0) STOP 'Singular matrix'
+        IF(abs(AAMAX)<Tiny) then
+            ! call backtrace()
+            STOP 'Singular matrix'
+        end if
         VV(I:I) = 1.d0/AAMAX
       END DO
 !
@@ -153,7 +156,7 @@ module lib_lu
           VV(IMAX) = VV(J)
         ENDIF
         INDX(J) = IMAX
-        IF(A(J, J).EQ.0.0) A(J, J) = TINY
+        IF(abs(A(J, J))<Tiny) A(J, J) = TINY
         IF(J.NE.N)THEN
           DUM = 1.0/A(J, J)
           DO I = J+1, N
@@ -344,35 +347,38 @@ end function inv
 
         dimb=size(b)
 
-        allocate(invFulMat(dimb,dimb))
-
-        ! Calculate the inverse
-        ! call lu_invers(FulMat, invFulMat)
-        invFulMat = inv(SprMat(1)%a)
-
-        ! Calculate matrix-vector product
-        ! X=0.0d0
-        ! do i1=1,dimb
-        ! !   do i2=1,dimb
-        !         ! original
-        !         X(i1) = X(i1) + dot_product(invFulMat(i1,:), b(:))
-        !     ! end do
-        ! end do
-        X = MATMUL(invFulMat, b)
-
-        deallocate(invFulMat)
+        ! allocate(invFulMat(dimb,dimb))
+        !
+        ! ! Calculate the inverse
+        ! ! call lu_invers(FulMat, invFulMat)
+        ! invFulMat = inv(SprMat(1)%a)
+        !
+        ! ! Calculate matrix-vector product
+        ! ! X=0.0d0
+        ! ! do i1=1,dimb
+        ! ! !   do i2=1,dimb
+        ! !         ! original
+        ! !         X(i1) = X(i1) + dot_product(invFulMat(i1,:), b(:))
+        ! !     ! end do
+        ! ! end do
+        ! X = MATMUL(invFulMat, b)
+        !
+        ! deallocate(invFulMat)
+        call lu_solve(size(SprMat(1)%a, dim=1), SprMat(1)%a, b, X)
         return
     end subroutine lu_sparse
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    subroutine lu_solve(A, b, X, balancing)
-        real(8), intent(IN)     :: A(:, :)
-        real(8), intent(in)     :: b(:)          ! Forcing vector
-        real(8), intent(out)    :: X(:)          ! Solution vector
-        real(8),allocatable     :: invFulMat(:,:)! Full matrix
+    subroutine lu_solve(numdof,A, b, X, balancing)
+        use, intrinsic :: IEEE_ARITHMETIC
+        integer, intent(IN)     :: numdof
+        real(8), intent(IN)     :: A(numdof, numdof)
+        real(8), intent(in)     :: b(numdof)          ! Forcing vector
+        real(8), intent(out)    :: X(numdof)          ! Solution vector
+        ! real(8),allocatable     :: invFulMat(:,:)! Full matrix
         logical, optional       :: balancing
         integer:: dimb
-        real(8)                 :: r(size(A, DIM=1))
-        real(8)                 :: c(size(A, DIM=2))
+        real(8)                 :: r(numdof)
+        real(8)                 :: c(numdof)
         real(8)                 :: rowcnd
         real(8)                 :: colcnd
         real(8)                 :: amax
@@ -380,81 +386,98 @@ end function inv
         real(8)                 :: ferr
         real(8)                 :: berr
         integer                 :: info
-        integer                 :: ipivot(size(A, DIM=1))
-        character*1             :: equed
-        character*1             :: fact
-        character*1             :: trans
+        integer                 :: ipivot(numdof)
+        character               :: equed
+        character               :: fact
+        character               :: trans
         integer                 :: unit
         integer                 :: i
 
-        real(8)                 :: A_copy(size(A, dim=1), size(A, dim=2))
-        real(8)                 :: b_copy(size(A, dim=1))
-        real(8)                 :: AF(size(A, dim=1), size(A, dim=2))
-        real(8)                 :: work(size(A, dim=1)*4)
-        integer                 :: iwork(size(A, dim=1))
+        real(8),allocatable     :: A_copy(:,:)
+        real(8)                 :: b_copy(numdof)
+        ! real(8)                 :: AF(numdof, numdof)
+        ! real(8)                 :: work(size(A, dim=1)*4)
+        ! integer                 :: iwork(size(A, dim=1))
         integer                 :: nrows
 
+        if (any(ieee_is_nan(A))) then
+            STOP 'NaN in lu_solve'
+        end if
+
+        allocate(A_copy(numdof, numdof))
         A_copy = A
         X = b
         b_copy = b
         nrows = size(b)
-        if (present(balancing) .and. balancing) then
-            fact = 'E'
-        else
-            fact = 'N'
-        end if
-        trans = 'N'
-        equed = 'B'
-
-        call DGESVX(fact,&
-                    trans,&
-                    nrows,&
-                    1,&
-                    A_copy,&
-                    nrows,&
-                    AF,&
-                    nrows,&
-                    ipivot,&
-                    equed,&
-                    r,&
-                    c,&
-                    b_copy,&
-                    nrows,&
-                    X,&
-                    nrows,&
-                    rcond,&
-                    ferr,&
-                    berr,&
-                    work,&
-                    iwork,&
-                    info&
-                    )
-
-        if (info /= 0) then
-            print*, '***INFO is /= 0 in DGESV, something went wrong.'
-            print*, '   Its value is ', info
-
-            open(newunit=unit, file='debug_failed_Asys.txt')
-            do i=1, size(A(:,1))
-                write(unit,*)A(i, :)
-            end do
-            close(unit)
-            ! stop
-        end if
-
-
-        ! ! solve system
-        ! call dgesv(size(A_copy, DIM=1),&
-        !            1,&
-        !            A_copy,&
-        !            size(A_copy, DIM=1),&
-        !            ipivot,&
-        !            x,&
-        !            size(A_copy, DIM=1),&
-        !            info)
-        ! if (info /= 0) then
-        !     print*, 'Info in SGESV = ', info
+        ! if (present(balancing)) then
+        !     if (balancing) then
+        !         fact = 'E'
+        !     else
+        !         fact = 'N'
+        !     end if
+        ! else
+        !     fact = 'N'
         ! end if
+        ! trans = 'N'
+        ! equed = 'B'
+        !
+        ! print*, 'In lu 417'
+        ! call DGESVX(fact,&
+        !             trans,&
+        !             nrows,&
+        !             1,&
+        !             A_copy,&
+        !             nrows,&
+        !             AF,&
+        !             nrows,&
+        !             ipivot,&
+        !             equed,&
+        !             r,&
+        !             c,&
+        !             b_copy,&
+        !             nrows,&
+        !             X,&
+        !             nrows,&
+        !             rcond,&
+        !             ferr,&
+        !             berr,&
+        !             work,&
+        !             iwork,&
+        !             info&
+        !             )
+        ! print*, 'In lu 441'
+        !
+        ! if (info /= 0) then
+        !     print*, '***INFO is /= 0 in DGESV, something went wrong.'
+        !     print*, '   Its value is ', info
+        !
+        !     open(newunit=unit, file='debug_failed_Asys.txt')
+        !     do i=1, size(A(:,1))
+        !         write(unit,*)A(i, :)
+        !     end do
+        !     close(unit)
+        !     ! stop
+        ! end if
+
+
+        ! solve system
+        call dgesv(numdof,&
+                   1,&
+                   A_copy,&
+                   numdof,&
+                   ipivot,&
+                   x,&
+                   numdof,&
+                   info)
+        if (info /= 0) then
+            print*, 'Info in DGESV = ', info
+             open(newunit=unit, file='debug_failed_Asys.txt')
+             do i=1, size(A(:,1))
+                 write(unit,*)A(i, :)
+             end do
+             close(unit)
+            stop
+        end if
         ! call gesv(A_copy,&
         !            ipivot,&
         !            x)
@@ -475,6 +498,7 @@ end function inv
         ! X = MATMUL(invFulMat, b)
         !
         ! deallocate(invFulMat)
+        deallocate(A_copy)
         return
     end subroutine lu_solve
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

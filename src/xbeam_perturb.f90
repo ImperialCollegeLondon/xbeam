@@ -95,17 +95,17 @@ subroutine xbeam_perturb_asbly0 (Elem,Node,NumDof,Coords,Psi0,iml,Mlin,ikstif,Ks
     rElem0(:,4:6)= Psi0(iElem,:,:)
 
 ! Prevent singularities in mass matrices when using reduced integration.
-	if (NumNE.gt.Options%NumGauss) then
-		NumGaussMass=NumNE
-	else
-		NumGaussMass=Options%NumGauss
-	end if
+  if (NumNE.gt.Options%NumGauss) then
+    NumGaussMass=NumNE
+  else
+    NumGaussMass=Options%NumGauss
+  end if
 
 ! Contributions of the structural mass to the linearised inertia matrices.
     call cbeam3_mass (NumNE,rElem0,rElem0,Elem(iElem)%Mass,MSSelem,NumGaussMass)
     call cbeam3_mvel (NumNE,rElem0,rElem0,Elem(iElem)%Mass,MSRelem,Options%NumGauss)
     call xbeam_mrr   (NumNE,rElem0,rElem0,Elem(iElem)%Mass,MRRelem,Options%NumGauss)
-    
+
 ! Compute the element tangent stiffness matrix.
     call cbeam3_kmat  (NumNE,rElem0,rElem0,Elem(iElem)%Stiff,KSSelem,Options%NumGauss)
     call cbeam3_kgeom (NumNE,rElem0,rElem0,Elem(iElem)%Stiff,KSSelem,Options%NumGauss)
@@ -204,7 +204,7 @@ subroutine xbeam_perturb_asbly (Elem,Node,NumDof,Coords,Psi0,PosDefor,PsiDefor,V
   integer:: iElem                            ! Counter on the finite elements.
   integer:: NumE                             ! Number of elements in the model.
   integer:: NumNE                            ! Number of nodes in an element.
-  
+
   ! Define element matrices
   real(8):: CSSelem (6*MaxElNod,6*MaxElNod)  ! Element damping matrix.
   real(8):: CSRelem (6*MaxElNod,6)           ! Element reference-system damping matrix.
@@ -215,7 +215,7 @@ subroutine xbeam_perturb_asbly (Elem,Node,NumDof,Coords,Psi0,PosDefor,PsiDefor,V
 
   real(8):: FSelem (6*MaxElNod,6*MaxElNod)   ! Element force influence coefficients.
   real(8):: FRelem (6,6*MaxElNod)            ! Element force influence coefficients.
-  
+
   real(8):: rElem0(MaxElNod,6)               ! Initial Coordinates/CRV of nodes in the element.
   real(8):: rElem (MaxElNod,6)               ! Current Coordinates/CRV of nodes in the element.
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)    ! Transformation from master to rigid node orientations.
@@ -291,7 +291,7 @@ subroutine xbeam_perturb_asbly (Elem,Node,NumDof,Coords,Psi0,PosDefor,PsiDefor,V
           end if
         end do
       end if
-    end do 
+    end do
 
 ! Compute matrices for perturbed system.
 !=========================================
@@ -503,7 +503,7 @@ subroutine xbeam_perturb_asbly (Elem,Node,NumDof,Coords,Psi0,PosDefor,PsiDefor,V
   do iStep=1,size(Time)-1
     dt= Time(iStep+1)-Time(iStep)
     call out_time(iStep,Time(iStep+1),Text)
-    write (*,'(5X,A,$)') trim(Text)
+    ! write (*,'(5X,A,$)') trim(Text)
 
 ! Predictor step.
     Q    = Q + dt*dQdt + (0.5d0-beta)*dt*dt*dQddt
@@ -596,4 +596,3 @@ subroutine xbeam_perturb_asbly (Elem,Node,NumDof,Coords,Psi0,PosDefor,PsiDefor,V
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end module xbeam_perturb
-

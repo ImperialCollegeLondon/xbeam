@@ -43,11 +43,28 @@ subroutine sparse_allocate(matrix, nrow, ncol)
     if (allocated(matrix) .EQV. .FALSE.) then
         allocate(matrix(1))
     end if
-    matrix(1)%a => null()
+    ! matrix(1)%a => null()
 
-    allocate(matrix(1)%a(nrow, ncol))
+    if (.NOT. associated(matrix(1)%a)) then
+        allocate(matrix(1)%a(nrow, ncol))
+    end if
     matrix(1)%a = 0.0d0
 end subroutine sparse_allocate
+
+subroutine sparse_deallocate(matrix)
+    type(sparse), allocatable, intent(INOUT)     :: matrix(:)
+
+    if (allocated(matrix) .EQV. .FALSE.) then
+        return
+    end if
+    ! matrix(1)%a => null()
+
+    if (associated(matrix(1)%a)) then
+        nullify(matrix(1)%a)
+    end if
+
+    deallocate(matrix)
+end subroutine sparse_deallocate
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -289,6 +306,7 @@ end subroutine sparse_allocate
   !   BandedMat(KL+KU+1+Matrix(k)%i-Matrix(k)%j,Matrix(k)%j) = Matrix(k)%a
   ! end do
   !
+  BandedMat = 0.0d0
   STOP 'sparse_getbandwidth not implemented for full matrices'
   return
  end subroutine sparse_copy2band
