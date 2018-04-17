@@ -186,6 +186,18 @@ module lib_xbeam
   real(8) :: DTYpN(6,6*MaxNodCB3)  ! Strain matrix operator.
   real(8) :: N (6,6*MaxNodCB3)     ! Element shape function matrix
 
+  ! print*, 'Ri'
+  ! print*, Ri(1, :)
+  ! print*, Ri(2, :)
+  ! print*, Ri(3, :)
+  ! print*, 'NodalMass'
+  ! print*, NodalMass(1, 1, :)
+  ! print*, NodalMass(1, 2, :)
+  ! print*, NodalMass(1, 3, :)
+  ! print*, NodalMass(1, 4, :)
+  ! print*, NodalMass(1, 5, :)
+  ! print*, NodalMass(1, 6, :)
+  ! print*, '----'
 ! Loop in the nodes.
   do iNode=1,NumNodesElem
     ! Compute element shape function.
@@ -212,6 +224,21 @@ module lib_xbeam
     Yp(4:6,4:6)=Rot
 
     DTYpN=matmul(matmul(transpose(D),Yp),N)
+    ! print*, 'ARC'
+    ! print*, ARC(1, :)
+    ! print*, ARC(2, :)
+    ! print*, ARC(3, :)
+    ! print*, ARC(4, :)
+    ! print*, ARC(5, :)
+    ! print*, ARC(6, :)
+    ! print*, 'DTYpN'
+    ! print*, DTYpN(1, :)
+    ! print*, DTYpN(2, :)
+    ! print*, DTYpN(3, :)
+    ! print*, DTYpN(4, :)
+    ! print*, DTYpN(5, :)
+    ! print*, DTYpN(6, :)
+    ! print*, '----'
 
 ! Compute mass tangent stiffness.
     Mass= Mass + matmul(ARC,matmul(NodalMass(iNode,:,:),DTYpN))

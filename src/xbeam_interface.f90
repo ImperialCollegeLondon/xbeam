@@ -388,6 +388,12 @@ end subroutine xbeam_solv_couplednlndyn_python
                                                    dqddt,&
                                                    options)
 
+        ! print*, 'grav'
+        ! print*, 'XBEAM'
+        ! print*, gravity_forces(1, :)
+        call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
+        ! print*, gravity_forces(1, :)
+        ! print*, '--'
         ! print*, 'for_vel, finish: ', for_vel(1:3)
         ! call print_matrix('q', q)
         ! call print_matrix('dqdt', dqdt)
@@ -509,7 +515,8 @@ end subroutine xbeam_solv_couplednlndyn_python
         real(8)                         :: KRS(6, numdof)      ! rigid stiffness matrix in sparse storage.
         real(8)                         :: MRS(6, numdof)   ! Mass and damping from the motions of reference system.
         real(8)                         :: MRS_gravity(6, numdof + 6)   ! Mass and damping from the motions of reference system.
-        real(8)                         :: MSS_gravity(6, numdof + 6)   ! Mass and damping from the motions of reference system.
+        real(8)                         :: MSS_gravity(numdof + 6, numdof + 6)   ! Mass and damping from the motions of reference system.
+        real(8)                         :: MRR_gravity(6, 6)   ! Mass and damping from the motions of reference system.
         real(8)                         :: Frigid(6, numdof + 6)   ! rigid matrix of applied forces in sparse format
         real(8)                         :: Qrigid(6)   ! rigid vector of discrete generalize forces.
         real(8)                         :: MRR(6, 6)    ! rigid Mass and damping from the motions of reference system.
@@ -706,6 +713,7 @@ end subroutine xbeam_solv_couplednlndyn_python
                                          psi_def,&
                                          MRS_gravity,&
                                          MSS_gravity,&
+                                         MRR_gravity,&
                                          options)
             Qrigid = Qrigid + matmul(MRS_gravity, &
                                      cbeam3_asbly_gravity_dynamic(NumDof + 6,&

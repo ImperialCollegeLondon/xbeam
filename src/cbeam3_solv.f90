@@ -82,7 +82,7 @@ module cbeam3_solv
   type(xbelem),intent(in)    :: Elem(n_elem)           ! Element information.
   type(xbnode),intent(in)    :: Node(n_node)           ! Nodal information.
   real(8),      intent(in)   :: AppForces (n_node,6)   ! Applied nodal forces.
-  real(8),      intent(INOUT):: gravity_forces(n_node,6)   ! Applied nodal forces.
+  real(8),      intent(OUT):: gravity_forces(6)   ! Applied nodal forces.
   real(8),      intent(in)   :: Coords   (n_node,3)    ! Initial coordinates of the grid points.
   real(8),      intent(in)   :: Psi0     (n_elem,3,3)  ! Initial CRV of the nodes in the elements.
   real(8),      intent(inout):: PosDefor (n_node, 3)    ! Current coordinates of the grid points
@@ -104,6 +104,8 @@ module cbeam3_solv
   real(8):: Kglobal(numdof,numdof)    ! Global stiffness matrix in sparse storage.
   real(8):: Fglobal(numdof,numdof)    ! Influence coefficients matrix for applied forces.
   real(8):: Mglobal(numdof + 6,numdof + 6)    ! Global stiffness matrix in sparse storage.
+
+  real(8):: MRR(6, 6)
 
   ! Parameters to Check Convergence
   logical :: converged = .false.
@@ -134,6 +136,7 @@ module cbeam3_solv
   real(8)   :: TaX, TaPos, TaPsi    ! Absolute tolerance for DeltaX, DeltaPos and DeltaPsi
 
   integer   :: ii
+  real(8)   :: nodal_gravity_forces(n_node, 6)
 
  ! Determine scaling factors for convergence test (absolute tolerances)
 !   Psisc = 1.0_8
@@ -180,6 +183,7 @@ DX_old = 1.0d0*options%mindelta
   Kglobal = 0.0d0
   Mglobal = 0.0d0
   gravity_forces = 0.0d0
+  nodal_gravity_forces = 0.d00
   Qglobal= 0.d0
   DeltaX = 0.d0
   Fglobal = 0.0d0
@@ -225,18 +229,39 @@ DX_old = 1.0d0*options%mindelta
       call cbeam3_asbly_static (numdof, n_elem, n_node,Elem,Node,Coords,Psi0,&
                                 PosDefor,PsiDefor,&
                                 AppForces*dble(iLoadStep)/dble(Options%NumLoadSteps), &
-                                Kglobal,Fglobal,Qglobal,Options,Mglobal)
+                                Kglobal,Fglobal,Qglobal,Options,Mglobal,MRR)
 
       Qglobal= Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps) * &
       &              MATMUL(Fglobal,fem_m2v(AppForces,NumDof,Filter=ListIN))
 
       if (options%gravity_on) then
-        gravity_forces = -fem_v2m(MATMUL(Mglobal,&
+          ! print*, 'Mglobal cbeam3'
+          ! print*, Mglobal(1, 1:6)
+          ! print*, Mglobal(2, 1:6)
+          ! print*, Mglobal(3, 1:6)
+          ! print*, Mglobal(4, 1:6)
+          ! print*, Mglobal(5, 1:6)
+          ! print*, Mglobal(6, 1:6)
+          ! print*, '--'
+          ! print*, 'gravity cbeam3'
+          ! print*, cbeam3_asbly_gravity_static(6,options)
+        nodal_gravity_forces = -fem_v2m(MATMUL(Mglobal,&
                                          cbeam3_asbly_gravity_static(NumDof + 6,&
                                                                      options)),&
                                   n_node, 6)
+        gravity_forces = -MATMUL(MRR, cbeam3_asbly_gravity_static(6, options))
+        ! print*, 'MRR'
+        ! print*, MRR(1, :)
+        ! print*, MRR(2, :)
+        ! print*, MRR(3, :)
+        ! print*, MRR(4, :)
+        ! print*, MRR(5, :)
+        ! print*, MRR(6, :)
+        ! print*, '--'
+        ! print*, 'product'
+        ! print*, total_gravity_acceleration
         Qglobal = Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps)*&
-                  fem_m2v(gravity_forces, numdof, filter=ListIN)
+                  fem_m2v(nodal_gravity_forces, numdof, filter=ListIN)
       end if
 
 ! Solve equation and update the global vectors.
@@ -249,6 +274,10 @@ DX_old = 1.0d0*options%mindelta
       if (iter > 1) then
           if (maxval(abs(DeltaX)) < DX_old) then
               converged = .TRUE.
+
+            !   print*, 'APPFORCES = ', sum(appforces, dim=1)
+            !   print*, 'gravity_forces = ', sum(gravity_forces, dim=1)
+            !   print*, sum(gravity_forces + AppForces, dim=1)
           end if
       end if
 

@@ -274,7 +274,7 @@ subroutine xbeam_asbly_dynamic_new_interface (&
 
  subroutine xbeam_asbly_M_gravity(&
     numdof, n_node, n_elem, Elem,Node,Coords,Psi0,PosDefor,PsiDefor,  &
-                               MRS,MSS,Options)
+                               MRS,MSS,MRR,Options)
   use lib_rotvect
   use lib_fem
   use lib_cbeam3
@@ -291,6 +291,7 @@ subroutine xbeam_asbly_dynamic_new_interface (&
   real(8),      intent(in)      :: PsiDefor  (n_elem, 3, 3)     ! Current CRV of the nodes in the elements.
   real(8),      intent(out)     :: MRS(6, numdof + 6)            ! mass matrix.
   real(8),      intent(out)     :: MSS(numdof + 6, numdof + 6)            ! mass matrix.
+  real(8),      intent(OUT)     :: MRR(6, 6)
   type(xbopts), intent(in)      :: Options           ! Solver parameters.
 
 ! Local variables.
@@ -301,6 +302,7 @@ subroutine xbeam_asbly_dynamic_new_interface (&
   integer:: NumNE                          ! Number of nodes in an element.
   integer:: NumGaussMass                   ! Number of Gaussian points in the inertia terms.
   real(8):: MRSelem (6,6*MaxElNod)        ! Element mass matrix.
+  real(8):: MRRelem (6,6)        ! Element mass matrix.
   real(8):: Melem (6*MaxElNod,6*MaxElNod)  ! Element mass matrix.
   real(8):: rElem0(MaxElNod,6)             ! Initial Coordinates/CRV of nodes in the element.
   real(8):: rElem (MaxElNod,6)             ! Current Coordinates/CRV of nodes in the element.
@@ -310,6 +312,7 @@ subroutine xbeam_asbly_dynamic_new_interface (&
 
   MRS = 0.0d0
   MSS = 0.d0
+  MRR = 0.0d0
 
 ! Loop in all elements in the model.
   NumE=size(Elem)
@@ -317,6 +320,7 @@ subroutine xbeam_asbly_dynamic_new_interface (&
   do iElem=1,NumE
     MRSelem=0.d0
     Melem = 0.0d0
+    MRRelem = 0.0d0
     SB2B1=0.d0
 
 ! Extract coords of elem nodes and determine if they are master (Flag=T) or slave.
@@ -335,18 +339,20 @@ subroutine xbeam_asbly_dynamic_new_interface (&
     NumGaussMass=NumNE
 
     call xbeam_mrs  (NumNE,rElem0,rElem,Elem(iElem)%Mass,MRSelem,NumGaussMass)
+    call cbeam3_mass (NumNE,rElem0,rElem,Elem(iElem)%Mass,Melem,NumGaussMass)
+    call xbeam_mrr  (NumNE,rElem0,rElem              ,Elem(iElem)%Mass,MRRelem,NumGaussMass)
 ! Add contributions of non-structural (lumped) mass.
     if (any(abs(Elem(iElem)%RBMass)>0.d0)) then
-      call xbeam_rbmrs  (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,MRSelem)
+      call xbeam_rbmrs  (NumNE,rElem0,rElem, Elem(iElem)%RBMass,MRSelem)
       call cbeam3_rbmass (NumNE,rElem0,rElem,Elem(iElem)%RBMass,Melem)
+      call xbeam_rbmrr  (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,MRRelem)
     end if
-
-    call cbeam3_mass (NumNE,rElem0,rElem,Elem(iElem)%Mass,Melem,NumGaussMass)
 
 ! Project slave degrees of freedom to the orientation of the "master" ones.
     call cbeam3_projs2m (NumNE,Elem(iElem)%Master,Psi0(iElem,:,:),Psi0,SB2B1)
     MRSelem=matmul(MRSelem,SB2B1)
     Melem=matmul(transpose(SB2B1),matmul(Melem,SB2B1))
+    MRR  = MRR + MRRelem
 ! Add to global matrix. DONT remove columns and rows at clamped points.
     do i=1,NumNE
       i1=Node(Elem(iElem)%Conn(i))%Vdof + 1

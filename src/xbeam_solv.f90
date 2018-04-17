@@ -1091,6 +1091,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     real(8)                                         :: previous_dqddt(numdof + 10)
     real(8)                                         :: MRS_gravity(6, numdof + 6)
     real(8)                                         :: MSS_gravity(numdof + 6, numdof + 6)
+    real(8)                                         :: MRR_gravity(6, 6)
 
     real(8)                                         :: pos_ddot_def(n_node, 3)
     real(8)                                         :: psi_ddot_def(n_elem, 3, 3)
@@ -1118,7 +1119,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
      ! dQdt = dQdt + (1.0d0 - gamma)*0.8*dt*dQddt
      ! dQddt = 0.0d0
      ! print*, 'Predictor 0.8'
-    ! dqdt(numdof+1:numdof+6) = for_vel
+    dqdt(numdof+1:numdof+6) = for_vel
     dqdt(numdof+7:numdof+10) = quat
      Q = Q + dt*dQdt + (0.5d0 - beta)*dt*dt*dQddt
      dQdt = dQdt + (1.0d0 - gamma)*dt*dQddt
@@ -1279,11 +1280,25 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                          psi_def,&
                                          MRS_gravity,&
                                          MSS_gravity,&
+                                         MRR_gravity,&
                                          options)
             Qrigid = Qrigid + matmul(MRS_gravity, &
                                      cbeam3_asbly_gravity_dynamic(NumDof + 6,&
                                                                   options,&
                                                                   Cao))
+          ! print*, 'Mss xbeam'
+          ! print*, MSS_gravity(1, 1:6)
+          ! print*, MSS_gravity(2, 1:6)
+          ! print*, MSS_gravity(3, 1:6)
+          ! print*, MSS_gravity(4, 1:6)
+          ! print*, MSS_gravity(5, 1:6)
+          ! print*, MSS_gravity(6, 1:6)
+          ! print*, '--'
+          ! print*, 'gravity xbeam'
+          ! print*, cbeam3_asbly_gravity_dynamic(6,&
+          !  options,&
+          !  Cao)
+          ! stop
             gravity_forces = -fem_v2m(MATMUL(MSS_gravity,&
                                       cbeam3_asbly_gravity_dynamic(NumDof + 6,options, Cao)),&
                                       n_node, 6)

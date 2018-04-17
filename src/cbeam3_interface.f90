@@ -6,6 +6,7 @@ module cbeam3_interface
     use                                 :: lib_sparse
     use                                 :: xbeam_asbly
     use                                 :: lib_xbeam
+    use lib_rotvect
 
     implicit none
 
@@ -71,7 +72,7 @@ contains
         real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
 
         real(c_double), intent(IN)      :: applied_forces(n_node, 6)
-        real(c_double), intent(INOUT)   :: gravity_forces(n_node, 6)
+        real(c_double), intent(INOUT)   :: gravity_forces(6)
         ! ADC XXX: careful with forces in master FoR
 
         integer(c_int)                  :: num_dof
@@ -146,7 +147,34 @@ contains
                                   psi_def,&
                                   options&
                                   )
+        ! print*, gravity_forces(1,:)
+        ! call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
+
+        ! call print_matrix('gravity_forces',gravity_forces)
     end subroutine cbeam3_solv_nlnstatic_python
+
+    subroutine correct_gravity_forces(n_nodes, n_elems,  gravity_forces, psi, elements, nodes)
+        integer, intent(IN)                 :: n_nodes
+        integer, intent(IN)                 :: n_elems
+        real(8), intent(INOUT)              :: gravity_forces(n_nodes, 6)
+        real(8), intent(IN)                 :: psi(n_elems, 3, 3)
+        type(xbelem), intent(IN)            :: elements(n_elems)
+        type(xbnode), intent(IN)            :: nodes(n_nodes)
+
+        integer                             :: inode, ielem
+        integer                             :: ilocalnode
+        real(8)                             :: rot(3, 3)
+
+        do inode=1, n_nodes
+            ielem = nodes(inode)%master(1)
+            ilocalnode = nodes(inode)%master(2)
+
+            rot =(rotvect_psi2rot(psi(ielem, ilocalnode, :)))
+
+            gravity_forces(inode, 4:6) = MATMUL(transpose(rot), gravity_forces(inode, 4:6))
+        end do
+
+    end subroutine correct_gravity_forces
 
 
     subroutine cbeam3_solv_nlndyn_python   (n_elem,&

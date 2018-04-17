@@ -665,6 +665,8 @@ module lib_cbeam3
   real(8) :: DTYpN(6,6*MaxNodCB3)  ! Strain matrix operator.
   real(8) :: N (6,6*MaxNodCB3)     ! Element shape function matrix
 
+  real(8)   :: temp(6*MaxNodCB3, 6*MaxNodCB3)
+
 ! Loop in the nodes.
   do iNode=1,NumNodesElem
 
@@ -687,9 +689,51 @@ module lib_cbeam3
         N (i,i+(iNode-1)*6)= 1.d0
     end do
 
-! Compute mass tangent stiffness.
     DTYpN=matmul(matmul(transpose(D),Yp),N)
+    ! print*, 'D'
+    ! print*, D(1, :)
+    ! print*, D(2, :)
+    ! print*, D(3, :)
+    ! print*, D(4, :)
+    ! print*, D(5, :)
+    ! print*, D(6, :)
+    ! print*, '--'
+    ! print*, 'Yp'
+    ! print*, Yp(1, :)
+    ! print*, Yp(2, :)
+    ! print*, Yp(3, :)
+    ! print*, Yp(4, :)
+    ! print*, Yp(5, :)
+    ! print*, Yp(6, :)
+    ! print*, '--'
+    ! print*, 'DTYpN'
+    ! print*, DTYpN(1, :)
+    ! print*, DTYpN(2, :)
+    ! print*, DTYpN(3, :)
+    ! print*, DTYpN(4, :)
+    ! print*, DTYpN(5, :)
+    ! print*, DTYpN(6, :)
+    ! print*, '--'
+    ! print*, 'NodalMass'
+    ! print*, NodalMass(i, 1, :)
+    ! print*, NodalMass(i, 2, :)
+    ! print*, NodalMass(i, 3, :)
+    ! print*, NodalMass(i, 4, :)
+    ! print*, NodalMass(i, 5, :)
+    ! print*, NodalMass(i, 6, :)
+    ! print*, '---'
+
+! Compute mass tangent stiffness.
     Mass= Mass + matmul(transpose(DTYpN),matmul(NodalMass(iNode,:,:),DTYpN))
+    temp = matmul(transpose(DTYpN),matmul(NodalMass(1,:,:),DTYpN))
+    ! print*, 'result'
+    ! print*, temp(1, 1:6)
+    ! print*, temp(2, 1:6)
+    ! print*, temp(3, 1:6)
+    ! print*, temp(4, 1:6)
+    ! print*, temp(5, 1:6)
+    ! print*, temp(6, 1:6)
+    ! print*,'---'
   end do
 
   return

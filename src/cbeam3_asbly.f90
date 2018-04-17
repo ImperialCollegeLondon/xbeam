@@ -52,12 +52,13 @@ end interface cbeam3_asbly_dynamic
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  subroutine cbeam3_asbly_static_old (numdof, n_elem, n_node, Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Force, &
-&                                Kglobal,Fglobal,Qglobal,Options,Mglobal)
+&                                Kglobal,Fglobal,Qglobal,Options,Mglobal, MRR)
   use lib_rot
   use lib_rotvect
   use lib_fem
   use lib_sparse
   use lib_cbeam3
+  use lib_xbeam
   use debug_utils
 
 
@@ -74,6 +75,7 @@ end interface cbeam3_asbly_dynamic
   real(8),      intent(in) :: Force     (n_node,6)   ! Force vector.
   real(8), intent(inout):: Kglobal   (numdof,numdof)     ! Sparse stiffness matrix.
   real(8), optional, intent(OUT)       :: Mglobal   (numdof+6,numdof+6)     ! Sparse mass matrix.
+  real(8), optional, intent(OUT)        :: MRR(6, 6)
   real(8),      intent(out):: Qglobal   (numdof)     ! Discrete force vector.
   real(8), intent(inout):: Fglobal   (numdof,numdof)     ! Influence coefficients matrix for applied forces.
   type(xbopts), intent(in) :: Options           ! Solver parameters.
@@ -98,6 +100,8 @@ end interface cbeam3_asbly_dynamic
   real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)  ! Transformation from master to global node orientations.
   integer:: NumGaussMass
   logical:: with_MSS
+  logical:: with_MRR
+  real(8)   :: MRRelem(6, 6)
 
   integer, allocatable:: row_sphBC(:)      ! row in global matrices/vector associated with weakly enforced hinge BCs
   Qglobal = 0.0d0
@@ -107,6 +111,10 @@ end interface cbeam3_asbly_dynamic
   with_MSS = present(Mglobal)
   if (with_MSS) then
       Mglobal = 0.0d0
+  end if
+  with_MRR = present(MRR)
+  if (with_MRR) then
+      MRR = 0.0d0
   end if
 
     !   call print_matrix('asbly_force',Force)
@@ -119,6 +127,7 @@ end interface cbeam3_asbly_dynamic
     Kelem=0.d0; Felem=0.d0; Qelem=0.d0; SB2B1=0.d0
     rElem = 0.0d0
     rElem0 = 0.0d0
+    MRRelem = 0.0d0
 
     !print*, iElem
   ! Determine if the element nodes are master (Flag=T) or slave.
@@ -168,6 +177,14 @@ end interface cbeam3_asbly_dynamic
     ! Contributions of the structural mass to the linearized inertia matrices.
         call cbeam3_rbmass (NumNE,rElem0,rElem,Elem(iElem)%RBMass,Melem)
         call cbeam3_mass (NumNE,rElem0,rElem,Elem(iElem)%Mass,Melem,NumGaussMass)
+    end if
+
+    if (with_MRR) then
+        call xbeam_mrr  (NumNE,rElem0,rElem              ,Elem(iElem)%Mass,MRRelem,NumGaussMass)
+        if (any(abs(Elem(iElem)%RBMass)>0.d0)) then
+          call xbeam_rbmrr  (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,MRRelem)
+        end if
+        MRR = MRR + MRRelem
     end if
 
   !----------------------------------- END OF ADDED SECTION
@@ -830,6 +847,7 @@ end do
         g_2 = rot_unit([options%gravity_dir_x,&
                         options%gravity_dir_y,&
                         options%gravity_dir_z])*options%gravity
+        ! print*, 'g static', g_2
     else
         g_2 = g
     end if
@@ -855,6 +873,7 @@ end do
                   options%gravity_dir_y,&
                   options%gravity_dir_z])*options%gravity
     g = MATMUL(Cao, g)
+    ! print*, 'g dynamic ', g
     gravity_vec = cbeam3_asbly_gravity_static(NumDof, options, g)
  end function cbeam3_asbly_gravity_dynamic
 
