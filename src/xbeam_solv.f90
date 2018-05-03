@@ -1205,10 +1205,10 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                   psi_def,&
                                   pos_dot_def,&
                                   psi_dot_def,&
-                                  pos_ddot_def,&
-                                  psi_ddot_def,&
-                                !   0.0d0*pos_ddot_def,&
-                                !   0.0d0*psi_ddot_def,&
+                                  ! pos_ddot_def,&
+                                  ! psi_ddot_def,&
+                                  0.0d0*pos_dot_def,&
+                                  0.0d0*psi_dot_def,&
                                   static_forces + dynamic_forces,&
                                   dQdt(numdof+1:numdof+6),&
                                   dQddt(numdof+1:numdof+6),&
@@ -1375,6 +1375,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         call lu_solve(numdof + 10, Asys, -Qtotal, DQ)
 
         if (Iter > 1) then
+            print*, (maxval(abs(DQ)))/old_DQ
             ! if ((sqrt(dot_product(q, q))-old_q)/old_q < options%MinDelta) then
             ! if (abs(maxval(abs(DQ)) - old_DQ)/old_DQ < options%MinDelta) then
             if (maxval(abs(DQ))/old_DQ < options%MinDelta) then

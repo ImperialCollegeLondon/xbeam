@@ -810,7 +810,7 @@ module lib_fem
 ! I/O variables.
   integer,intent(in) :: ElemNodes (:)      ! Nodes in the current element.
   real(8),intent(in) :: GlobVector(:,:)    ! Vector of global values.
-  real(8),intent(out):: LocVector (:,:)    ! Vector of local values.
+  real(8),intent(inout):: LocVector (:,:)    ! Vector of local values.
   integer,intent(out):: NumNodeElem        ! Actual number of nodes in the element.
 
 ! Local variables.
