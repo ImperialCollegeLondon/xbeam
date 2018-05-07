@@ -2440,4 +2440,80 @@ end subroutine cbeam3_rbmvel
   return
  end subroutine cbeam3_glob2loc
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-> Subroutine CBEAM3_KMAT_LOADS
+!
+!-> Description:
+!
+!    Compute the material tangent stiffness matrix.
+!
+!-> Remarks.-
+!
+!   1) New values are added to those already in the matrix.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ subroutine cbeam3_kmat_loads (r0,Ri,ElemStiff, strain, loads, point)
+  use lib_fem
+  use lib_rot
+  use lib_rotvect
+
+! I/O Variables.
+  real(8),intent(in)   :: r0       (MaxNodCB3,6)    ! Initial position/orientation of grid points.
+  real(8),intent(in)   :: Ri       (MaxNodCB3,6)    ! Current position/orientation of grid points.
+  real(8),intent(in)   :: ElemStiff(6, 6)    ! Stiffness properties in the element.
+  real(8),intent(inout):: strain(6)
+  real(8),intent(inout):: loads(6)
+  real(8), intent(IN)  :: point
+
+! Local variables.
+  integer :: i,j                   ! Counters.
+  real(8) :: Jacobian              ! ds/deta, with eta the nondimensional arclength.
+  real(8) :: ShapeFun(MaxNodCB3)    ! Shape functions in a gauss point.
+  real(8) :: ShapeDer(MaxNodCB3)    ! Derivatives of ShapeFun in a gauss point.
+
+  real(8) :: Ri_g (6)              ! Displacement/rotation at Gauss point.
+  real(8) :: r0_g (6)              ! Position vector at the Gauss point.
+  real(8) :: dRi_g(6)              ! Derivative of Ri_g.
+  real(8) :: dr0_g(6)              ! Derivative of r0_g.
+
+  real(8) :: CBa(3,3)              ! Coordinate transformation matrix.
+  real(8) :: Rot(3,3),dRot(3,3)    ! Tangential operator and spatial derivative.
+  integer   :: NumNodesElem = 3
+
+
+! Define Gauss points and loop on them.
+! sm: because the local frame goes from (-1,1), the result of this call does only
+! depend on the NumGauss
+! Obtain the shape functions and their derivatives.
+    call fem_1d_shapefun (NumNodesElem, point, ShapeFun, ShapeDer)
+
+! Global coordinates and their derivatives at the gauss points.
+    do i=1,6
+      r0_g(i) = dot_product (ShapeFun(1:NumNodesElem),r0(1:NumNodesElem,i))
+      dr0_g(i)= dot_product (ShapeDer(1:NumNodesElem),r0(1:NumNodesElem,i))
+    end do
+    Jacobian =sqrt(dot_product (dr0_g(1:3),dr0_g(1:3)))
+
+! Rescale the derivatives to be in the physical coordinates.
+! sm: this accounts for the actual element length
+    ShapeDer=ShapeDer/Jacobian
+    dr0_g=dr0_g/Jacobian
+
+! Compute the current position vector and rotations, and their derivatives.
+    do i=1,6
+      Ri_g(i) = dot_product (ShapeFun(1:NumNodesElem),Ri(1:NumNodesElem,i))
+      dRi_g(i)= dot_product (ShapeDer(1:NumNodesElem),Ri(1:NumNodesElem,i))
+    end do
+
+! Compute the current coordinate transformation matrix and rotational operator.
+    CBa= rotvect_psi2mat  (Ri_g(4:6))
+    Rot= rotvect_psi2rot  (Ri_g(4:6))
+
+! Compute the current curvature and strain.
+    strain(1:3)=matmul(CBa,dRi_g(1:3))-matmul(rotvect_psi2mat(r0_g(4:6)),dr0_g(1:3))
+    strain(4:6)=matmul(Rot,dRi_g(4:6))
+
+    loads = MATMUL(ElemStiff, strain)
+
+end subroutine cbeam3_kmat_loads
 end module lib_cbeam3
