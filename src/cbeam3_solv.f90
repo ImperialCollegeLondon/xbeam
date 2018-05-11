@@ -1255,7 +1255,7 @@ DX_old = 1.0d0*options%mindelta
         call lu_solve(num_dof, Asys, -Qglobal, DX)
 
         if (Iter > 1) then
-            ! print*, (maxval(abs(DX)))
+            ! print*, (maxval(abs(DX))/old_DX)
             ! if ((sqrt(dot_product(q, q))-old_q)/old_q < options%MinDelta) then
             ! if (abs(maxval(abs(DQ)) - old_DQ)/old_DQ < options%MinDelta) then
             if (maxval(abs(DX))/old_DX < options%MinDelta) then
@@ -1274,7 +1274,7 @@ DX_old = 1.0d0*options%mindelta
         dXddt = dXddt + 1.d0/(beta*dt*dt)*DX
 
         if (iter == 1) then
-            old_DX = maxval(abs(DX))
+            old_DX = max(maxval(abs(DX)), 1.0d0)
         end if
         ! old_q = sqrt(dot_product(q, q))
         ! end of convergence check
