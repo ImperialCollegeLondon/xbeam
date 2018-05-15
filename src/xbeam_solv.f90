@@ -1375,7 +1375,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         call lu_solve(numdof + 10, Asys, -Qtotal, DQ)
 
         if (Iter > 1) then
-            print*, (maxval(abs(DQ)))/old_DQ
+            ! print*, (maxval(abs(DQ)))/old_DQ
             ! if ((sqrt(dot_product(q, q))-old_q)/old_q < options%MinDelta) then
             ! if (abs(maxval(abs(DQ)) - old_DQ)/old_DQ < options%MinDelta) then
             if (maxval(abs(DQ))/old_DQ < options%MinDelta) then
