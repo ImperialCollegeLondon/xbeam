@@ -265,40 +265,40 @@ pure function rotvect_deltapsi (PsiA, PsiB) result(DeltaPsi)
 !      go over the discontinuity at +/- pi. (RPN 25.05.2011)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- function rotvect_lintpsi (PsiA, PsiB, eta) result(PsiC)
-
-! I/O Variables.
-  real(8),intent(in)   :: PsiA (:)
-  real(8),intent(in)   :: PsiB (:)
-  real(8),intent(in)   :: eta                ! Eta between 0 and 1.
-
-! Local variables.
-  real(8),dimension(4) :: QuatA,QuatB,QuatC     ! Quaternions.
-  real(8),dimension(3) :: PsiC                  ! CRV at the interpolation point.
-  real(8)              :: Norm
-
-! Initialize
-  Norm=sqrt(dot_product(PsiB,PsiB))
-
-! Transform to quaternions. Check if the closest "distance" from the first to the second
-! vector is obtained by adding or substracting the 2*pi. In FEM applications this should
-! remove the discontinuity at +/- pi, but needs some extensive checking.
-  QuatA=rotvect_psi2quat(PsiA)
-  if (dot_product(PsiB*(Norm+2.d0*pi)/Norm-PsiA,PsiB*(Norm+2.d0*pi)/Norm-PsiA).lt.Pi*Pi) then
-    QuatB=rotvect_psi2quat(PsiB*(Norm+2.d0*pi)/Norm)
-  else if (dot_product(PsiB*(Norm-2.d0*pi)/Norm-PsiA,PsiB*(Norm-2.d0*pi)/Norm-PsiA).lt.Pi*pi) then
-    QuatB=rotvect_psi2quat(PsiB*(Norm-2.d0*pi)/Norm)
-  else
-    QuatB=rotvect_psi2quat(PsiB)
-  end if
-
-  QuatC=rotvect_lintquat(QuatA,QuatB,eta)
-
-! Transform back to CRV and force results within [-pi,+pi]
-  PsiC=rotvect_quat2psi(QuatC)
-  call rotvect_bounds (PsiC)
-  return
- end function rotvect_lintpsi
+! function rotvect_lintpsi (PsiA, PsiB, eta) result(PsiC)
+!
+!! I/O Variables.
+!  real(8),intent(in)   :: PsiA (:)
+!  real(8),intent(in)   :: PsiB (:)
+!  real(8),intent(in)   :: eta                ! Eta between 0 and 1.
+!
+!! Local variables.
+!  real(8),dimension(4) :: QuatA,QuatB,QuatC     ! Quaternions.
+!  real(8),dimension(3) :: PsiC                  ! CRV at the interpolation point.
+!  real(8)              :: Norm
+!
+!! Initialize
+!  Norm=sqrt(dot_product(PsiB,PsiB))
+!
+!! Transform to quaternions. Check if the closest "distance" from the first to the second
+!! vector is obtained by adding or substracting the 2*pi. In FEM applications this should
+!! remove the discontinuity at +/- pi, but needs some extensive checking.
+!  QuatA=rotvect_psi2quat(PsiA)
+!  if (dot_product(PsiB*(Norm+2.d0*pi)/Norm-PsiA,PsiB*(Norm+2.d0*pi)/Norm-PsiA).lt.Pi*Pi) then
+!    QuatB=rotvect_psi2quat(PsiB*(Norm+2.d0*pi)/Norm)
+!  else if (dot_product(PsiB*(Norm-2.d0*pi)/Norm-PsiA,PsiB*(Norm-2.d0*pi)/Norm-PsiA).lt.Pi*pi) then
+!    QuatB=rotvect_psi2quat(PsiB*(Norm-2.d0*pi)/Norm)
+!  else
+!    QuatB=rotvect_psi2quat(PsiB)
+!  end if
+!
+!  QuatC=rotvect_lintquat(QuatA,QuatB,eta)
+!
+!! Transform back to CRV and force results within [-pi,+pi]
+!  PsiC=rotvect_quat2psi(QuatC)
+!  call rotvect_bounds (PsiC)
+!  return
+! end function rotvect_lintpsi
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -314,34 +314,34 @@ pure function rotvect_deltapsi (PsiA, PsiB) result(DeltaPsi)
 !  1) See A.J. Hanson, "Visualizing quaternions", page 307.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-pure function rotvect_lintquat (QuatA, QuatB, eta)
-
-! I/O Variables.
-  real(8),intent(in)   :: QuatA (:)
-  real(8),intent(in)   :: QuatB (:)
-  real(8),intent(in)   :: eta              ! Interpolation param, between 0 and 1.
-  real(8),dimension(4) :: rotvect_lintquat ! Interpolated rotation.
-
-! Local variables.
-  real(8):: QuatC(4)
-  real(8):: Phi
-
-! Minimum angle between A and B.
-  Phi=acos(dot_product(QuatA,QuatB))
-
-! Compute interpolated rotation.
-  if (abs(Phi).lt.rot_Epsilon) then
-    QuatC=(1.d0-eta)*QuatA + eta*QuatB
-  else
-    QuatC=(sin((1.d0-eta)*Phi)/sin(Phi))*QuatA + &
-&         (sin(      eta *Phi)/sin(Phi))*QuatB
-  end if
-
-! Enforce unit norm.
-  rotvect_lintquat =QuatC/sqrt(dot_product(QuatC,QuatC))
-
-  return
- end function rotvect_lintquat
+! pure function rotvect_lintquat (QuatA, QuatB, eta)
+!
+! ! I/O Variables.
+!   real(8),intent(in)   :: QuatA (:)
+!   real(8),intent(in)   :: QuatB (:)
+!   real(8),intent(in)   :: eta              ! Interpolation param, between 0 and 1.
+!   real(8),dimension(4) :: rotvect_lintquat ! Interpolated rotation.
+!
+! ! Local variables.
+!   real(8):: QuatC(4)
+!   real(8):: Phi
+!
+! ! Minimum angle between A and B.
+!   Phi=acos(dot_product(QuatA,QuatB))
+!
+! ! Compute interpolated rotation.
+!   if (abs(Phi).lt.rot_Epsilon) then
+!     QuatC=(1.d0-eta)*QuatA + eta*QuatB
+!   else
+!     QuatC=(sin((1.d0-eta)*Phi)/sin(Phi))*QuatA + &
+! &         (sin(      eta *Phi)/sin(Phi))*QuatB
+!   end if
+!
+! ! Enforce unit norm.
+!   rotvect_lintquat =QuatC/sqrt(dot_product(QuatC,QuatC))
+!
+!   return
+!  end function rotvect_lintquat
 
 
 
@@ -642,6 +642,17 @@ function rotvect_mat2psi (CoordTransMat) result(Psi)
 
 ! Rotation Matrix -> Quaternions -> Cartesian rotation vector.
 
+# TODO BIGBUG
+! For very small rotations, the previous formula fails.
+!  if (abs(dot_product(Psi,Psi)).le.rot_Epsilon) then
+!    Psi(1)= CoordTransMat(2,3)
+!    Psi(2)= CoordTransMat(3,1)
+!    Psi(3)= CoordTransMat(1,2)
+!  else
+!    Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
+!  end if
+
+Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 ! For very small rotations, the previous formula fails.
   if (abs(dot_product(Psi,Psi)).le.rot_Epsilon) then
     Psi(1)= CoordTransMat(2,3)
@@ -650,6 +661,7 @@ function rotvect_mat2psi (CoordTransMat) result(Psi)
   else
     Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
   end if
+
 
 ! Set bounds between [-pi,pi] and return the CRV.
   call rotvect_bounds (Psi)
