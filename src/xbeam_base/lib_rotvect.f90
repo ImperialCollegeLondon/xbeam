@@ -658,8 +658,8 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
     Psi(1)= CoordTransMat(2,3)
     Psi(2)= CoordTransMat(3,1)
     Psi(3)= CoordTransMat(1,2)
-  else
-    Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
+  ! else
+  !   Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
   end if
 
 

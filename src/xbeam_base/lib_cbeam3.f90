@@ -581,10 +581,11 @@ module lib_cbeam3
 ! Define Gauss points and loop on them.
   allocate (CoordGauss(NumGauss))
   allocate (WeightGauss(NumGauss))
+  CoordGauss = 0.0d0
+  WeightGauss = 0.0d0
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
 
   do iGauss=1,NumGauss
-
 ! Obtain the shape functions and their derivatives.
     call fem_1d_shapefun (NumNodesElem,CoordGauss(iGauss),ShapeFun,ShapeDer)
 
