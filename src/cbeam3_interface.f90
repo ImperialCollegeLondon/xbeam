@@ -72,7 +72,7 @@ contains
         real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
 
         real(c_double), intent(IN)      :: applied_forces(n_node, 6)
-        real(c_double), intent(INOUT)   :: gravity_forces(6)
+        real(c_double), intent(INOUT)   :: gravity_forces(n_node, 6)
         ! ADC XXX: careful with forces in master FoR
 
         integer(c_int)                  :: num_dof
@@ -111,7 +111,7 @@ contains
                                 fdof)
         ! call print_matrix('conn',conn)
         ! call print_matrix('pos_ini', pos_ini)
-        ! call print_matrix('pos_def', pos_def)
+        !call print_matrix('pos_def', pos_def)
         ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
         ! call print_matrix('psi_ini2', psi_ini(:, 2, :))
         ! call print_matrix('psi_ini3', psi_ini(:, 3, :))
@@ -119,10 +119,10 @@ contains
         ! call print_matrix('psi_def2', psi_def(:, 2, :))
         ! call print_matrix('psi_def3', psi_def(:, 3, :))
         ! call print_matrix('fdof',fdof)
-        ! call print_matrix('app_forces',applied_forces)
+        !call print_matrix('app_forces',applied_forces)
         ! ! call print_matrix('gravity_forces',gravity_forces)
         ! call print_matrix('vdof',vdof)
-        ! call print_xbelem(elements)
+        !call print_xbelem(elements)
         ! call print_xbnode(nodes)
         ! print*, 'RBMass:'
         ! print*, elements(1)%RBMASS(1, 1, :)
@@ -149,6 +149,7 @@ contains
                                   )
         ! print*, gravity_forces(1,:)
         ! call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
+        call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
 
         ! call print_matrix('gravity_forces',gravity_forces)
     end subroutine cbeam3_solv_nlnstatic_python
@@ -171,6 +172,7 @@ contains
 
             rot =(rotvect_psi2rot(psi(ielem, ilocalnode, :)))
 
+            ! original
             gravity_forces(inode, 4:6) = MATMUL(transpose(rot), gravity_forces(inode, 4:6))
         end do
 

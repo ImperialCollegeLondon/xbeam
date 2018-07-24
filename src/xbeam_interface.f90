@@ -309,29 +309,29 @@ end subroutine xbeam_solv_couplednlndyn_python
         !
         ! print*, 'cbeam3_interface, line 423'
         ! print*,  n_node
-        ! call print_matrix('conn',conn)
-        ! call print_matrix('pos_ini', pos_ini)
-        ! call print_matrix('pos_def', pos_def)
-        ! call print_matrix('pos_def_dot', pos_def_dot)
-        ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
-        ! call print_matrix('psi_ini2', psi_ini(:, 2, :))
-        ! call print_matrix('psi_ini3', psi_ini(:, 3, :))
-        ! call print_matrix('psi_def1', psi_def(:, 1, :))
-        ! call print_matrix('psi_def2', psi_def(:, 2, :))
-        ! call print_matrix('psi_def3', psi_def(:, 3, :))
-        ! call print_matrix('fdof',fdof)
-        ! call print_matrix('steady_app_forces',steady_app_forces + dynamic_app_forces)
-        ! call print_matrix('vdof',vdof)
-        ! call print_matrix('master1',master(:,:,1))
-        ! call print_matrix('master2',master(:,:,2))
-        ! call print_matrix('masternode',master_node)
-        ! call print_matrix('psi_def_dot1',psi_def_dot(:, 1, :))
-        ! call print_matrix('psi_def_dot2',psi_def_dot(:, 2, :))
-        ! call print_matrix('q',q)
-        ! call print_matrix('dqdt',dqdt)
-        ! call print_matrix('dqddt',dqddt)
-        ! call print_matrix('forced_vel', forced_vel)
-        ! call print_matrix('forced_acc', forced_acc)
+         ! call print_matrix('conn',conn)
+         ! call print_matrix('pos_ini', pos_ini)
+         ! call print_matrix('pos_def', pos_def)
+         ! call print_matrix('pos_def_dot', pos_def_dot)
+         ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
+         ! call print_matrix('psi_ini2', psi_ini(:, 2, :))
+         ! call print_matrix('psi_ini3', psi_ini(:, 3, :))
+         ! call print_matrix('psi_def1', psi_def(:, 1, :))
+         ! call print_matrix('psi_def2', psi_def(:, 2, :))
+         ! call print_matrix('psi_def3', psi_def(:, 3, :))
+         ! call print_matrix('fdof',fdof)
+         ! call print_matrix('steady_app_forces',steady_app_forces + dynamic_app_forces)
+         ! call print_matrix('vdof',vdof)
+         ! call print_matrix('master1',master(:,:,1))
+         ! call print_matrix('master2',master(:,:,2))
+         ! call print_matrix('masternode',master_node)
+         ! call print_matrix('psi_def_dot1',psi_def_dot(:, 1, :))
+         ! call print_matrix('psi_def_dot2',psi_def_dot(:, 2, :))
+         ! call print_matrix('q',q)
+         ! call print_matrix('dqdt',dqdt)
+         ! call print_matrix('dqddt',dqddt)
+         ! call print_matrix('for_vel',for_vel)
+         ! call print_matrix('for_acc',for_acc)
         ! print*, 'IN'
 
         ! print*, 'for_vel, init: ', for_vel(1:3)
@@ -360,9 +360,8 @@ end subroutine xbeam_solv_couplednlndyn_python
                                 master_node,&
                                 vdof,&
                                 fdof)
-        ! call print_elem('elem_before_step', elements)
-        ! call print_node('node_before_step', nodes)
-        ! options%NumGauss = nodes_per_elem - 1
+         ! call print_elem('elem', elements)
+         ! call print_node('node', nodes)
 
         gravity_forces = 0.0d0
         call xbeam_solv_couplednlndyn_step_updated(numdof,&
@@ -388,16 +387,7 @@ end subroutine xbeam_solv_couplednlndyn_python
                                                    dqddt,&
                                                    options)
 
-        ! print*, 'grav'
-        ! print*, 'XBEAM'
-        ! print*, gravity_forces(1, :)
         call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
-        ! print*, gravity_forces(1, :)
-        ! print*, '--'
-        ! print*, 'for_vel, finish: ', for_vel(1:3)
-        ! call print_matrix('q', q)
-        ! call print_matrix('dqdt', dqdt)
-        ! call print_matrix('dqddt', dqddt)
     end subroutine xbeam_solv_nlndyn_step_python
 
 

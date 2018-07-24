@@ -76,7 +76,7 @@ end interface cbeam3_asbly_dynamic
   real(8), intent(inout):: Kglobal   (numdof,numdof)     ! Sparse stiffness matrix.
   real(8), optional, intent(OUT)       :: Mglobal   (numdof+6,numdof+6)     ! Sparse mass matrix.
   real(8), optional, intent(OUT)        :: MRR(6, 6)
-  real(8),      intent(out):: Qglobal   (numdof)     ! Discrete force vector.
+  real(8),      intent(inout):: Qglobal   (numdof)     ! Discrete force vector.
   real(8), intent(inout):: Fglobal   (numdof,numdof)     ! Influence coefficients matrix for applied forces.
   type(xbopts), intent(in) :: Options           ! Solver parameters.
 

@@ -72,7 +72,7 @@ module lib_rotvect
  subroutine rotvect_bounds (Psi)
 
 ! I/O Variables.
-  real(8),intent(inout)   :: Psi(:)
+  real(8),intent(inout)   :: Psi(3)
 
 ! Local variables.
   real(8):: OldNormPsi   ! Original norm of the CRV.
@@ -93,8 +93,6 @@ module lib_rotvect
     end if
     Psi=Psi*(NormPsi/OldNormPsi)
   end if
-
-  return
  end subroutine rotvect_bounds
 
 
@@ -113,8 +111,8 @@ module lib_rotvect
  subroutine rotvect_boundscheck2 (PsiA,PsiB)
 
 ! I/O Variables.
-  real(8),intent(inout):: PsiA (:)
-  real(8),intent(in)   :: PsiB (:)
+  real(8),intent(inout):: PsiA (3)
+  real(8),intent(in)   :: PsiB (3)
 
 ! Local variables.
   real(8)              :: Norm
@@ -122,7 +120,8 @@ module lib_rotvect
 ! Initialize
   Norm=sqrt(dot_product(PsiA,PsiA))
 
-  if (Norm.ne.0.d0) then
+  ! if (Norm.ne.0.d0) then
+  if (Norm > rot_Epsilon) then
 ! Check if the closest "distance" from the first to the second vector is obtained
 ! by adding or substracting 2*pi. This should remove the discontinuity at +/- pi,
 ! but needs some extensive checking.
@@ -132,8 +131,6 @@ module lib_rotvect
       PsiA = PsiA*(Norm-2.d0*pi)/Norm
     end if
   end if
-
-  return
  end subroutine rotvect_boundscheck2
 
 
@@ -153,13 +150,15 @@ module lib_rotvect
 function rotvect_addpsi (Psi01, Psi12) result(Psi)
 
 ! I/O Variables.
-  real(8),intent(in)   :: Psi01 (:)
-  real(8),intent(in)   :: Psi12 (:)
+  real(8),intent(in)   :: Psi01 (3)
+  real(8),intent(in)   :: Psi12 (3)
 
 ! Local variables.
   real(8),dimension(4) :: Quat01,Quat12,Quat02  ! Quaternions.
   real(8),dimension(3) :: Psi                   ! CRV.
 
+  ! print*, Psi01
+  ! print*, Psi12
 ! Transform to quaternions, add them, and convert the result back.
   Quat01=rotvect_psi2quat(Psi01)
   Quat12=rotvect_psi2quat(Psi12)
@@ -168,7 +167,8 @@ function rotvect_addpsi (Psi01, Psi12) result(Psi)
 
   Psi=rotvect_quat2psi(Quat02)
   call rotvect_bounds(Psi)
-  return
+  ! call backtrace()
+  ! read(*,*)
  end function rotvect_addpsi
 
 
@@ -188,14 +188,15 @@ function rotvect_addpsi (Psi01, Psi12) result(Psi)
  pure function rotvect_addquat (Quat01, Quat12)
 
 ! I/O Variables.
-  real(8),intent(in)   :: Quat01 (:)
-  real(8),intent(in)   :: Quat12 (:)
+  real(8),intent(in)   :: Quat01 (4)
+  real(8),intent(in)   :: Quat12 (4)
   real(8),dimension(4) :: rotvect_addquat ! Composed rotation (Quat02)
 
 ! Local variables.
   real(8),dimension(4,4):: B              ! B matrix.
 
 ! Define the B matrix based on the right rotation (Quat12)
+  B = 0.0d0
   B(1,1)     = Quat12(1)
   B(1,2:4)   =-Quat12(2:4)
   B(2:4,1)   = Quat12(2:4)
@@ -203,7 +204,6 @@ function rotvect_addpsi (Psi01, Psi12) result(Psi)
 
 ! Compute composite rotation.
   rotvect_addquat=matmul(B,Quat01)
-  return
  end function rotvect_addquat
 
 
@@ -227,8 +227,8 @@ function rotvect_addpsi (Psi01, Psi12) result(Psi)
 pure function rotvect_deltapsi (PsiA, PsiB) result(DeltaPsi)
 
 ! I/O Variables.
-  real(8),intent(in)   :: PsiA (:)
-  real(8),intent(in)   :: PsiB (:)
+  real(8),intent(in)   :: PsiA (3)
+  real(8),intent(in)   :: PsiB (3)
 ! Local variables.
   real(8),dimension(3) :: DeltaPsi       ! Increment between both CRVs.
   real(8)              :: Norm
@@ -238,6 +238,7 @@ pure function rotvect_deltapsi (PsiA, PsiB) result(DeltaPsi)
 ! Transform to quaternions. Check if the closest "distance" from the first to the second
 ! vector is obtained by adding or substracting the 2*pi. In FEM applications this should
 ! remove the discontinuity at +/- pi, but needs some extensive checking.
+  DeltaPsi = 0.0d0
   if (dot_product(PsiB*(Norm+2.d0*pi)/Norm-PsiA,PsiB*(Norm+2.d0*pi)/Norm-PsiA).lt.Pi*Pi) then
     DeltaPsi = PsiB*(Norm+2.d0*pi)/Norm - PsiA
   else if (dot_product(PsiB*(Norm-2.d0*pi)/Norm-PsiA,PsiB*(Norm-2.d0*pi)/Norm-PsiA).lt.Pi*pi) then
@@ -245,7 +246,6 @@ pure function rotvect_deltapsi (PsiA, PsiB) result(DeltaPsi)
   else
     DeltaPsi = PsiB - PsiA
   end if
-  return
  end function rotvect_deltapsi
 
 
@@ -360,7 +360,7 @@ pure function rotvect_deltapsi (PsiA, PsiB) result(DeltaPsi)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function rotvect_psi2theta (Psi)
 ! I/O Variables.
-  real(8),intent(in)  :: Psi(:)             ! Rotation Vector.
+  real(8),intent(in)  :: Psi(3)             ! Rotation Vector.
   real(8),dimension(3):: rotvect_psi2theta  ! Rodrigues Parameters.
 
 ! Local variables
@@ -378,8 +378,6 @@ function rotvect_psi2theta (Psi)
   else
     rotvect_psi2theta= (tan(NormPsi*0.5d0)/(NormPsi*0.5d0))*Psi
   end if
-
-  return
  end function rotvect_psi2theta
 
 
@@ -440,7 +438,7 @@ function rotvect_psi2theta (Psi)
  pure function rotvect_psi2quat (Psi)
 
 ! I/O Variables.
-  real(8),intent(in)  :: Psi(:)            ! Rotation Vector.
+  real(8),intent(in)  :: Psi(3)            ! Rotation Vector.
   real(8),dimension(4):: rotvect_psi2quat  ! Quaternions.
 
 ! Local variables
@@ -459,8 +457,6 @@ function rotvect_psi2theta (Psi)
   else
     rotvect_psi2quat(2:4)=(sin(NormPsi*0.5d0)/NormPsi)*Psi
   end if
-
-  return
  end function rotvect_psi2quat
 
 
@@ -478,7 +474,7 @@ function rotvect_psi2theta (Psi)
  function rotvect_quat2psi (Quat) result(Psi)
 
 ! I/O Variables.
-  real(8),intent(in)  :: Quat(:)            ! Quaternions.
+  real(8),intent(in)  :: Quat(4)            ! Quaternions.
 
 ! Local variables
   real(8):: NormPsi      ! Norm of the Rotation Vector.
@@ -488,7 +484,7 @@ function rotvect_psi2theta (Psi)
   NormPsi = 2.d0 * acos(max(-1.d0,min(Quat(1),1.d0)))
 
 ! Compute normal vector.
-  if (abs(NormPsi).eq.0.d0) then
+  if (abs(NormPsi) < rot_Epsilon) then
     Psi=0.d0
   else
     Psi=NormPsi*Quat(2:4)/sin(NormPsi*0.5d0)
@@ -496,7 +492,6 @@ function rotvect_psi2theta (Psi)
 
 ! Set bounds in [-pi,pi].
   call rotvect_bounds (Psi)
-  return
  end function rotvect_quat2psi
 
 
@@ -516,7 +511,7 @@ function rotvect_psi2theta (Psi)
  pure function rotvect_mat2quat (CoordTransMat) result(Quat)
 
 ! I/O Variables.
-  real(8),intent(in)  :: CoordTransMat(:,:)   ! Quaternions.
+  real(8),intent(in)  :: CoordTransMat(3,3)   ! Quaternions.
 
 ! Local variables
   integer:: i             ! Counter.
@@ -567,8 +562,6 @@ imax = 0
   do i=1,4
     if (i.ne.iMax) Quat(i)=0.25d0*S(iMax,i)/Quat(iMax)
   end do
-
-  return
  end function rotvect_mat2quat
 
 
@@ -635,33 +628,19 @@ imax = 0
 function rotvect_mat2psi (CoordTransMat) result(Psi)
 
 ! I/O Variables.
-  real(8),intent(in)  :: CoordTransMat(:,:) ! Coordinate transformation matrix.
+  real(8),intent(in)  :: CoordTransMat(3,3) ! Coordinate transformation matrix.
 
 ! Local variables.
   real(8),dimension(3):: Psi                ! Cartesian rotation matrix.
 
 ! Rotation Matrix -> Quaternions -> Cartesian rotation vector.
-
-# TODO BIGBUG
-! For very small rotations, the previous formula fails.
-!  if (abs(dot_product(Psi,Psi)).le.rot_Epsilon) then
-!    Psi(1)= CoordTransMat(2,3)
-!    Psi(2)= CoordTransMat(3,1)
-!    Psi(3)= CoordTransMat(1,2)
-!  else
-!    Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
-!  end if
-
 Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
-! For very small rotations, the previous formula fails.
+! For very small rotations, the normal formula fails.
   if (abs(dot_product(Psi,Psi)).le.rot_Epsilon) then
     Psi(1)= CoordTransMat(2,3)
     Psi(2)= CoordTransMat(3,1)
     Psi(3)= CoordTransMat(1,2)
-  ! else
-  !   Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
   end if
-
 
 ! Set bounds between [-pi,pi] and return the CRV.
   call rotvect_bounds (Psi)
@@ -693,7 +672,7 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
  function rotvect_psi2rot (Psi)
 
 ! I/O Variables.
-  real(8),intent(in)    :: Psi(:)            ! Cartesian rotation vector.
+  real(8),intent(in)    :: Psi(3)            ! Cartesian rotation vector.
   real(8),dimension(3,3):: rotvect_psi2rot   ! Rotational operator.
 
 ! Local variables
@@ -705,17 +684,6 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
   NormPsi= sqrt(dot_product(Psi,Psi))
   PsiSkew= rot_skew(Psi)
 
-! ! For small angles, use the linear approximation
-!   if (abs(NormPsi).le.rot_Epsilon) then
-!     K1=1.d0
-!     K2=1.d0/6.d0
-!   else
-!     K1=sin(NormPsi*0.5d0)/(NormPsi*0.5d0)
-!     K2=(1.d0 - sin(NormPsi)/NormPsi)/(NormPsi*NormPsi)
-!   end if
-!
-!   rotvect_psi2rot= Unit - (0.5d0*K1*K1)*PsiSkew + K2*matmul(PsiSkew,PsiSkew)
-!   return
 ! For small angles, use the linear approximation
   if (abs(NormPsi).le.rot_Epsilon) then
     K1=1.d0
@@ -797,8 +765,8 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
  pure function rotvect_drotdpsib (Psi,b)
 
 ! I/O Variables.
-  real(8),intent(in)    :: Psi(:)              ! Cartesian rotation vector.
-  real(8),intent(in)    :: b(:)                ! Input Vector.
+  real(8),intent(in)    :: Psi(3)              ! Cartesian rotation vector.
+  real(8),intent(in)    :: b(3)                ! Input Vector.
   real(8),dimension(3,3):: rotvect_drotdpsib   ! (dT/dPsi)*b
 
 ! Local variables
@@ -831,7 +799,6 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 &                                              * matmul(NormalSkew,NormalSkew)   &
 &      + ((1.d0-K2)/NormPsi) * (matmul(NormalSkew,bSkew)+matmul(bSkew,NormalSkew))
   end if
-  return
  end function rotvect_drotdpsib
 
 
@@ -860,9 +827,9 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
  pure function rotvect_ddrotdpsib (Psi,PsiDot,b)
 
 ! I/O Variables.
-  real(8),intent(in)    :: Psi(:)              ! Cartesian rotation vector.
-  real(8),intent(in)    :: PsiDot(:)           ! Derivative of CRV.
-  real(8),intent(in)    :: b(:)                ! Input Vector.
+  real(8),intent(in)    :: Psi(3)              ! Cartesian rotation vector.
+  real(8),intent(in)    :: PsiDot(3)           ! Derivative of CRV.
+  real(8),intent(in)    :: b(3)                ! Input Vector.
   real(8),dimension(3,3):: rotvect_ddrotdpsib  ! (dT'/dPsi)*b
 
 ! Local variables
@@ -919,7 +886,6 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 &                  + dnb *matmul(p1S,nS))                      &
 &             + C2*(1.d0-K2)*(matmul(bS,p1S)+matmul(p1S,bS))
   end if
-  return
  end function rotvect_ddrotdpsib
 
 
@@ -937,8 +903,8 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  pure function rotvect_a1 (Psi,b)
 ! I/O Variables.
-  real(8),intent(in)    :: Psi(:)              ! Cartesian rotation vector.
-  real(8),intent(in)    :: b(:)                ! Input Vector.
+  real(8),intent(in)    :: Psi(3)              ! Cartesian rotation vector.
+  real(8),intent(in)    :: b(3)                ! Input Vector.
   real(8),dimension(3,3):: rotvect_a1          ! (dT/dPsi)*b
 
 ! Local variables
@@ -975,7 +941,6 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 &       +((1.d0-K2)/NormPsi) * (      matmul(bSkew,NormalSkew)            &
 &                               -2.d0*matmul(NormalSkew,bSkew))
   end if
-  return
  end function rotvect_a1
 
 
@@ -992,8 +957,8 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  pure function rotvect_a2 (Psi,b)
 ! I/O Variables.
-  real(8),intent(in)    :: Psi(:)              ! Cartesian rotation vector.
-  real(8),intent(in)    :: b(:)                ! Input Vector.
+  real(8),intent(in)    :: Psi(3)              ! Cartesian rotation vector.
+  real(8),intent(in)    :: b(3)                ! Input Vector.
   real(8),dimension(3,3):: rotvect_a2          ! (dT/dPsi)*b
 
   rotvect_a2= -rotvect_a1(-Psi,b)
@@ -1014,9 +979,9 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  pure function rotvect_b1 (Psi,PsiDot,b)
 ! I/O Variables.
-  real(8),intent(in)    :: Psi(:)              ! Cartesian rotation vector.
-  real(8),intent(in)    :: PsiDot(:)           ! Derivative of Psi.
-  real(8),intent(in)    :: b(:)                ! Input Vector.
+  real(8),intent(in)    :: Psi(3)              ! Cartesian rotation vector.
+  real(8),intent(in)    :: PsiDot(3)           ! Derivative of Psi.
+  real(8),intent(in)    :: b(3)                ! Input Vector.
   real(8),dimension(3,3):: rotvect_b1          ! (dTdot/dPsi)*b
 
 ! Local variables
@@ -1078,7 +1043,6 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 &             + C2*(1.d0-K2)                                    &
 &                 *(matmul(bS,p1S)-2.d0*matmul(p1S,bS))
   end if
-  return
  end function rotvect_b1
 
 
@@ -1095,9 +1059,9 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  pure function rotvect_b2 (Psi,PsiDot,b)
 ! I/O Variables.
-  real(8),intent(in)    :: Psi(:)              ! Cartesian rotation vector.
-  real(8),intent(in)    :: PsiDot(:)           ! Derivative of Psi.
-  real(8),intent(in)    :: b(:)                ! Input Vector.
+  real(8),intent(in)    :: Psi(3)              ! Cartesian rotation vector.
+  real(8),intent(in)    :: PsiDot(3)           ! Derivative of Psi.
+  real(8),intent(in)    :: b(3)                ! Input Vector.
   real(8),dimension(3,3):: rotvect_b2          ! (dT/dPsi)*b
 
   rotvect_b2= rotvect_b1(-Psi,PsiDot,b)

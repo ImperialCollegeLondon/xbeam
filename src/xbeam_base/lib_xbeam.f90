@@ -146,8 +146,6 @@ module lib_xbeam
     Mass= Mass + WeightGauss(iGauss)*Jacobian*matmul(ARC,matmul(ElemMass,DTYpN))
   end do
   ! deallocate (CoordGauss,WeightGauss)
-
-  return
  end subroutine xbeam_mrs
 
  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -186,18 +184,6 @@ module lib_xbeam
   real(8) :: DTYpN(6,6*MaxNodCB3)  ! Strain matrix operator.
   real(8) :: N (6,6*MaxNodCB3)     ! Element shape function matrix
 
-  ! print*, 'Ri'
-  ! print*, Ri(1, :)
-  ! print*, Ri(2, :)
-  ! print*, Ri(3, :)
-  ! print*, 'NodalMass'
-  ! print*, NodalMass(1, 1, :)
-  ! print*, NodalMass(1, 2, :)
-  ! print*, NodalMass(1, 3, :)
-  ! print*, NodalMass(1, 4, :)
-  ! print*, NodalMass(1, 5, :)
-  ! print*, NodalMass(1, 6, :)
-  ! print*, '----'
 ! Loop in the nodes.
   do iNode=1,NumNodesElem
     ! Compute element shape function.
@@ -224,21 +210,6 @@ module lib_xbeam
     Yp(4:6,4:6)=Rot
 
     DTYpN=matmul(matmul(transpose(D),Yp),N)
-    ! print*, 'ARC'
-    ! print*, ARC(1, :)
-    ! print*, ARC(2, :)
-    ! print*, ARC(3, :)
-    ! print*, ARC(4, :)
-    ! print*, ARC(5, :)
-    ! print*, ARC(6, :)
-    ! print*, 'DTYpN'
-    ! print*, DTYpN(1, :)
-    ! print*, DTYpN(2, :)
-    ! print*, DTYpN(3, :)
-    ! print*, DTYpN(4, :)
-    ! print*, DTYpN(5, :)
-    ! print*, DTYpN(6, :)
-    ! print*, '----'
 
 ! Compute mass tangent stiffness.
     Mass= Mass + matmul(ARC,matmul(NodalMass(iNode,:,:),DTYpN))
@@ -296,8 +267,6 @@ module lib_xbeam
   real(8) :: MARCtVrelDot(6),dARCdqMARCtVrelDot(6,6),dARCtVrelDot(6,6)   ! Derivatives d(.)/d(Vrel) computed at Gauss points.
 
 ! Define Gauss points and loop on them.
-  ! allocate (CoordGauss(NumGauss))
-  ! allocate (WeightGauss(NumGauss))
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
 
   do iGauss=1,NumGauss
@@ -385,8 +354,6 @@ module lib_xbeam
 &                  * matmul((dARCdqMARCtVrelDot + matmul(ARC,matmul(ElemMass,dARCtVrelDot))),N)
 
   end do
-  ! deallocate (CoordGauss,WeightGauss)
-  return
  end subroutine xbeam_kmass
 
 
@@ -504,7 +471,6 @@ module lib_xbeam
     Kmass= Kmass + matmul((dARCdqMARCtVrelDot + matmul(ARC,matmul(NodalMass(iNode,:,:),dARCtVrelDot))),N)
 
   end do
-  return
  end subroutine xbeam_rbkmass
 
 
@@ -666,7 +632,6 @@ module lib_xbeam
 &         * matmul((dARCdqPgyr + matmul(ARC,matmul(ElemMass,dVgyrdq)) + dAWRCdqPhat + matmul(AWRC,matmul(ElemMass,dVdq))),N)
 
   end do
-  return
  end subroutine xbeam_kgyr
 
 
@@ -805,7 +770,6 @@ module lib_xbeam
 &                     + dAWRCdqPhat + matmul(AWRC,matmul(NodalMass(iNode,:,:),dVdq))),N)
 
   end do
-  return
  end subroutine xbeam_rbkgyr
 
 
@@ -842,8 +806,8 @@ module lib_xbeam
   real(8) :: Jacobian               ! ds/deta, with eta the nondimensional arclength.
   real(8) :: ShapeFun(MaxNodCB3)    ! Shape functions in a gauss point.
   real(8) :: ShapeDer(MaxNodCB3)    ! Derivatives of ShapeFun in a gauss point.
-  real(8),allocatable :: CoordGauss (:) ! Coords of Gauss points.
-  real(8),allocatable :: WeightGauss(:) ! Coords of Gauss points.
+  real(8) :: CoordGauss (NumGauss) ! Coords of Gauss points.
+  real(8) :: WeightGauss(NumGauss) ! Coords of Gauss points.
 
   real(8) :: dr0_g (6)              ! Spacial derivative of r0 at Gauss point.
   real(8) :: Ra(3),RaDot(3)         ! Displacement and its derivative at Gauss point.
@@ -859,8 +823,6 @@ module lib_xbeam
   real(8) :: N (6,6*MaxNodCB3)      ! Element shape function matrix.
 
 ! Define Gauss points and loop on them.
-  allocate (CoordGauss(NumGauss))
-  allocate (WeightGauss(NumGauss))
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
 
   do iGauss=1,NumGauss
@@ -933,8 +895,6 @@ module lib_xbeam
 &                * matmul((matmul(ARC,matmul(ElemMass,dVgyrdqdot)) + dAWRCdqdotPhat + matmul(AWRC,matmul(ElemMass,dVdqdot))),N)
 
   end do
-  deallocate (CoordGauss,WeightGauss)
-  return
  end subroutine xbeam_cgyr
 
 
@@ -1036,8 +996,6 @@ module lib_xbeam
 &              + dAWRCdqdotPhat + matmul(AWRC,matmul(NodalMass(iNode,:,:),dVdqdot))),N)
 
   end do
-
-  return
  end subroutine xbeam_rbcgyr
 
 
@@ -1074,8 +1032,8 @@ module lib_xbeam
   real(8) :: Jacobian               ! ds/deta, with eta the nondimensional arclength.
   real(8) :: ShapeFun(MaxNodCB3)    ! Shape functions in a gauss point.
   real(8) :: ShapeDer(MaxNodCB3)    ! Derivatives of ShapeFun in a gauss point.
-  real(8),allocatable :: CoordGauss (:) ! Coords of Gauss points.
-  real(8),allocatable :: WeightGauss(:) ! Coords of Gauss points.
+  real(8) :: CoordGauss (NumGauss) ! Coords of Gauss points.
+  real(8) :: WeightGauss(NumGauss) ! Coords of Gauss points.
 
   real(8) :: dr0_g (6)              ! Spacial derivative of r0 at Gauss point.
   real(8) :: Ra(3),Psi(3)           ! Displacement and Rotation vector at Gauss point.
@@ -1089,8 +1047,6 @@ module lib_xbeam
   real(8) :: ARC(6,6),AWRC(6,6)     ! A_{RC} and A_{wRC} matrices.
 
 ! Define Gauss points and loop on them.
-  allocate (CoordGauss(NumGauss))
-  allocate (WeightGauss(NumGauss))
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
 
   do iGauss=1,NumGauss
@@ -1146,9 +1102,6 @@ module lib_xbeam
     Qgyr= Qgyr + WeightGauss(iGauss) * Jacobian * (matmul(ARC,matmul(ElemMass,Vhatgyr)) + matmul(AWRC,matmul(ElemMass,Vhat)))
 
   end do
-
-  deallocate (CoordGauss,WeightGauss)
-  return
  end subroutine xbeam_fgyr
 
 
@@ -1232,8 +1185,6 @@ module lib_xbeam
     Qgyr= Qgyr +(matmul(ARC, matmul(NodalMass(iNode,:,:),Vhatgyr)) &
 &              + matmul(AWRC,matmul(NodalMass(iNode,:,:),Vhat)))
   end do
-
-  return
  end subroutine xbeam_rbfgyr
 
 
@@ -1266,8 +1217,8 @@ module lib_xbeam
   integer :: i                          ! Counters.
   integer :: iGauss                     ! Counter on the Gaussian points.
   real(8) :: Jacobian                   ! ds/deta, with eta the nondimensional arclength.
-  real(8),allocatable :: CoordGauss (:) ! Coords of Gauss points.
-  real(8),allocatable :: WeightGauss(:) ! Coords of Gauss points.
+  real(8) :: CoordGauss (NumGauss) ! Coords of Gauss points.
+  real(8) :: WeightGauss(NumGauss) ! Coords of Gauss points.
   real(8) :: ShapeFun(MaxNodCB3)        ! Shape functions in a gauss point.
   real(8) :: ShapeDer(MaxNodCB3)        ! Derivatives of ShapeFun in a gauss point.
 
@@ -1277,8 +1228,6 @@ module lib_xbeam
   real(8) :: ARC(6,6)              ! A_{RC} matrix
 
 ! Define Gauss points and loop on them.
-  allocate (CoordGauss(NumGauss))
-  allocate (WeightGauss(NumGauss))
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
 
   do iGauss=1,NumGauss
@@ -1308,10 +1257,6 @@ module lib_xbeam
 ! Compute reference mass matrix.
     MRR= MRR + WeightGauss(iGauss)*Jacobian*matmul(ARC,matmul(ElemMass,transpose(ARC)))
   end do
-
-  deallocate (CoordGauss,WeightGauss)
-
-  return
  end subroutine xbeam_mrr
 
 
@@ -1396,8 +1341,8 @@ module lib_xbeam
   real(8) :: Jacobian               ! ds/deta, with eta the nondimensional arclength.
   real(8) :: ShapeFun(MaxNodCB3)    ! Shape functions in a gauss point.
   real(8) :: ShapeDer(MaxNodCB3)    ! Derivatives of ShapeFun in a gauss point.
-  real(8),allocatable :: CoordGauss (:) ! Coords of Gauss points.
-  real(8),allocatable :: WeightGauss(:) ! Coords of Gauss points.
+  real(8) :: CoordGauss (NumGauss) ! Coords of Gauss points.
+  real(8) :: WeightGauss(NumGauss) ! Coords of Gauss points.
 
   real(8) :: dr0_g (6)              ! Spacial derivative of r0 at Gauss point.
   real(8) :: Ra(3),RaDot(3)         ! Displacement and its derivative at Gauss point.
@@ -1413,8 +1358,6 @@ module lib_xbeam
   real(8) :: dVdvrel   (6,6)        ! dV/d(vrel) at Gauss point.
 
 ! Define Gauss points and loop on them.
-  allocate (CoordGauss(NumGauss))
-  allocate (WeightGauss(NumGauss))
   call fem_1d_gauss_val (NumGauss,CoordGauss,WeightGauss)
 
   do iGauss=1,NumGauss
@@ -1479,8 +1422,6 @@ module lib_xbeam
 &              * (matmul(ARC,matmul(ElemMass,dVgyrdvrel)) + dAWRCdvrelPhat + matmul(AWRC,matmul(ElemMass,dVdvrel)))
 
   end do
-  deallocate (CoordGauss,WeightGauss)
-  return
  end subroutine xbeam_crr
 
 
