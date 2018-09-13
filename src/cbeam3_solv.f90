@@ -197,7 +197,10 @@ DX_old = 1.0d0*options%mindelta
   converged=.false.
     do while (converged .eqv. .false.)!(Delta.gt.Options%MinDelta)
       Iter= Iter+1
-      if (Iter.gt.Options%MaxIterations) STOP 'Static equations did not converge (17235)'
+      if (Iter.gt.Options%MaxIterations) then
+          print*, 'Residual is: ', residual
+          STOP 'Static equations did not converge (17235)'
+      end if
 
       if ((Options%PrintInfo) .AND. (Iter.eq.1)) then
           write (*,'(17X,A12,A12,A11,A12,A12,A12,A12,A12,A12,A13,A11)')      &
