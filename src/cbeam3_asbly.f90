@@ -40,6 +40,10 @@ interface cbeam3_asbly_dynamic
     module procedure :: cbeam3_asbly_dynamic_old_interface,&
                         cbeam3_asbly_dynamic_new_interface
 end interface cbeam3_asbly_dynamic
+
+!interface cbeam3_asbly_modal
+!   module procedure :: cbeam3_asbly_modal_updated
+!end interface cbeam3_asbly_modal
  contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !-> Subroutine CBEAM3_ASBLY_STATIC_OLD
@@ -76,7 +80,7 @@ end interface cbeam3_asbly_dynamic
   real(8), intent(inout):: Kglobal   (numdof,numdof)     ! Sparse stiffness matrix.
   real(8), optional, intent(OUT)       :: Mglobal   (numdof+6,numdof+6)     ! Sparse mass matrix.
   real(8), optional, intent(OUT)        :: MRR(6, 6)
-  real(8),      intent(inout):: Qglobal   (numdof)     ! Discrete force vector.
+  real(8),      intent(out):: Qglobal   (numdof)     ! Discrete force vector.
   real(8), intent(inout):: Fglobal   (numdof,numdof)     ! Influence coefficients matrix for applied forces.
   type(xbopts), intent(in) :: Options           ! Solver parameters.
 
@@ -308,7 +312,7 @@ end do
  end subroutine cbeam3_asbly_static_old
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!-> Subroutine CBEAM3_ASBLY_MODAL
+!-> Subroutine CBEAM3_ASBLY_MODAL_OLD
 !
 !-> Description:
 !
@@ -317,7 +321,7 @@ end do
 !-> Remarks.-
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_asbly_modal (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,  &
+ subroutine cbeam3_asbly_modal_old (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,  &
 &                               Vrel,ms,Mglobal,cs,Cglobal,ks,Kglobal,Options)
   use lib_rotvect
   use lib_fem
@@ -416,9 +420,136 @@ end do
       end if
     end do
   end do
+  return
+end subroutine cbeam3_asbly_modal_old
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-> Subroutine CBEAM3_ASBLY_MODAL_UPDATED
+!
+!-> Description:
+!
+!   Assembly matrices for a modal analysis.
+!
+!-> Remarks.-
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ subroutine cbeam3_asbly_modal_updated (num_dof,n_elem,n_node,Elem,Node,Coords,Psi0,PosDefor,PsiDefor,  &
+&                               Vrel,FullMglobal,FullCglobal,FullKglobal,Options)
+  use lib_rotvect
+  use lib_fem
+  use lib_mat
+  use lib_cbeam3
+  use lib_lu
+
+! I/O variables.
+  integer,      intent(in) :: num_dof               ! Degrees of freedom
+  integer,      intent(in) :: n_elem                 ! Number of elements
+  integer,      intent(in) :: n_node                  ! Number of nodes
+  type(xbelem),intent(in) :: Elem(n_elem)               ! Element information.
+  type(xbnode),intent(in) :: Node(n_node)               ! List of independent nodes.
+  real(8),     intent(in) :: Coords   (n_node,3)      ! Initial coordinates of the grid points.
+  real(8),     intent(in) :: Psi0      (n_elem,3,3)   ! Initial CRV of the nodes in the elements.
+  real(8),     intent(in) :: PosDefor  (n_node,3)        ! Current coordinates of the grid points
+  real(8),     intent(in) :: PsiDefor  (n_elem,3,3)    ! Current CRV of the nodes in the elements.
+  real(8),     intent(in) :: Vrel(6)               ! Velocity of reference frame .
+
+  real(8),     intent(inout)    :: FullMglobal   (num_dof, num_dof)
+  real(8),     intent(inout)    :: FullCglobal   (num_dof, num_dof)
+  real(8),     intent(inout)    :: FullKglobal   (num_dof, num_dof)
+real(8) :: temp   (num_dof, num_dof)
+real(8) :: det
+
+  type(xbopts),intent(in) :: Options               ! Solver parameters.
+
+! Local variables.
+  logical:: Flags(MaxElNod)                ! Auxiliary flags.
+  integer:: i,j,i1,j1                      ! Counters.
+  integer:: iElem                          ! Counter on the finite elements.
+  integer:: NumE                           ! Number of elements in the model.
+  integer:: NumNE                          ! Number of nodes in an element.
+  integer:: NumGaussMass                   ! Number of Gaussian points in the inertia terms.
+  real(8):: Celem (6*MaxElNod,6*MaxElNod)  ! Element damping matrix.
+  real(8):: Kelem (6*MaxElNod,6*MaxElNod)  ! Element tangent stiffness matrix.
+  real(8):: Melem (6*MaxElNod,6*MaxElNod)  ! Element mass matrix.
+  real(8):: rElem0(MaxElNod,6)             ! Initial Coordinates/CRV of nodes in the element.
+  real(8):: rElem (MaxElNod,6)             ! Current Coordinates/CRV of nodes in the element.
+  real(8):: rElemDot (MaxElNod,6)          ! Current Coordinates/CRV of nodes in the element.
+  real(8):: rElemDDot (MaxElNod,6)         ! Current Coordinates/CRV of nodes in the element.
+  real(8):: VrelDot  (6)                   ! Time derivative of Vrel.
+  real(8):: SB2B1 (6*MaxElNod,6*MaxElNod)  ! Transformation from master to global node orientations.
+
+  real(8):: Kgeom (6*MaxElNod,6*MaxElNod)
+  real(8):: Kmat (6*MaxElNod,6*MaxElNod)
+
+! Initialize.
+  NumE=size(Elem)
+  FullMglobal = 0.d0
+  FullCglobal = 0.d0
+  FullKglobal = 0.d0
+  rElemDot = 0.d0
+  rElemDDot= 0.d0
+  VrelDot  = 0.d0
+
+  do iElem=1,NumE
+
+    Melem=0.d0; Celem=0.d0; Kelem=0.d0; SB2B1=0.d0
+    Kgeom=0.d0; Kmat=0.d0
+
+    call fem_glob2loc_extract (Elem(iElem)%Conn,Coords,  rElem0(:,1:3),NumNE)
+    call fem_glob2loc_extract (Elem(iElem)%Conn,PosDefor,rElem (:,1:3),NumNE)
+    rElem0 (:,4:6)= Psi0     (iElem,:,:)
+    rElem  (:,4:6)= PsiDefor (iElem,:,:)
+
+! Use full integration for mass matrix.
+    if (NumNE.eq.2) then
+        NumGaussMass=NumNE
+    elseif (NumNE.eq.3) then
+        NumGaussMass=NumNE
+    end if
+
+! Compute linearized inertia matrices.
+    call cbeam3_mass (NumNE,rElem0,rElem,                                Elem(iElem)%Mass,Melem,NumGaussMass)
+    call cbeam3_cgyr (NumNE,rElem0,rElem,rElemDot,Vrel,                  Elem(iElem)%Mass,Celem,Options%NumGauss)
+    call cbeam3_kgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%Mass,Kelem,Options%NumGauss)
+
+    ! Add contributions of non-structural (lumped) mass.
+    if (any(abs(Elem(iElem)%RBMass)>0.d0)) then
+      write(*,*) "computing lumped masses"
+      call cbeam3_rbmass (NumNE,rElem0,rElem,                                Elem(iElem)%RBMass,Melem)
+      call cbeam3_rbcgyr (NumNE,rElem0,rElem,rElemDot,          Vrel,        Elem(iElem)%RBMass,Celem)
+      call cbeam3_rbkgyr (NumNE,rElem0,rElem,rElemDot,rElemDDot,Vrel,VrelDot,Elem(iElem)%RBMass,Kelem)
+    end if
+
+! Compute the element tangent stiffness matrix and force vectors.
+    call cbeam3_kmat  (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Kelem,Options%NumGauss)
+    call cbeam3_kgeom (NumNE,rElem0,rElem,Elem(iElem)%Stiff,Kelem,Options%NumGauss)
+
+! Project slave degrees of freedom to the orientation of the "master" ones.
+    !call cbeam3_projs2m (NumNE,Elem(iElem)%Master(:,:),Psi0(iElem,:,:),Psi0,SB2B1)
+    call cbeam3_slave2master (NumNE,Elem(iElem)%Master(:,:),rElem0(:,4:6),Psi0,rElem(:,4:6),PsiDefor,SB2B1)
+    Melem=matmul(transpose(SB2B1),matmul(Melem,SB2B1))
+    Celem=matmul(transpose(SB2B1),matmul(Celem,SB2B1))
+    Kelem=matmul(transpose(SB2B1),matmul(Kelem,SB2B1))
+
+! Add to global matrix. Remove columns and rows at clamped points.
+    do i=1,NumNE
+      i1=Node(Elem(iElem)%Conn(i))%Vdof
+      if (i1.ne.0) then
+        do j=1,NumNE
+          j1=Node(Elem(iElem)%Conn(j))%Vdof
+          if (j1.ne.0) then
+            call mat_addmat (6*(i1-1),6*(j1-1),Melem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),FullMglobal)
+            call mat_addmat (6*(i1-1),6*(j1-1),Celem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),FullCglobal)
+            call mat_addmat (6*(i1-1),6*(j1-1),Kelem(6*(i-1)+1:6*i,6*(j-1)+1:6*j),FullKglobal)
+          end if
+        end do
+      end if
+    end do
+  end do
 
   return
- end subroutine cbeam3_asbly_modal
+end subroutine cbeam3_asbly_modal_updated
+
 
  subroutine cbeam3_asbly_dynamic_old_interface&
       (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,         &
