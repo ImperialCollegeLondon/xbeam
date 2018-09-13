@@ -271,7 +271,6 @@ DX_old = 1.0d0*options%mindelta
       ! call lu_sparse(ks,Kglobal,-Qglobal,DeltaX)
       DeltaX = 0.0d0
       call lu_solve(size(Kglobal, dim=1), Kglobal,-Qglobal,DeltaX)
-
       call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
 
       if (iter > 1) then
