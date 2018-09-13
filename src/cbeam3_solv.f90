@@ -198,7 +198,7 @@ DX_old = 1.0d0*options%mindelta
     do while (converged .eqv. .false.)!(Delta.gt.Options%MinDelta)
       Iter= Iter+1
       if (Iter.gt.Options%MaxIterations) then
-          print*, 'Residual is: ', residual
+          print*, 'Residual is: ', maxval(abs(DeltaX))
           STOP 'Static equations did not converge (17235)'
       end if
 
