@@ -200,7 +200,10 @@ DX_old = 1.0d0*options%mindelta
   converged=.false.
     do while (converged .eqv. .false.)!(Delta.gt.Options%MinDelta)
       Iter= Iter+1
-      if (Iter.gt.Options%MaxIterations) STOP 'Static equations did not converge (17235)'
+      if (Iter.gt.Options%MaxIterations) then
+          print*, 'Residual is: ', residual
+          STOP 'Static equations did not converge (17235)'
+      end if
 
       ! if (Options%PrintInfo) write(*,'(I8,I8,$)')  iLoadStep, Iter
 
@@ -231,7 +234,6 @@ DX_old = 1.0d0*options%mindelta
 ! Solve equation and update the global vectors.
       DeltaX = 0.0d0
       call lu_solve(size(Kglobal, dim=1), Kglobal,-Qglobal,DeltaX)
-      DeltaX = 0.7*DeltaX
       call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
 
       residual = max(sqrt(dot_product(Qglobal, Qglobal)), 0.0d0)
