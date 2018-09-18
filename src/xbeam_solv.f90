@@ -1051,7 +1051,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     real(8)                                         :: MinDeltarigid     ! Value of Delta for convergence.
 
     real(8)                                         :: DQ(numdof + 10)
-    real(8)                                         :: old_DQ
+    real(8)                                         :: old_DQ(numdof + 10)
 
     integer                                         :: ListIN(n_node)    ! List of independent nodes.
 
@@ -1104,6 +1104,9 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     real(8)                                         :: scale_param_mass
     real(8)                                         :: scale_param_inertia(3)
     real(8)                                         :: characteristic_length
+    real(8)                                         :: residual
+    real(8)                                         :: old_residual
+    real(8)                                         :: initial_residual
 
 
     ListIN = 0
@@ -1114,36 +1117,16 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     gamma = 0.5d0 + options%NewmarkDamp
     beta = 0.25d0*(gamma + 0.5d0)*(gamma + 0.5d0)
 
-    ! ! predictor step
-     ! Q = Q + 0.8*dt*dQdt + (0.5d0 - beta)*0.8*0.8*dt*dt*dQddt
-     ! dQdt = dQdt + (1.0d0 - gamma)*0.8*dt*dQddt
-     ! dQddt = 0.0d0
-     ! print*, 'Predictor 0.8'
-    dqdt(numdof+1:numdof+6) = for_vel
-    dqdt(numdof+7:numdof+10) = quat
      Q = Q + dt*dQdt + (0.5d0 - beta)*dt*dt*dQddt
      dQdt = dQdt + (1.0d0 - gamma)*dt*dQddt
      dQddt = 0.0d0
 
-    ! call cbeam3_solv_disp2state(Node,&
-    !                             pos_def,&
-    !                             psi_def,&
-    !                             pos_dot_def,&
-    !                             psi_dot_def,&
-    !                             q(1:numdof),&
-    !                             dqdt(1:numdof))
-    !
     ! Iteration loop -----------------------------------------
-    mindelta = 0
-    MinDeltarigid = 0
-    old_q = 1.0d0
     converged = .FALSE.
-    old_DQ = 1.0
     do iter = 1, options%maxiterations + 1
-        ! previous_q = q
-        ! previous_dqddt = dqddt
         if (iter == options%maxiterations + 1) then
             print*, 'Solver did not converge in ', iter, ' iterations.'
+            print*, 'Last residual: ', residual
             exit
         end if
 
@@ -1205,14 +1188,14 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                   psi_def,&
                                   pos_dot_def,&
                                   psi_dot_def,&
-                                  ! pos_ddot_def,&
-                                  ! psi_ddot_def,&
-                                  0.0d0*pos_dot_def,&
-                                  0.0d0*psi_dot_def,&
+                                  pos_ddot_def,&
+                                  psi_ddot_def,&
+                                  !0.0d0*pos_ddot_def,&
+                                  !0.0d0*psi_ddot_def,&
                                   static_forces + dynamic_forces,&
                                   dQdt(numdof+1:numdof+6),&
                                   dQddt(numdof+1:numdof+6),&
-                                !   0.0d0*dQddt(numdof+1:numdof+6),&
+                                  !0.0d0*dQddt(numdof+1:numdof+6),&
                                   MSS,&
                                   MSR,&
                                   CSS,&
@@ -1234,13 +1217,13 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                  psi_def,&
                                  pos_dot_def,&
                                  psi_dot_def,&
-                                !  0.0d0*pos_ddot_def,&
-                                !  0.0d0*psi_ddot_def,&
+                                 !0.0d0*pos_ddot_def,&
+                                 !0.0d0*psi_ddot_def,&
                                  pos_ddot_def,&
                                  psi_ddot_def,&
                                  dQdt(numdof+1:numdof+6),&
                                  dQddt(numdof+1:numdof+6),&
-                                !  0.0d0*dQddt(numdof+1:numdof+6),&
+                                 !0.0d0*dQddt(numdof+1:numdof+6),&
                                  dQdt(numdof+7:numdof+10),&
                                  MRS,&
                                  MRR,&
@@ -1254,8 +1237,6 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                  options,&
                                  Cao)
 
-        ! mindelta = options%mindelta*max(1.0, maxval(abs(Qelast)))
-        ! mindeltarigid = options%mindelta*max(1.0, maxval(abs(Qrigid)))
         ! compute residual
         Qelast = Qelast - matmul(Felast, &
                                  fem_m2v(static_forces + &
@@ -1286,28 +1267,11 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                      cbeam3_asbly_gravity_dynamic(NumDof + 6,&
                                                                   options,&
                                                                   Cao))
-          ! print*, 'Mss xbeam'
-          ! print*, MSS_gravity(1, 1:6)
-          ! print*, MSS_gravity(2, 1:6)
-          ! print*, MSS_gravity(3, 1:6)
-          ! print*, MSS_gravity(4, 1:6)
-          ! print*, MSS_gravity(5, 1:6)
-          ! print*, MSS_gravity(6, 1:6)
-          ! print*, '--'
-          ! print*, 'gravity xbeam'
-          ! print*, cbeam3_asbly_gravity_dynamic(6,&
-          !  options,&
-          !  Cao)
-          ! stop
             gravity_forces = -fem_v2m(MATMUL(MSS_gravity,&
                                       cbeam3_asbly_gravity_dynamic(NumDof + 6,options, Cao)),&
                                       n_node, 6)
             Qelast = Qelast - fem_m2v(gravity_forces, numdof, filter=ListIN)
         end if
-
-        Qtotal(1:numdof) = Qelast
-        Qtotal(numdof+1:numdof+6) = Qrigid
-        Qtotal(numdof+7:numdof+10) = matmul(CQQ, dQdt(numdof+7:numdof+10))
 
         call mat_addmat(0, 0, MSS, Mtotal)
         call mat_addmat(0, numdof, MSR, Mtotal)
@@ -1315,15 +1279,10 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         call mat_addmat(numdof, numdof, MRR, Mtotal)
         call mat_addmat(numdof + 6, numdof + 6, unit4, Mtotal)
 
+        Qtotal(1:numdof) = Qelast
+        Qtotal(numdof+1:numdof+6) = Qrigid
+        Qtotal(numdof+7:numdof+10) = matmul(CQQ, dQdt(numdof+7:numdof+10))
         Qtotal = Qtotal + matmul(Mtotal, dqddt)
-
-        ! convergence check
-        ! print*, 'maxval(abs(Qelast)) = ', maxval(abs(Qelast))
-        ! if (maxval(abs(Qelast)) < mindelta .AND.&
-        !     maxval(abs(Qrigid)) < MinDeltarigid) then
-        !     ! print*, 'converged in ', iter
-        !     converged = .TRUE.
-        ! end if
 
         ! damping and stiffness matrices
         call mat_addmat(0, 0, CSS, Ctotal)
@@ -1336,83 +1295,39 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         call mat_addmat(0, 0, KSS, Ktotal)
         call mat_addmat(numdof, 0, KRS, Ktotal)
 
-        ! assembly of A matrix
-        ! if (any(abs(Ktotal) > 1e11)) then
-        !     print*, 'KTOTAL---------------------------------'
-            ! call print_matrix('Mtotal', Mtotal)
-        !     call print_matrix('pos_def', pos_def)
-        !     call print_elem('failed_elements', elem)
-        !     stop
-        ! end if
-
-        ! print*, 'Test'
-        ! if (any(isnan(Ktotal))) then
-        !     print*, 'Ktotal'
-        !     stop
-        ! end if
-        ! if (any(isnan(Ctotal))) then
-        !     print*, 'Ctotal'
-        !     stop
-        ! end if
-        ! if (any(isnan(Mtotal))) then
-        !     print*, 'Mtotal'
-        !     stop
-        ! end if
-
         Asys = Ktotal
         Asys = Asys + Ctotal*gamma/(beta*dt)
         Asys = Asys + Mtotal/(beta*dt*dt)
 
-        ! print*, size(Asys, dim=1), size(Asys, dim=2)
-        ! if (any(isnan(Asys))) then
-        !     print*, 'Asys'
-        !     stop
-        ! end if
-
-
         ! calculation of the correction
         DQ = 0.0d0
-        call lu_solve(numdof + 10, Asys, -Qtotal, DQ)
+        call lu_solve(numdof + 10, Asys, -Qtotal, DQ, options%balancing)
 
+        residual = sqrt(dot_product(Qtotal, Qtotal))
+        ! print*, residual
         if (Iter > 1) then
-            ! print*, (maxval(abs(DQ)))/old_DQ
-            ! if ((sqrt(dot_product(q, q))-old_q)/old_q < options%MinDelta) then
-            ! if (abs(maxval(abs(DQ)) - old_DQ)/old_DQ < options%MinDelta) then
-            if (maxval(abs(DQ))/old_DQ < options%MinDelta) then
-                converged = .TRUE.
+            if (residual < options%mindelta) then
+                if (abs(residual - old_residual)/initial_residual < options%mindelta) then
+                    converged = .TRUE.
+                end if
             end if
+        else
+            initial_residual = residual
         end if
-
-
-        if (converged) then
-            exit
-        endif
+        old_residual = residual
 
         ! reconstruction of state vectors
         Q = Q + DQ
         dQdt  = dQdt  + gamma/(beta*dt)*DQ
         dQddt = dQddt + 1.d0/(beta*dt*dt)*DQ
 
-        if (iter == 1) then
-            old_DQ = maxval(abs(DQ))
+        if (converged) then
+            exit
         end if
-        ! old_q = sqrt(dot_product(q, q))
-        ! end of convergence check
-
-        ! call cbeam3_solv_state2disp(elem,&
-        !                             node,&
-        !                             pos_ini,&
-        !                             psi_ini,&
-        !                             Q(1:numdof),&
-        !                             dQdt(1:numdof),&
-        !                             pos_def,&
-        !                             psi_def,&
-        !                             pos_dot_def,&
-        !                             psi_dot_def)
     end do
 
     dQdt(numdof+7:numdof+10) = rot_unit(dQdt(numdof+7:numdof+10))
-    ! update of the nodal positions
+    quat = dQdt(numdof+7:numdof+10)
     call cbeam3_solv_state2disp(elem,&
                                 node,&
                                 pos_ini,&
@@ -1424,7 +1339,6 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                 pos_dot_def,&
                                 psi_dot_def)
 
-    quat = dQdt(numdof+7:numdof+10)
     if (options%OutInaframe) then
         for_vel = dQdt(numdof+1:numdof+6)
         for_acc = dQddt(numdof+1:numdof+6)
@@ -1432,8 +1346,8 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         print*, 'outinaframe is not TRUE, please check!'
         stop
     end if
-
 end subroutine xbeam_solv_couplednlndyn_step_updated
+
 ! subroutine xbeam_solv_couplednlndyn_step_updated(&
 !                                                 numdof,&
 !                                                 dt,&

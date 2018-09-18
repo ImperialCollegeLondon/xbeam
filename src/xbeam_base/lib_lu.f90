@@ -370,21 +370,21 @@ end function inv
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     subroutine lu_solve(numdof,A, b, X, balancing)
         use, intrinsic :: IEEE_ARITHMETIC
+        use, intrinsic :: ISO_C_BINDING
         integer, intent(IN)     :: numdof
         real(8), intent(IN)     :: A(numdof, numdof)
         real(8), intent(in)     :: b(numdof)          ! Forcing vector
         real(8), intent(out)    :: X(numdof)          ! Solution vector
         ! real(8),allocatable     :: invFulMat(:,:)! Full matrix
-        logical, optional       :: balancing
+        logical(c_bool), optional       :: balancing
         integer:: dimb
         real(8)                 :: r(numdof)
         real(8)                 :: c(numdof)
-        real(8)                 :: rowcnd
-        real(8)                 :: colcnd
-        real(8)                 :: amax
         real(8)                 :: rcond
-        real(8)                 :: ferr
-        real(8)                 :: berr
+        real(8)                 :: ferr(1)
+        real(8)                 :: berr(1)
+        real(8)                 :: work(4*numdof)
+        integer                 :: iwork(numdof)
         integer                 :: info
         integer                 :: ipivot(numdof)
         character               :: equed
@@ -393,82 +393,72 @@ end function inv
         integer                 :: unit
         integer                 :: i
 
-        real(8),allocatable     :: A_copy(:,:)
+        ! real(8),allocatable     :: A_copy(:,:)
+        real(8)                 :: A_copy(numdof, numdof)
         real(8)                 :: b_copy(numdof)
-        ! real(8)                 :: AF(numdof, numdof)
+        real(8)                 :: AF(numdof, numdof)
         ! real(8)                 :: work(size(A, dim=1)*4)
         ! integer                 :: iwork(size(A, dim=1))
         integer                 :: nrows
+        logical                 :: with_balancing
 
         if (any(ieee_is_nan(A))) then
+             open(newunit=unit, file='debug_failed_Asys.txt')
+             do i=1, size(A(:,1))
+                 write(unit,*)A(i, :)
+             end do
+             close(unit)
             STOP 'NaN in lu_solve'
         end if
 
-        allocate(A_copy(numdof, numdof))
         A_copy = A
         X = b
         b_copy = b
         nrows = size(b)
-        ! if (present(balancing)) then
-        !     if (balancing) then
-        !         fact = 'E'
-        !     else
-        !         fact = 'N'
-        !     end if
-        ! else
-        !     fact = 'N'
-        ! end if
-        ! trans = 'N'
-        ! equed = 'B'
-        !
-        ! print*, 'In lu 417'
-        ! call DGESVX(fact,&
-        !             trans,&
-        !             nrows,&
-        !             1,&
-        !             A_copy,&
-        !             nrows,&
-        !             AF,&
-        !             nrows,&
-        !             ipivot,&
-        !             equed,&
-        !             r,&
-        !             c,&
-        !             b_copy,&
-        !             nrows,&
-        !             X,&
-        !             nrows,&
-        !             rcond,&
-        !             ferr,&
-        !             berr,&
-        !             work,&
-        !             iwork,&
-        !             info&
-        !             )
-        ! print*, 'In lu 441'
-        !
-        ! if (info /= 0) then
-        !     print*, '***INFO is /= 0 in DGESV, something went wrong.'
-        !     print*, '   Its value is ', info
-        !
-        !     open(newunit=unit, file='debug_failed_Asys.txt')
-        !     do i=1, size(A(:,1))
-        !         write(unit,*)A(i, :)
-        !     end do
-        !     close(unit)
-        !     ! stop
-        ! end if
-
 
         ! solve system
-        call dgesv(numdof,&
-                   1,&
-                   A_copy,&
-                   numdof,&
-                   ipivot,&
-                   x,&
-                   numdof,&
-                   info)
+        with_balancing = .FALSE.
+        if (present(balancing)) then
+            if (balancing) then
+                with_balancing = .TRUE.
+            end if
+        end if
+        if (.NOT. with_balancing) then
+            call dgesv(numdof,&
+                       1,&
+                       A_copy,&
+                       numdof,&
+                       ipivot,&
+                       x,&
+                       numdof,&
+                       info)
+        else
+            fact = 'E'
+            trans = 'N'
+            call dgesvx(fact,&
+                        trans,&
+                        numdof,&
+                        1,&
+                        A_copy,&
+                        numdof,&
+                        AF,&
+                        numdof,&
+                        ipivot,&
+                        equed,&
+                        r,&
+                        c,&
+                        b_copy,&
+                        numdof,&
+                        x,&
+                        numdof,&
+                        rcond,&
+                        ferr,&
+                        berr,&
+                        work,&
+                        iwork,&
+                        info)
+        end if
+
         if (info /= 0) then
             print*, 'Info in DGESV = ', info
              open(newunit=unit, file='debug_failed_Asys.txt')
@@ -478,27 +468,7 @@ end function inv
              close(unit)
             stop
         end if
-        ! call gesv(A_copy,&
-        !            ipivot,&
-        !            x)
-
-
-
-
-
-        !
-        ! dimb=size(b)
-        !
-        ! allocate(invFulMat(dimb,dimb))
-        !
-        ! ! Calculate the inverse
-        ! ! call lu_invers(FulMat, invFulMat)
-        ! invFulMat = inv(A)
-        !
-        ! X = MATMUL(invFulMat, b)
-        !
-        ! deallocate(invFulMat)
-        deallocate(A_copy)
+        ! deallocate(A_copy)
         return
     end subroutine lu_solve
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -50,9 +50,9 @@ module cbeam3_solv
     module procedure :: cbeam3_solv_nlndyn_updated, cbeam3_solv_nlndyn_old
  end interface cbeam3_solv_nlndyn
 
- interface cbeam3_solv_modal
-    module procedure :: cbeam3_solv_modal_old, cbeam3_solv_modal_updated
- end interface cbeam3_solv_modal
+ !interface cbeam3_solv_modal
+!    module procedure :: cbeam3_solv_modal_old, cbeam3_solv_modal_updated
+ !end interface cbeam3_solv_modal
 
  contains
 
@@ -197,7 +197,10 @@ DX_old = 1.0d0*options%mindelta
   converged=.false.
     do while (converged .eqv. .false.)!(Delta.gt.Options%MinDelta)
       Iter= Iter+1
-      if (Iter.gt.Options%MaxIterations) STOP 'Static equations did not converge (17235)'
+      if (Iter.gt.Options%MaxIterations) then
+          print*, 'Residual is: ', maxval(abs(DeltaX))
+          STOP 'Static equations did not converge (17235)'
+      end if
 
       if ((Options%PrintInfo) .AND. (Iter.eq.1)) then
           write (*,'(17X,A12,A12,A11,A12,A12,A12,A12,A12,A12,A13,A11)')      &
@@ -268,7 +271,6 @@ DX_old = 1.0d0*options%mindelta
       ! call lu_sparse(ks,Kglobal,-Qglobal,DeltaX)
       DeltaX = 0.0d0
       call lu_solve(size(Kglobal, dim=1), Kglobal,-Qglobal,DeltaX)
-
       call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
 
       if (iter > 1) then
@@ -480,7 +482,9 @@ DX_old = 1.0d0*options%mindelta
 !-> Remarks.-
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_solv_modal_updated  (NumDof,&
+ subroutine cbeam3_solv_modal_updated  (num_dof,&
+                                        n_elem,&
+                                        n_node,&
                                         Elem,&
                                         Node,&
                                         Vrel,&
@@ -489,65 +493,44 @@ DX_old = 1.0d0*options%mindelta
                                         PosDefor,&
                                         PsiDefor,&
                                         Options,&
-                                        Mglobal,&
-                                        Cglobal,&
-                                        Kglobal,&
-                                        ms,&
-                                        cs,&
-                                        ks&
+                                        FullMglobal,&
+                                        FullCglobal,&
+                                        FullKglobal&
                                         )
-  use lib_fem
-  use lib_sparse
+
+  ! Libraries
   use cbeam3_asbly
 
-! I/O Variables.
-  integer,      intent(in) :: NumDof            ! Number of independent DoFs.
-  type(xbelem), intent(in) :: Elem      (:)     ! Element information.
-  type(xbnode), intent(in) :: Node      (:)     ! Nodal information.
-  real(8),      intent(in) :: Vrel      (:,:)   ! Time history of the velocities of the reference frame.
-  real(8),      intent(in) :: Coords    (:,:)   ! Initial coordinates of the grid points.
-  real(8),      intent(in) :: Psi0      (:,:,:) ! Initial CRV of the nodes in the elements.
-  real(8),      intent(in) :: PosDefor  (:,:)   ! Current coordinates of the grid points
-  real(8),      intent(in) :: PsiDefor  (:,:,:) ! Current CRV of the nodes in the elements.
+  ! I/O Variables.
+  integer,      intent(in) :: num_dof               ! Degrees of freedom
+  integer,      intent(in) :: n_elem                 ! Number of elements
+  integer,      intent(in) :: n_node                  ! Number of nodes
+  type(xbelem), intent(in) :: Elem      (n_elem)     ! Element information.
+  type(xbnode), intent(in) :: Node      (n_node)     ! Nodal information.
+  real(8),      intent(in) :: Vrel      (6)       ! Velocity of the reference frame.
+  real(8),      intent(in) :: Coords    (n_node,3)   ! Initial coordinates of the grid points.
+  real(8),      intent(in) :: Psi0      (n_elem,3,3) ! Initial CRV of the nodes in the elements.
+  real(8),      intent(in) :: PosDefor  (n_node,3)    ! Current coordinates of the grid points
+  real(8),      intent(in) :: PsiDefor  (n_elem,3,3) ! Current CRV of the nodes in the elements.
   type(xbopts), intent(in) :: Options           ! Solver parameters.
 
-! Local variables.
+  ! System matrices
+  real(8), intent(inout) :: FullCglobal(num_dof,num_dof)
+  real(8), intent(inout) :: FullMglobal(num_dof,num_dof)
+  real(8), intent(inout) :: FullKglobal(num_dof,num_dof)
+
+  ! Local variables.
   integer:: k                            ! Counters.
-  integer, intent(OUT):: cs,ks,ms
-  type(sparse),allocatable, intent(OUT):: Cglobal(:)     ! Sparse damping matrix.
-  type(sparse),allocatable, intent(OUT):: Kglobal(:)     ! Global stiffness matrix in sparse storage.
-  type(sparse),allocatable, intent(OUT):: Mglobal(:)     ! Global mass matrix in sparse storage.
 
+  ! Initialize matrices
+  FullCglobal = 0.d0
+  FullMglobal = 0.d0
+  FullKglobal = 0.d0
 
-! Allocate memory for solver (Use a conservative estimate of the size of the matrices).
-  allocate (Mglobal(DimMat*NumDof)); call sparse_zero (ms,Mglobal)
-  allocate (Cglobal(DimMat*NumDof)); call sparse_zero (cs,Cglobal)
-  allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
+  ! Assembly the martices
+  call cbeam3_asbly_modal_updated (num_dof,n_elem,n_node,Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Vrel, &
+        &                          FullMglobal,FullCglobal,FullKglobal,Options)
 
-! Compute tangent matrices at initial time.
-  call cbeam3_asbly_modal (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Vrel(1,:), &
-&                          ms,Mglobal,cs,Cglobal,ks,Kglobal,Options)
-
-! Write matrices in files.
-  !open (unit=71,file='Msparse',status='replace')
-  !do k=1,ms
-    !write (71,'(2I4,1PE18.10)') Mglobal(k)%i,Mglobal(k)%j,Mglobal(k)%a
-  !end do
-  !close (71)
-
-  !open (unit=72,file='Csparse',status='replace')
-  !do k=1,cs
-    !write (72,'(2I4,1PE18.10)') Cglobal(k)%i,Cglobal(k)%j,Cglobal(k)%a
-  !end do
-  !close (72)
-
-  !open (unit=73,file='Ksparse',status='replace')
-  !do k=1,ks
-    !write (73,'(2I4,1PE18.10)') Kglobal(k)%i,Kglobal(k)%j,Kglobal(k)%a
-  !end do
-  !close (73)
-
-! End of routine.
   return
  end subroutine cbeam3_solv_modal_updated
 
@@ -594,7 +577,7 @@ DX_old = 1.0d0*options%mindelta
   allocate (Kglobal(DimMat*NumDof)); call sparse_zero (ks,Kglobal)
 
 ! Compute tangent matrices at initial time.
-  call cbeam3_asbly_modal (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Vrel(1,:), &
+  call cbeam3_asbly_modal_old (Elem,Node,Coords,Psi0,PosDefor,PsiDefor,Vrel(1,:), &
 &                          ms,Mglobal,cs,Cglobal,ks,Kglobal,Options)
 
 ! Write matrices in files.
