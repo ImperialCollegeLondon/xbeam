@@ -72,7 +72,7 @@ contains
         real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
 
         real(c_double), intent(IN)      :: applied_forces(n_node, 6)
-        real(c_double), intent(INOUT)   :: gravity_forces(6)
+        real(c_double), intent(INOUT)   :: gravity_forces(n_node, 6)
         ! ADC XXX: careful with forces in master FoR
 
         integer(c_int)                  :: num_dof
@@ -131,7 +131,7 @@ contains
         ! print*, elements(1)%RBMASS(1, 4, :)
         ! print*, elements(1)%RBMASS(1, 5, :)
         ! print*, elements(1)%RBMASS(1, 6, :)
-
+        
        ! overloaded function
        gravity_forces = 0.0d0
        call cbeam3_solv_nlnstatic(num_dof,&
@@ -147,7 +147,6 @@ contains
                                   psi_def,&
                                   options&
                                   )
-        ! print*, gravity_forces(1,:)
         ! call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
 
         ! call print_matrix('gravity_forces',gravity_forces)
