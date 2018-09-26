@@ -131,7 +131,7 @@ contains
         ! print*, elements(1)%RBMASS(1, 4, :)
         ! print*, elements(1)%RBMASS(1, 5, :)
         ! print*, elements(1)%RBMASS(1, 6, :)
-        
+
        ! overloaded function
        gravity_forces = 0.0d0
        call cbeam3_solv_nlnstatic(num_dof,&
@@ -147,7 +147,7 @@ contains
                                   psi_def,&
                                   options&
                                   )
-        ! call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
+        call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
 
         ! call print_matrix('gravity_forces',gravity_forces)
     end subroutine cbeam3_solv_nlnstatic_python
