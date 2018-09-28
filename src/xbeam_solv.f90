@@ -1303,14 +1303,14 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         DQ = 0.0d0
         call lu_solve(numdof + 10, Asys, -Qtotal, DQ, options%balancing)
 
-        residual = sqrt(dot_product(Qtotal, Qtotal))
+        residual = maxval(abs(DQ))
         ! print*, residual
         if (Iter > 1) then
-            if (residual < options%mindelta) then
-                if (abs(residual - old_residual)/initial_residual < options%mindelta) then
+            ! if (residual < options%mindelta) then
+                if ((abs(residual - old_residual)/initial_residual < options%mindelta) .OR. (residual < options%mindelta)) then
                     converged = .TRUE.
                 end if
-            end if
+            ! end if
         else
             initial_residual = residual
         end if

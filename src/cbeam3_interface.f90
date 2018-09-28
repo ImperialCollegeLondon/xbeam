@@ -72,7 +72,7 @@ contains
         real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
 
         real(c_double), intent(IN)      :: applied_forces(n_node, 6)
-        real(c_double), intent(INOUT)   :: gravity_forces(6)
+        real(c_double), intent(INOUT)   :: gravity_forces(n_node, 6)
         ! ADC XXX: careful with forces in master FoR
 
         integer(c_int)                  :: num_dof
@@ -109,28 +109,6 @@ contains
                                 master_node,&
                                 vdof,&
                                 fdof)
-        ! call print_matrix('conn',conn)
-        ! call print_matrix('pos_ini', pos_ini)
-        ! call print_matrix('pos_def', pos_def)
-        ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
-        ! call print_matrix('psi_ini2', psi_ini(:, 2, :))
-        ! call print_matrix('psi_ini3', psi_ini(:, 3, :))
-        ! call print_matrix('psi_def1', psi_def(:, 1, :))
-        ! call print_matrix('psi_def2', psi_def(:, 2, :))
-        ! call print_matrix('psi_def3', psi_def(:, 3, :))
-        ! call print_matrix('fdof',fdof)
-        ! call print_matrix('app_forces',applied_forces)
-        ! ! call print_matrix('gravity_forces',gravity_forces)
-        ! call print_matrix('vdof',vdof)
-        ! call print_xbelem(elements)
-        ! call print_xbnode(nodes)
-        ! print*, 'RBMass:'
-        ! print*, elements(1)%RBMASS(1, 1, :)
-        ! print*, elements(1)%RBMASS(1, 2, :)
-        ! print*, elements(1)%RBMASS(1, 3, :)
-        ! print*, elements(1)%RBMASS(1, 4, :)
-        ! print*, elements(1)%RBMASS(1, 5, :)
-        ! print*, elements(1)%RBMASS(1, 6, :)
 
        ! overloaded function
        gravity_forces = 0.0d0
@@ -147,10 +125,7 @@ contains
                                   psi_def,&
                                   options&
                                   )
-        ! print*, gravity_forces(1,:)
-        ! call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
-
-        ! call print_matrix('gravity_forces',gravity_forces)
+        call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
     end subroutine cbeam3_solv_nlnstatic_python
 
     subroutine correct_gravity_forces(n_nodes, n_elems,  gravity_forces, psi, elements, nodes)
@@ -272,10 +247,6 @@ contains
 
 
         num_dof = count(vdof > 0)*6
-        ! applied_forces = 0.0_c_double
-        ! do i=1, num_app_forces
-        !     applied_forces(node_app_forces(i), :) = app_forces(i, :)
-        ! end do
         applied_forces = app_forces
 
         ! gaussian nodes
@@ -306,8 +277,6 @@ contains
 
         i_out = 10  ! random unit for output
         ! updating position vectors
-        ! pos_def = pos_ini
-        ! psi_def = psi_ini
         pos_def_history = 0.0_c_double
         pos_def_history(1, :, :) = pos_def
         psi_def_history = 0.0_c_double
@@ -439,19 +408,6 @@ contains
         forced_acc_mat(1,:) = forced_acc
         forced_vel_mat(2,:) = forced_vel
         forced_acc_mat(2,:) = forced_acc
-        ! print*, 'cbeam3_interface, line 417'
-        ! print*, quat
-        ! fa_fake = 0
-        ! qquat = quat(:,1)
-        ! print*, 'cbeam3_interface, line 417'
-        ! ftime_fake = 0
-        ! print*, 'cbeam3_interface, line 417'
-        ! print*, size(forced_vel)
-        ! print*, (forced_vel)
-        ! print*, 'cbeam3_interface, line 417'
-        !
-        !
-        ! print*, 'cbeam3_interface, line 423'
         num_dof = count(vdof > 0)*6
 
         ! gaussian nodes
@@ -480,12 +436,6 @@ contains
                                 fdof)
 
 
-        ! call print_xbelem(elements)
-        ! call print_xbnode(nodes)
-        ! i_out = 10  ! random unit for output
-        ! time(1) = 0
-        ! time(2) = dt
-
         ! updating position vectors
         call cbeam3_solv_nlndyn_step(num_dof,&
                                      n_elem,&
@@ -506,47 +456,6 @@ contains
                                      pos_def_dot,&
                                      psi_def_dot,&
                                      options)
-        ! call print_matrix('conn',conn)
-        ! call print_matrix('pos_ini', pos_ini)
-        ! call print_matrix('pos_def', pos_def)
-        ! call print_matrix('pos_def_dot', pos_def_dot)
-        ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
-        ! call print_matrix('psi_ini2', psi_ini(:, 2, :))
-        ! call print_matrix('psi_ini3', psi_ini(:, 3, :))
-        ! call print_matrix('psi_def1', psi_def(:, 1, :))
-        ! call print_matrix('psi_def2', psi_def(:, 2, :))
-        ! call print_matrix('psi_def3', psi_def(:, 3, :))
-        ! call print_matrix('fdof',fdof)
-        ! call print_matrix('steady_app_forces',steady_app_forces)
-        ! call print_matrix('dynamic_app_forces',dynamic_app_forces)
-        ! call print_matrix('vdof',vdof)
-        ! call print_matrix('master1',master(:,:,1))
-        ! call print_matrix('master2',master(:,:,2))
-        ! call print_matrix('masternode',master_node)
-        ! call print_matrix('psi_def_dot1',psi_def_dot(:, 1, :))
-        ! call print_matrix('psi_def_dot2',psi_def_dot(:, 2, :))
-        ! call print_matrix('forced_vel', forced_vel)
-        ! call print_matrix('forced_acc', forced_acc)
-        ! call print_matrix('stiffness0', stiffness_db(1, :, :))
-        ! call cbeam3_solv_nlndyn_step (i_out,&
-        !                               num_dof,&
-        !                               time,&
-        !                               elements,&
-        !                               nodes,&
-        !                               steady_app_forces+dynamic_app_forces,&
-        !                               steady_app_forces*0.0_c_double,&
-        !                               time*0.0_c_double,&
-        !                               forced_vel_mat,&
-        !                               forced_acc_mat,&
-        !                               pos_ini,&
-        !                               psi_ini,&
-        !                               pos_def,&
-        !                               psi_def,&
-        !                               pos_def_dot,&
-        !                               psi_def_dot,&
-        !                               Options,&
-        !                               quat)
-
     end subroutine cbeam3_solv_nlndyn_step_python
 
     subroutine cbeam3_solv_modal_python(num_dof,&
@@ -786,19 +695,6 @@ contains
             elements(i)%Stiff       = stiffness_db(stiffness_indices(i), :, :)
             elements(i)%InvStiff    = inv_stiffness_db(stiffness_indices(i),:,:)
             elements(i)%RBMass      = RBMass(i, :, :, :)
-            ! do j=1, 3
-            !     if (any(elements(i)%RBMass(j, :, :) /= 0.0)) then
-            !         print*, 'RBMASS'
-            !         print*, i, j
-            !         print*, elements(i)%RBMass(j, 1, :)
-            !         print*, elements(i)%RBMass(j, 2, :)
-            !         print*, elements(i)%RBMass(j, 3, :)
-            !         print*, elements(i)%RBMass(j, 4, :)
-            !         print*, elements(i)%RBMass(j, 5, :)
-            !         print*, elements(i)%RBMass(j, 6, :)
-            !         print*, '-----'
-            !     end if
-            ! end do
         end do
 
     end function generate_xbelem

@@ -66,7 +66,7 @@ module cbeam3_solv
 !-> Remarks.-
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine cbeam3_solv_nlnstatic_old (NumDof,n_elem,n_node,Elem,Node,AppForces,gravity_forces,Coords,Psi0, &
+ subroutine cbeam3_solv_nlnstatic_old (NumDof,n_elem,n_node,Elem,Node,AppForces,nodal_gravity_forces,Coords,Psi0, &
 &                                  PosDefor,PsiDefor,Options)
   use lib_fem
   use lib_sparse
@@ -82,7 +82,7 @@ module cbeam3_solv
   type(xbelem),intent(in)    :: Elem(n_elem)           ! Element information.
   type(xbnode),intent(in)    :: Node(n_node)           ! Nodal information.
   real(8),      intent(in)   :: AppForces (n_node,6)   ! Applied nodal forces.
-  real(8),      intent(OUT):: gravity_forces(6)   ! Applied nodal forces.
+  real(8),      intent(OUT)  :: nodal_gravity_forces(n_node, 6)   ! Applied nodal forces.
   real(8),      intent(in)   :: Coords   (n_node,3)    ! Initial coordinates of the grid points.
   real(8),      intent(in)   :: Psi0     (n_elem,3,3)  ! Initial CRV of the nodes in the elements.
   real(8),      intent(inout):: PosDefor (n_node, 3)    ! Current coordinates of the grid points
@@ -136,7 +136,7 @@ module cbeam3_solv
   real(8)   :: TaX, TaPos, TaPsi    ! Absolute tolerance for DeltaX, DeltaPos and DeltaPsi
 
   integer   :: ii
-  real(8)   :: nodal_gravity_forces(n_node, 6)
+  real(8)   :: gravity_forces(6)
 
  ! Determine scaling factors for convergence test (absolute tolerances)
 !   Psisc = 1.0_8
@@ -197,7 +197,10 @@ DX_old = 1.0d0*options%mindelta
   converged=.false.
     do while (converged .eqv. .false.)!(Delta.gt.Options%MinDelta)
       Iter= Iter+1
-      if (Iter.gt.Options%MaxIterations) STOP 'Static equations did not converge (17235)'
+      if (Iter.gt.Options%MaxIterations) then
+          print*, 'Residual is: ', maxval(abs(DeltaX))
+          STOP 'Static equations did not converge (17235)'
+      end if
 
       if ((Options%PrintInfo) .AND. (Iter.eq.1)) then
           write (*,'(17X,A12,A12,A11,A12,A12,A12,A12,A12,A12,A13,A11)')      &
@@ -268,7 +271,6 @@ DX_old = 1.0d0*options%mindelta
       ! call lu_sparse(ks,Kglobal,-Qglobal,DeltaX)
       DeltaX = 0.0d0
       call lu_solve(size(Kglobal, dim=1), Kglobal,-Qglobal,DeltaX)
-
       call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
 
       if (iter > 1) then
