@@ -1057,5 +1057,239 @@ subroutine output_elems (Elem,Coords,Psi)
 
 end subroutine output_elems
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-> Subroutine CBEAM3_ASBLY_DYNAMIC_PYTHON
+!
+!-> Description:
+!
+!    Assembly tangent matrix for the dynamic case
+!
+!-> Remarks.-
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ subroutine cbeam3_asbly_dynamic_python(num_dof,&
+                                        n_node,&
+                                        n_elem,&
+                                        dt,&
+                                        pos_ini,&
+                                        psi_ini,&
+                                        pos,&
+                                        pos_dot,&
+                                        psi,&
+                                        psi_dot,&
+                                        steady_applied_forces,&
+                                        unsteady_applied_forces,&
+                                        for_vel,&
+                                        for_acc,&
+                                        num_nodes,&
+                                        mem_number,&
+                                        conn,&
+                                        master,&
+                                        n_mass,&
+                                        mass_db,&
+                                        mass_indices,&
+                                        n_stiffness,&
+                                        stiffness_db,&
+                                        inv_stiffness_db,&
+                                        stiffness_indices,&
+                                        for_delta,&
+                                        rbmass,&
+                                        master_node,&
+                                        vdof,&
+                                        fdof,&
+                                        options,&
+                                        dXddt,&
+                                        Quat,&
+                                        Mglobal,&
+                                        Cglobal,&
+                                        Kglobal,&
+                                        Qglobal)bind(C)
+
+    use cbeam3_asbly
+    use xbeam_asbly
+    use lib_fem
+    use lib_lu
+
+    ! input variables: numbers
+    integer(c_int), intent(IN)      :: num_dof
+    integer(c_int), intent(IN)      :: n_node
+    integer(c_int), intent(IN)      :: n_elem
+
+    ! input variables: deformations
+    real(c_double), intent(IN)      :: pos_ini(n_node, 3)
+    real(c_double), intent(IN)      :: psi_ini(n_elem, max_elem_node, 3)
+    real(c_double), intent(IN)      :: pos(n_node, 3)
+    real(c_double), intent(IN)      :: pos_dot(n_node, 3)
+    real(c_double), intent(IN)      :: psi(n_elem, max_elem_node, 3)
+    real(c_double), intent(IN)      :: psi_dot(n_elem, max_elem_node, 3)
+    real(c_double), intent(IN)      :: dXddt(num_dof)
+
+    ! input variables: forces
+    real(c_double), intent(IN)      :: steady_applied_forces(n_node, 6)
+    real(c_double), intent(IN)      :: unsteady_applied_forces(n_node, 6)
+
+    ! input variables: FoR movement
+    real(c_double), intent(IN)      :: for_vel(6)
+    real(c_double), intent(IN)      :: for_acc(6)
+
+    ! input variables: element data
+    integer(c_int), intent(IN)      :: num_nodes(n_elem)
+    integer(c_int), intent(IN)      :: mem_number(n_elem)
+    integer(c_int), intent(IN)      :: conn(n_elem, max_elem_node)
+    integer(c_int), intent(IN)      :: master(n_elem, max_elem_node, 2)
+    integer(c_int), intent(IN)      :: n_mass
+    integer(c_int), intent(IN)      :: mass_indices(n_elem)
+    real(c_double), intent(IN)      :: mass_db(n_mass, 6, 6)
+
+    integer(c_int), intent(IN)      :: n_stiffness
+    real(c_double), intent(IN)      :: stiffness_db(n_stiffness, 6, 6)
+    real(c_double), intent(IN)      :: inv_stiffness_db(n_stiffness, 6, 6)
+    integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
+
+    ! input variables: FoR and rbmass
+    real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
+    real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
+
+    ! input variables: node data
+    integer(c_int), intent(IN)      :: master_node(n_node, 2)
+    integer(c_int), intent(IN)      :: vdof(n_node)
+    integer(c_int), intent(IN)      :: fdof(n_node)
+    integer                         :: ListIN (n_node)    ! List of independent nodes.
+
+    ! input variables: options
+    type(xbopts), intent(INOUT)     :: options
+
+    ! input variables
+    real(c_double)                    :: Cao(3,3)
+    real(8),   intent(INout)          :: Quat(4)
+    real(8)                           :: Temp(4, 4)
+    real(8),      intent(IN)          :: dt
+
+    ! Matrices
+    real(c_double), intent(OUT)     :: Mglobal(num_dof,num_dof)
+    real(c_double)                  :: Mvel(num_dof, 6)
+    real(c_double), intent(OUT)     :: Cglobal(num_dof,num_dof)
+    real(c_double)                  :: Cvel(num_dof, 6)
+    real(c_double), intent(OUT)     :: Kglobal(num_dof,num_dof)
+    real(c_double)                  :: Fglobal(num_dof,num_dof)
+    real(c_double), intent(OUT)     :: Qglobal(num_dof)
+
+    real(c_double)                  :: MSS_gravity(num_dof+6, num_dof+6)
+    real(c_double)                  :: MRS_gravity(6, num_dof+6)
+    real(c_double)                  :: MRR_gravity(6, 6)
+    real(c_double)                  :: gravity_forces(num_dof, 6)
+
+    ! variable initialization
+    type(xbelem)                    :: elements(n_elem)
+    type(xbnode)                    :: nodes(n_node)
+    integer(c_int)                  :: nodes_per_elem
+    integer                         :: k
+
+    real(8),parameter,dimension(4,4):: Unit4= &       ! 4x4 Unit matrix.
+  &         reshape((/1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0/),(/4,4/))
+
+
+    ListIN = 0
+    do k=1,size(nodes)
+      ListIN(k)=nodes(k)%Vdof
+    end do
+
+     nodes_per_elem = count(conn(1,:) /= 0)
+     options%NumGauss = nodes_per_elem - 1
+
+     elements = generate_xbelem(n_elem,&
+                                    num_nodes,&
+                                    mem_number,&
+                                    conn,&
+                                    master,&
+                                    n_mass,&
+                                    mass_db,&
+                                    mass_indices,&
+                                    n_stiffness,&
+                                    stiffness_db,&
+                                    inv_stiffness_db,&
+                                    stiffness_indices,&
+                                    for_delta,&
+                                    psi_ini,&
+                                    rbmass)
+
+     nodes = generate_xbnode(n_node,&
+                                 master_node,&
+                                 vdof,&
+                                 fdof)
+    ! Initialization
+    Mvel = 0.0d0
+    Cvel = 0.0d0
+    Mglobal = 0.0d0
+    Cglobal = 0.0d0
+    Kglobal = 0.0d0
+    Qglobal = 0.0d0
+    Fglobal = 0.0d0
+
+    ! Update transformation matrix for given angular velocity
+    call lu_invers ((Unit4+0.25d0*xbeam_QuadSkew(for_vel(4:6))*dt),Temp)
+    Quat=matmul(Temp,matmul((Unit4-0.25d0*xbeam_QuadSkew(for_vel(4:6))*dt),Quat))
+    Cao = xbeam_Rot(Quat)
+
+    ! Assembly matrices
+    call cbeam3_asbly_dynamic_new_interface(num_dof,&
+                                          n_node,&
+                                          n_elem,&
+                                          elements,&
+                                          nodes,&
+                                          pos_ini,&
+                                          psi_ini,&
+                                          pos,&
+                                          psi,&
+                                          pos_dot,&
+                                          psi_dot,&
+                                          ! pos_ddot_def,&
+                                          ! psi_ddot_def,&
+                                          0.0d0*pos_dot,&
+                                          0.0d0*psi_dot,&
+                                          steady_applied_forces + unsteady_applied_forces,&
+                                          for_vel,&
+                                          for_acc,&
+                                          Mglobal,&
+                                          Mvel,&
+                                          Cglobal,&
+                                          Cvel,&
+                                          Kglobal,&
+                                          Fglobal,&
+                                          Qglobal,&
+                                          options,&
+                                          Cao)
+
+    ! Include values in Qglobal
+    Qglobal = Qglobal + MATMUL(Mglobal, dXddt)
+    Qglobal = Qglobal + MATMUL(Mvel, for_acc)
+    Qglobal = Qglobal - MATMUL(Fglobal, fem_m2v(steady_applied_forces + unsteady_applied_forces, num_dof, Filter=ListIN))
+
+    if (options%gravity_on) then
+        ! Compute gravity matrices
+        call xbeam_asbly_M_gravity(num_dof,&
+                                        n_node,&
+                                        n_elem,&
+                                        elements,&
+                                        nodes,&
+                                        pos_ini,&
+                                        psi_ini,&
+                                        pos,&
+                                        psi,&
+                                        MRS_gravity,&
+                                        MSS_gravity,&
+                                        MRR_gravity,&
+                                        options)
+
+        ! Include gravity forces in the residual
+        gravity_forces = -fem_v2m(MATMUL(MSS_gravity,&
+                                  cbeam3_asbly_gravity_dynamic(num_dof + 6,options, Cao)),&
+                                  n_node, 6)
+        Qglobal = Qglobal - fem_m2v(gravity_forces, num_dof, Filter=ListIN)
+
+    end if
+
+
+end subroutine cbeam3_asbly_dynamic_python
 
 end module cbeam3_interface
