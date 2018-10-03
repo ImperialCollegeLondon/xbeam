@@ -1073,7 +1073,7 @@ end subroutine output_elems
     real(c_double)                  :: MSS_gravity(num_dof+6, num_dof+6)
     real(c_double)                  :: MRS_gravity(6, num_dof+6)
     real(c_double)                  :: MRR_gravity(6, 6)
-    real(c_double)                  :: gravity_forces(num_dof, 6)
+    real(c_double)                  :: gravity_forces(n_node, 6)
 
     ! variable initialization
     type(xbelem)                    :: elements(n_elem)
@@ -1083,12 +1083,6 @@ end subroutine output_elems
 
     real(8),parameter,dimension(4,4):: Unit4= &       ! 4x4 Unit matrix.
   &         reshape((/1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0/),(/4,4/))
-
-
-    ListIN = 0
-    do k=1,size(nodes)
-      ListIN(k)=nodes(k)%Vdof
-    end do
 
      nodes_per_elem = count(conn(1,:) /= 0)
      options%NumGauss = nodes_per_elem - 1
@@ -1113,6 +1107,12 @@ end subroutine output_elems
                                  master_node,&
                                  vdof,&
                                  fdof)
+
+     ListIN = 0
+     do k=1,size(nodes)
+       ListIN(k)=nodes(k)%Vdof
+     end do
+
     ! Initialization
     Mvel = 0.0d0
     Cvel = 0.0d0
@@ -1182,7 +1182,6 @@ end subroutine output_elems
                                   cbeam3_asbly_gravity_dynamic(num_dof + 6,options, Cao)),&
                                   n_node, 6)
         Qglobal = Qglobal - fem_m2v(gravity_forces, num_dof, Filter=ListIN)
-
     end if
 
 

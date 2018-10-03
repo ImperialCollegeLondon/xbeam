@@ -1108,12 +1108,6 @@ end subroutine xbeam_solv_couplednlndyn_python
         real(8),parameter,dimension(4,4):: Unit4= &       ! 4x4 Unit matrix.
       &         reshape((/1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,0.d0,1.d0/),(/4,4/))
 
-
-        ListIN = 0
-        do k=1,size(nodes)
-          ListIN(k)=nodes(k)%Vdof
-        end do
-
          nodes_per_elem = count(conn(1,:) /= 0)
          options%NumGauss = nodes_per_elem - 1
 
@@ -1137,6 +1131,11 @@ end subroutine xbeam_solv_couplednlndyn_python
                                      master_node,&
                                      vdof,&
                                      fdof)
+
+         ListIN = 0
+         do k=1,size(nodes)
+           ListIN(k)=nodes(k)%Vdof
+         end do
 
         call cbeam3_solv_state2accel(elements, nodes, dqddt(1:numdof), pos_ddot, psi_ddot)
 
