@@ -8,6 +8,5 @@
 
 # lapack flag
 export LAPACK_LIB_DIR=$(conda info --json | python -c "import sys, json; print(json.load(sys.stdin)['active_prefix'])")/lib
-echo $LAPACK_LIB_DIR
 
 make install
