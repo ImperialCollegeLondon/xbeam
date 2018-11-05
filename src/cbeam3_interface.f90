@@ -6,6 +6,7 @@ module cbeam3_interface
     use                                 :: lib_sparse
     use                                 :: xbeam_asbly
     use                                 :: lib_xbeam
+    use                                 :: lib_lu
     use lib_rotvect
 
     implicit none
@@ -139,14 +140,16 @@ contains
         integer                             :: inode, ielem
         integer                             :: ilocalnode
         real(8)                             :: rot(3, 3)
+        real(8)                             :: inv_rot(3, 3)
 
         do inode=1, n_nodes
             ielem = nodes(inode)%master(1)
             ilocalnode = nodes(inode)%master(2)
 
             rot =(rotvect_psi2rot(psi(ielem, ilocalnode, :)))
+            call lu_invers(rot, inv_rot)
 
-            gravity_forces(inode, 4:6) = MATMUL(transpose(rot), gravity_forces(inode, 4:6))
+            gravity_forces(inode, 4:6) = MATMUL(inv_rot, gravity_forces(inode, 4:6))
         end do
 
     end subroutine correct_gravity_forces
