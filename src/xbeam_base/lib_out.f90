@@ -468,8 +468,8 @@ module lib_out
   real(8),          intent(in) :: Time   ! Current time.
   character(len=80),intent(out):: Text   ! Text to be written.
 
-  Text=' '
-  write (Text,'(A,I7,A,1PE14.6)') 'GLOBAL TIME STEP:',iStep,'. TIME:',Time
+  !Text=' '
+  !write (Text,'(A,I7,A,1PE14.6)') 'GLOBAL TIME STEP:',iStep,'. TIME:',Time
 
   return
  end subroutine out_time
