@@ -145,7 +145,8 @@ subroutine xbeam_asbly_dynamic_new_interface (&
   real(8),      intent(out)     :: CQR(4, 6)
   real(8),      intent(out)     :: CQQ(4, 4) ! Tangent matrices from linearisation of quaternion equation.
   real(8),      intent(out)     :: KRS(6, numdof)            ! Sparse stiffness matrix.
-  real(8),      intent(out)     :: Frigid(6, numdof + 6)      ! Influence coefficients matrix for applied forces.
+  ! real(8),      intent(out)     :: Frigid(6, numdof + 6)      ! Influence coefficients matrix for applied forces.
+  real(8),      intent(out)     :: Frigid(6, n_node*6)      ! Influence coefficients matrix for applied forces.
   real(8),      intent(out)     :: Qrigid(6)      ! Stiffness and gyroscopic force vector.
   type(xbopts), intent(in)      :: Options           ! Solver parameters.
   real(8),      intent(in)      :: Cao(3, 3)    ! Rotation operator from reference to inertial frame

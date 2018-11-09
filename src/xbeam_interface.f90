@@ -1069,7 +1069,8 @@ end subroutine xbeam_solv_couplednlndyn_python
         real(8) :: CRS(6, numdof)      ! rigid Sparse damping matrix.
         real(8) :: KRS(6, numdof)      ! rigid stiffness matrix in sparse storage.
         real(8) :: MRS(6, numdof)   ! Mass and damping from the motions of reference system.
-        real(8) :: Frigid(6, numdof + 6)   ! rigid matrix of applied forces in sparse format
+        ! real(8) :: Frigid(6, numdof + 6)   ! rigid matrix of applied forces in sparse format
+        real(8) :: Frigid(6, n_node*6)   ! rigid matrix of applied forces in sparse format
         real(8) :: Qrigid(6)   ! rigid vector of discrete generalize forces.
         real(8) :: MRR(6, 6)    ! rigid Mass and damping from the motions of reference system.
         real(8) :: CRR(6, 6)    ! rigid Mass and damping from the motions of reference system.
@@ -1144,7 +1145,7 @@ end subroutine xbeam_solv_couplednlndyn_python
          aux_dQdt = dQdt
          Cao = xbeam_rot(aux_dQdt(numdof + 7:numdof + 10))
          ! ams: I am not sure of the following line. Just to make the function give the quaternion back (as cbeam3)
-         Quat = aux_dQdt(numdof + 7:numdof + 10)
+         ! Quat = aux_dQdt(numdof + 7:numdof + 10)
 
          ! system functionals and matrices initialisation
          Qelast = 0.0d0
@@ -1242,10 +1243,15 @@ end subroutine xbeam_solv_couplednlndyn_python
                                           unsteady_applied_forces, &
                                           numdof, &
                                           Filter = ListIN))
-         Qrigid = Qrigid - matmul(Frigid,&
-                                  fem_m2v(steady_applied_forces + &
-                                          unsteady_applied_forces, &
-                                          numdof + 6))
+
+         ! Qrigid = Qrigid - matmul(Frigid,&
+         !                          fem_m2v(steady_applied_forces + &
+         !                                  unsteady_applied_forces, &
+         !                                  numdof + 6))
+          Qrigid = Qrigid - matmul(Frigid,&
+                                   fem_m2v(steady_applied_forces + &
+                                           unsteady_applied_forces, &
+                                           n_node*6))
 
          if (options%gravity_on) then
              call xbeam_asbly_M_gravity(&
