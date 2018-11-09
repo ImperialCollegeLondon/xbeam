@@ -1,9 +1,9 @@
 ## GFORTRAN SETTINGS
 ## ===========================================================================
-# export FCOMP = gfortran
+export FCOMP = gfortran
 ## GFORTRAN RELEASE
-# export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp # -fno-underscoring -g -fno-omit-frame-pointer
-# export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared -fopenmp
+export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp # -fno-underscoring -g -fno-omit-frame-pointer
+export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared -fopenmp
 ## GFORTRAN DEBUG
 # export FCFLAGS = -g -fPIC -fcheck=all -fbacktrace -pedantic -fno-omit-frame-pointer  -ffpe-trap=invalid,zero,overflow,underflow,precision,denormal -std=f2008 -W -Wtabs -O -fbacktrace -fbounds-check -fstack-arrays -fno-underscoring
 # export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared -fopenmp
@@ -11,13 +11,13 @@
 
 ## INTEL FORTRAN SETTINGS
 ## ===========================================================================
-export FCOMP = ifort
+# export FCOMP = ifort
 ## IFORT RELEASE
 ## no MKL
 # export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -fopenmp -heap-arrays -xHost -wrap-margin-
 ## with MKL
-export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -heap-arrays -xHost -wrap-margin- -mkl=parallel
-export LDFLAGS = -liomp5 -lpthread -lm -ldl -shared
+# export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -heap-arrays -xHost -wrap-margin- -mkl=parallel
+# export LDFLAGS = -liomp5 -lpthread -lm -ldl -shared
 
 ## IFORT DEBUG
 # export FCFLAGS = -fpic -O0 -g3 -stand f08 -traceback  -fstack-protector  -assume protect_parens  -implicitnone -check bounds -ftrapuv -debug all -fpe-all=0 -no-ftz -wrap-margin-
