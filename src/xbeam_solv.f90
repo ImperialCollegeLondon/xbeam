@@ -1100,6 +1100,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     logical                                         :: converged
     real(8)                                         :: residual
     real(8)                                         :: initial_residual
+    real(8)                                         :: abs_threshold
 
 
     ListIN = 0
@@ -1116,6 +1117,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
 
     ! Iteration loop -----------------------------------------
     converged = .FALSE.
+    abs_threshold = epsilon(residual)*1000
     do iter = 1, options%maxiterations + 1
         if (iter == options%maxiterations + 1) then
             print*, 'Solver did not converge in ', iter, ' iterations.'
@@ -1299,6 +1301,8 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         residual = sqrt(dot_product(DQ, DQ))
         if (Iter > 1) then
             if (residual/initial_residual < options%mindelta) then
+                converged = .TRUE.
+            else if (residual < abs_threshold) then
                 converged = .TRUE.
             end if
         else
