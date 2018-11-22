@@ -1095,18 +1095,12 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
 
     real(8)                                         :: pos_ddot_def(n_node, 3)
     real(8)                                         :: psi_ddot_def(n_elem, 3, 3)
-    real(8)                                         :: old_q, old_dqdt
-
 
     ! Parameters to Check Convergence
     logical                                         :: converged
-    logical                                         :: scaling
-    real(8)                                         :: scale_param_mass
-    real(8)                                         :: scale_param_inertia(3)
-    real(8)                                         :: characteristic_length
     real(8)                                         :: residual
-    real(8)                                         :: old_residual
     real(8)                                         :: initial_residual
+    real(8)                                         :: abs_threshold
 
 
     ListIN = 0
@@ -1123,6 +1117,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
 
     ! Iteration loop -----------------------------------------
     converged = .FALSE.
+    abs_threshold = epsilon(residual)*1000
     do iter = 1, options%maxiterations + 1
         if (iter == options%maxiterations + 1) then
             print*, 'Solver did not converge in ', iter, ' iterations.'
@@ -1303,18 +1298,16 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         DQ = 0.0d0
         call lu_solve(numdof + 10, Asys, -Qtotal, DQ, options%balancing)
 
-        residual = sqrt(dot_product(Qtotal, Qtotal))
-        ! print*, residual
+        residual = sqrt(dot_product(DQ, DQ))
         if (Iter > 1) then
-            if (residual < options%mindelta) then
-                if (abs(residual - old_residual)/initial_residual < options%mindelta) then
-                    converged = .TRUE.
-                end if
+            if (residual/initial_residual < options%mindelta) then
+                converged = .TRUE.
+            else if (residual < abs_threshold) then
+                converged = .TRUE.
             end if
         else
             initial_residual = residual
         end if
-        old_residual = residual
 
         ! reconstruction of state vectors
         Q = Q + DQ

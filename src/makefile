@@ -23,7 +23,7 @@ MODS = $(FILES:=.mod)
 all: $(LIBRARY)
 
 $(LIBRARY): $(OBJS)
-	$(FCOMP) $(LDFLAGS) $(INCLUDE) -o $@ $(BASE_OBJS) $^
+	$(FCOMP) $(INCLUDE) -o $@ $(BASE_OBJS) $^ $(LDFLAGS)
 
 $(OBJS): $(BASE_OBJS)
 
