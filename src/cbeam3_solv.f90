@@ -948,7 +948,6 @@ DX_old = 1.0d0*options%mindelta
     psi_dot_def_history(iStep + 1, :, :, :) = PsiDotDefor
 
   end do
-
   deallocate (ListIN,Mvel,Cvel)
   deallocate (Asys,Fglobal,Mglobal)
   deallocate (Kglobal,Cglobal,Qglobal)
@@ -986,6 +985,8 @@ DX_old = 1.0d0*options%mindelta
                                     psi_def,&
                                     pos_dot_def,&
                                     psi_dot_def,&
+                                    q,&
+                                    dqdt,&
                                     options)
   use lib_fem
   use lib_rot
@@ -1016,6 +1017,8 @@ DX_old = 1.0d0*options%mindelta
   real(8),      intent(inout)       :: psi_def(num_elem, 3, 3) ! Current CRV of the nodes in the elements.
   real(8),      intent(inout)       :: pos_dot_def(num_node, 3)  ! Current time derivatives of the coordinates of the grid points
   real(8),      intent(inout)       :: psi_dot_def(num_elem, 3, 3)! Current time derivatives of the CRV of the nodes in the elements.
+  real(8),      intent(out)         :: q(num_dof)
+  real(8),      intent(out)         :: dqdt(num_dof)
   type(xbopts) ,intent(in)          :: options           ! solver parameters.
 
 ! Local variables.
@@ -1287,6 +1290,10 @@ DX_old = 1.0d0*options%mindelta
                                 psi_def,&
                                 pos_dot_def,&
                                 psi_dot_def)
+
+
+  q(1:size(q) - 10) = X
+  dqdt(1:size(q) - 10) = dXdt
 
     ! quat = dQdt(numdof+7:numdof+10)
     ! if (options%OutInaframe) then
