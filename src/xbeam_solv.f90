@@ -1297,6 +1297,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         ! calculation of the correction
         DQ = 0.0d0
         call lu_solve(numdof + 10, Asys, -Qtotal, DQ, options%balancing)
+        DQ = 0.7*DQ
 
         residual = sqrt(dot_product(DQ, DQ))
         if (Iter > 1) then
