@@ -314,7 +314,8 @@ contains
     end subroutine cbeam3_solv_nlndyn_python
 
 
-    subroutine cbeam3_solv_nlndyn_step_python   (n_elem,&
+    subroutine cbeam3_solv_nlndyn_step_python   (num_dof,&
+                                                 n_elem,&
                                                  n_node,&
                                                  dt,&
                                                  num_nodes,&
@@ -345,8 +346,11 @@ contains
                                                  gravity_forces,&
                                                  quat,&
                                                  forced_vel,&
-                                                 forced_acc)bind(C)
+                                                 forced_acc,&
+                                                 q,&
+                                                 dqdt)bind(C)
 
+        integer(c_int), intent(IN)      :: num_dof
         integer(c_int), intent(IN)      :: n_elem
         integer(c_int), intent(IN)      :: n_node
         real(c_double), intent(IN)      :: dt
@@ -392,8 +396,9 @@ contains
         real(c_double), intent(INOUT)   :: quat(4)
         real(c_double), intent(IN)      :: forced_vel(6)
         real(c_double), intent(IN)      :: forced_acc(6)
+        real(c_double), intent(OUT)     :: q(num_dof)
+        real(c_double), intent(OUT)     :: dqdt(num_dof)
 
-        integer(c_int)                  :: num_dof
 
         integer(c_int)                  :: i_out
         integer(c_int)                  :: i
@@ -411,7 +416,7 @@ contains
         forced_acc_mat(1,:) = forced_acc
         forced_vel_mat(2,:) = forced_vel
         forced_acc_mat(2,:) = forced_acc
-        num_dof = count(vdof > 0)*6
+        !num_dof = count(vdof > 0)*6
 
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
@@ -458,6 +463,8 @@ contains
                                      psi_def,&
                                      pos_def_dot,&
                                      psi_def_dot,&
+                                     q,&
+                                     dqdt,&
                                      options)
     end subroutine cbeam3_solv_nlndyn_step_python
 
