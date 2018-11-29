@@ -466,6 +466,7 @@ contains
                                      q,&
                                      dqdt,&
                                      options)
+        call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
     end subroutine cbeam3_solv_nlndyn_step_python
 
     subroutine cbeam3_solv_modal_python(num_dof,&
