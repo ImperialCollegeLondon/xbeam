@@ -996,6 +996,7 @@ end subroutine xbeam_solv_couplednlndyn_python
                                             Q,&
                                             dQdt,&
                                             dQddt,&
+                                            gravity_forces,&
                                             Mtotal,&
                                             Ctotal,&
                                             Ktotal,&
@@ -1096,7 +1097,7 @@ end subroutine xbeam_solv_couplednlndyn_python
         type(xbnode)                    :: nodes(n_node)
         integer(c_int)                  :: nodes_per_elem
 
-        real(c_double)                :: gravity_forces(n_node, 6)
+        real(c_double), intent(OUT)   :: gravity_forces(n_node, 6)
         real(c_double), intent(INout) :: Quat(4)
         real(c_double), intent(IN)    :: Q(numdof + 6 + 4)
         real(c_double), intent(IN)    :: dQdt(numdof + 6 + 4)

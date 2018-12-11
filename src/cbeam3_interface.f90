@@ -1006,6 +1006,7 @@ end subroutine output_elems
                                         options,&
                                         dXddt,&
                                         Quat,&
+                                        gravity_forces,&
                                         Mglobal,&
                                         Cglobal,&
                                         Kglobal,&
@@ -1083,7 +1084,7 @@ end subroutine output_elems
     real(c_double)                  :: MSS_gravity(num_dof+6, num_dof+6)
     real(c_double)                  :: MRS_gravity(6, num_dof+6)
     real(c_double)                  :: MRR_gravity(6, 6)
-    real(c_double)                  :: gravity_forces(n_node, 6)
+    real(c_double), intent(OUT)     :: gravity_forces(n_node, 6)
 
     ! variable initialization
     type(xbelem)                    :: elements(n_elem)
@@ -1196,5 +1197,100 @@ end subroutine output_elems
 
 
 end subroutine cbeam3_asbly_dynamic_python
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-> Subroutine CBEAM3_CORRECT_GRAVITY_FORCES_PYTHON
+!
+!-> Description:
+!
+!    Corrects the gravity forces orientation after a time step
+!
+!-> Remarks.-
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ subroutine cbeam3_correct_gravity_forces_python(n_node,&
+                                        n_elem,&
+                                        psi_ini,&
+                                        psi_def,&
+                                        num_nodes,&
+                                        mem_number,&
+                                        conn,&
+                                        master,&
+                                        n_mass,&
+                                        mass_db,&
+                                        mass_indices,&
+                                        n_stiffness,&
+                                        stiffness_db,&
+                                        inv_stiffness_db,&
+                                        stiffness_indices,&
+                                        for_delta,&
+                                        rbmass,&
+                                        master_node,&
+                                        vdof,&
+                                        fdof,&
+                                        gravity_forces)bind(C)
+
+    ! use cbeam3_asbly
+    ! use xbeam_asbly
+    use lib_fem
+    ! use lib_lu
+
+    ! Input information
+    integer(c_int), intent(IN)      :: n_node
+    integer(c_int), intent(IN)      :: n_elem
+    real(c_double), intent(IN)      :: psi_ini(n_elem, max_elem_node, 3)
+    real(c_double), intent(IN)      :: psi_def(n_elem, max_elem_node, 3)
+    real(c_double), intent(INOUT)   :: gravity_forces(n_node, 6)
+
+    ! input variables: element data
+    integer(c_int), intent(IN)      :: num_nodes(n_elem)
+    integer(c_int), intent(IN)      :: mem_number(n_elem)
+    integer(c_int), intent(IN)      :: conn(n_elem, max_elem_node)
+    integer(c_int), intent(IN)      :: master(n_elem, max_elem_node, 2)
+    integer(c_int), intent(IN)      :: n_mass
+    integer(c_int), intent(IN)      :: mass_indices(n_elem)
+    real(c_double), intent(IN)      :: mass_db(n_mass, 6, 6)
+
+    integer(c_int), intent(IN)      :: n_stiffness
+    real(c_double), intent(IN)      :: stiffness_db(n_stiffness, 6, 6)
+    real(c_double), intent(IN)      :: inv_stiffness_db(n_stiffness, 6, 6)
+    integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
+
+    ! input variables: FoR and rbmass
+    real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
+    real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
+
+    ! input variables: node data
+    integer(c_int), intent(IN)      :: master_node(n_node, 2)
+    integer(c_int), intent(IN)      :: vdof(n_node)
+    integer(c_int), intent(IN)      :: fdof(n_node)
+
+    type(xbelem)                    :: elements(n_elem)
+    type(xbnode)                    :: nodes(n_node)
+
+     elements = generate_xbelem(n_elem,&
+                                    num_nodes,&
+                                    mem_number,&
+                                    conn,&
+                                    master,&
+                                    n_mass,&
+                                    mass_db,&
+                                    mass_indices,&
+                                    n_stiffness,&
+                                    stiffness_db,&
+                                    inv_stiffness_db,&
+                                    stiffness_indices,&
+                                    for_delta,&
+                                    psi_ini,&
+                                    rbmass)
+
+     nodes = generate_xbnode(n_node,&
+                                 master_node,&
+                                 vdof,&
+                                 fdof)
+
+     call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
+
+ end subroutine cbeam3_correct_gravity_forces_python
 
 end module cbeam3_interface
