@@ -1183,14 +1183,14 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                   psi_def,&
                                   pos_dot_def,&
                                   psi_dot_def,&
-                                  pos_ddot_def,&
-                                  psi_ddot_def,&
-                                  !0.0d0*pos_ddot_def,&
-                                  !0.0d0*psi_ddot_def,&
+                                  !pos_ddot_def,&
+                                  !psi_ddot_def,&
+                                  0.0d0*pos_ddot_def,&
+                                  0.0d0*psi_ddot_def,&
                                   static_forces + dynamic_forces,&
                                   dQdt(numdof+1:numdof+6),&
-                                  dQddt(numdof+1:numdof+6),&
-                                  !0.0d0*dQddt(numdof+1:numdof+6),&
+                                  !dQddt(numdof+1:numdof+6),&
+                                  0.0d0*dQddt(numdof+1:numdof+6),&
                                   MSS,&
                                   MSR,&
                                   CSS,&
@@ -1212,13 +1212,13 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                  psi_def,&
                                  pos_dot_def,&
                                  psi_dot_def,&
-                                 !0.0d0*pos_ddot_def,&
-                                 !0.0d0*psi_ddot_def,&
-                                 pos_ddot_def,&
-                                 psi_ddot_def,&
+                                 0.0d0*pos_ddot_def,&
+                                 0.0d0*psi_ddot_def,&
+                                 !pos_ddot_def,&
+                                 !psi_ddot_def,&
                                  dQdt(numdof+1:numdof+6),&
-                                 dQddt(numdof+1:numdof+6),&
-                                 !0.0d0*dQddt(numdof+1:numdof+6),&
+                                 !dQddt(numdof+1:numdof+6),&
+                                 0.0d0*dQddt(numdof+1:numdof+6),&
                                  dQdt(numdof+7:numdof+10),&
                                  MRS,&
                                  MRR,&
