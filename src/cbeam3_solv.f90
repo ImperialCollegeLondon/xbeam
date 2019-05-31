@@ -1215,8 +1215,8 @@ DX_old = 1.0d0*options%mindelta
                                 psi_dot_def)
 
 
-  q(1:size(q) - 10) = X
-  dqdt(1:size(q) - 10) = dXdt
+  q = X
+  dqdt = dXdt
 
  end subroutine cbeam3_solv_nlndyn_step
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
