@@ -985,6 +985,8 @@ DX_old = 1.0d0*options%mindelta
                                     psi_def,&
                                     pos_dot_def,&
                                     psi_dot_def,&
+                                    pos_ddot_def,&
+                                    psi_ddot_def,&
                                     q,&
                                     dqdt,&
                                     options)
@@ -1017,6 +1019,8 @@ DX_old = 1.0d0*options%mindelta
   real(8),      intent(inout)       :: psi_def(num_elem, 3, 3) ! Current CRV of the nodes in the elements.
   real(8),      intent(inout)       :: pos_dot_def(num_node, 3)  ! Current time derivatives of the coordinates of the grid points
   real(8),      intent(inout)       :: psi_dot_def(num_elem, 3, 3)! Current time derivatives of the CRV of the nodes in the elements.
+  real(8),      intent(inout)       :: pos_ddot_def(num_node, 3)
+  real(8),      intent(inout)       :: psi_ddot_def(num_elem, 3, 3)
   real(8),      intent(out)         :: q(num_dof)
   real(8),      intent(out)         :: dqdt(num_dof)
   type(xbopts) ,intent(in)          :: options           ! solver parameters.
@@ -1033,8 +1037,6 @@ DX_old = 1.0d0*options%mindelta
   real(8)                           :: X(num_dof), DX(num_dof)
 
   integer                           ::  ListIN     (num_node)    ! List of independent nodes.
-  real(8)                           :: pos_ddot_def(num_node, 3)  ! Current time derivatives of the coordinates of the grid points
-  real(8)                           :: psi_ddot_def(num_elem, 3, 3)! Current time derivatives of the CRV of the nodes in the elements.
 
   ! Define variables for system matrices.
   real(8)                           :: Asys(num_dof, num_dof)
@@ -1071,6 +1073,7 @@ DX_old = 1.0d0*options%mindelta
     dXdt = 0.0d0
     dXddt = 0.0d0
     call cbeam3_solv_disp2state(node,pos_def,psi_def,pos_dot_def,psi_dot_def,X,dXdt)
+    call cbeam3_solv_accel2state(node, pos_ddot_def, psi_ddot_def, dXddt)
 
     X = X + dt*dXdt + (0.5d0 - beta)*dt*dt*dXddt
     dXdt = dXdt + (1.0d0 - gamma)*dt*dXddt
@@ -1084,7 +1087,7 @@ DX_old = 1.0d0*options%mindelta
     mindelta = 0
     old_x = 1.0d0
     converged = .FALSE.
-    abs_threshold = epsilon(old_DX)*1000
+    abs_threshold = epsilon(old_DX)
     old_DX = 1.0d0
     ! Iteration loop -----------------------------------------
     do iter = 1, options%maxiterations + 1
@@ -1179,7 +1182,6 @@ DX_old = 1.0d0*options%mindelta
         ! calculation of the correction
         DX = 0.0d0
         call lu_solve(num_dof, Asys, -Qglobal, DX)
-        DX = 0.7*DX
 
         residual = sqrt(dot_product(DX, DX))
         if (Iter > 1) then
@@ -1213,6 +1215,7 @@ DX_old = 1.0d0*options%mindelta
                                 psi_def,&
                                 pos_dot_def,&
                                 psi_dot_def)
+    call cbeam3_solv_state2accel(Elem, Node, dXddt, pos_ddot_def, psi_ddot_def)
 
 
   q = X
