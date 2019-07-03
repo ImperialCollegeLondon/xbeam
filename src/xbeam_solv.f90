@@ -998,6 +998,8 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                                 psi_def,&
                                                 pos_dot_def,&
                                                 psi_dot_def,&
+                                                pos_ddot_def,&
+                                                psi_ddot_def,&
                                                 static_forces,&
                                                 dynamic_forces,&
                                                 gravity_forces,&
@@ -1031,6 +1033,8 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     real(c_double), intent(INOUT)                   :: psi_def(n_elem, 3, 3)
     real(c_double), intent(INOUT)                   :: pos_dot_def(n_node, 3)
     real(c_double), intent(INOUT)                   :: psi_dot_def(n_elem, 3, 3)
+    real(c_double), intent(INOUT)                   :: pos_ddot_def(n_node, 3)
+    real(c_double), intent(INOUT)                   :: psi_ddot_def(n_elem, 3, 3)
     real(c_double), intent(IN)                      :: static_forces(n_node, 6)
     real(c_double), intent(IN)                      :: dynamic_forces(n_node, 6)
     real(c_double), intent(INOUT)                   :: gravity_forces(n_node, 6)
@@ -1092,9 +1096,6 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     real(8)                                         :: MRS_gravity(6, numdof + 6)
     real(8)                                         :: MSS_gravity(numdof + 6, numdof + 6)
     real(8)                                         :: MRR_gravity(6, 6)
-
-    real(8)                                         :: pos_ddot_def(n_node, 3)
-    real(8)                                         :: psi_ddot_def(n_elem, 3, 3)
 
     ! Parameters to Check Convergence
     logical                                         :: converged
@@ -1183,14 +1184,14 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                   psi_def,&
                                   pos_dot_def,&
                                   psi_dot_def,&
-                                  !pos_ddot_def,&
-                                  !psi_ddot_def,&
-                                  0.0d0*pos_ddot_def,&
-                                  0.0d0*psi_ddot_def,&
+                                  pos_ddot_def,&
+                                  psi_ddot_def,&
+                                  !0.0d0*pos_ddot_def,&
+                                  !0.0d0*psi_ddot_def,&
                                   static_forces + dynamic_forces,&
                                   dQdt(numdof+1:numdof+6),&
-                                  !dQddt(numdof+1:numdof+6),&
-                                  0.0d0*dQddt(numdof+1:numdof+6),&
+                                  dQddt(numdof+1:numdof+6),&
+                                  !0.0d0*dQddt(numdof+1:numdof+6),&
                                   MSS,&
                                   MSR,&
                                   CSS,&
@@ -1212,13 +1213,13 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                  psi_def,&
                                  pos_dot_def,&
                                  psi_dot_def,&
-                                 0.0d0*pos_ddot_def,&
-                                 0.0d0*psi_ddot_def,&
-                                 !pos_ddot_def,&
-                                 !psi_ddot_def,&
+                                 !0.0d0*pos_ddot_def,&
+                                 !0.0d0*psi_ddot_def,&
+                                 pos_ddot_def,&
+                                 psi_ddot_def,&
                                  dQdt(numdof+1:numdof+6),&
-                                 !dQddt(numdof+1:numdof+6),&
-                                 0.0d0*dQddt(numdof+1:numdof+6),&
+                                 dQddt(numdof+1:numdof+6),&
+                                 !0.0d0*dQddt(numdof+1:numdof+6),&
                                  dQdt(numdof+7:numdof+10),&
                                  MRS,&
                                  MRR,&
@@ -1332,6 +1333,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                 psi_def,&
                                 pos_dot_def,&
                                 psi_dot_def)
+    call cbeam3_solv_state2accel(Elem, Node, dqddt, pos_ddot_def, psi_ddot_def)
 
     if (options%OutInaframe) then
         for_vel = dQdt(numdof+1:numdof+6)
