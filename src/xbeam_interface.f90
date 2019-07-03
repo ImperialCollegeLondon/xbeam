@@ -219,8 +219,10 @@ end subroutine xbeam_solv_couplednlndyn_python
                                                 psi_ini,&
                                                 pos_def,&
                                                 pos_def_dot,&
+                                                pos_def_ddot,&
                                                 psi_def,&
                                                 psi_def_dot,&
+                                                psi_def_ddot,&
                                                 steady_app_forces,&
                                                 dynamic_app_forces,&
                                                 gravity_forces,&
@@ -269,6 +271,8 @@ end subroutine xbeam_solv_couplednlndyn_python
         real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
         real(c_double), intent(INOUT)   :: pos_def_dot(n_node, 3)
         real(c_double), intent(INOUT)   :: psi_def_dot(n_elem, max_elem_node, 3)
+        real(c_double), intent(INOUT)   :: pos_def_ddot(n_node, 3)
+        real(c_double), intent(INOUT)   :: psi_def_ddot(n_elem, max_elem_node, 3)
 
         real(c_double), intent(IN)      :: steady_app_forces (n_node, 6)
         ! ADC: careful, forces in master FoR
@@ -324,6 +328,8 @@ end subroutine xbeam_solv_couplednlndyn_python
                                                    psi_def,&
                                                    pos_def_dot,&
                                                    psi_def_dot,&
+                                                   pos_def_ddot,&
+                                                   psi_def_ddot,&
                                                    steady_app_forces,&
                                                    dynamic_app_forces,&
                                                    gravity_forces,&
