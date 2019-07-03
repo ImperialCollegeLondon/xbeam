@@ -79,7 +79,7 @@ module xbeam_shared
                                       ! =902/912: cbeam3 linear/nonlinear flexible-body dynamic
                                       ! =    922: cbeam3 nonlinear static + flexible-body dynamic
                                       ! =    952: cbeam3 linear flexible with nonlinear rigid-body dynamic
-  real(c_double):: DeltaCurved=1d-5          ! Minimum angle for two unit vectors to be parallel.
+  real(c_double):: DeltaCurved=1d-2          ! Minimum angle for two unit vectors to be parallel.
   real(c_double):: MinDelta=1d-8             ! Convergence parameter for Newton-Raphson iterations.
   real(c_double):: NewmarkDamp=1.d-4         ! Numerical damping in the Newmark integration scheme.
   logical(c_bool):: gravity_on = .FALSE.
