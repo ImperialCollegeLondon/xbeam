@@ -339,8 +339,10 @@ contains
                                                  psi_ini,&
                                                  pos_def,&
                                                  pos_def_dot,&
+                                                 pos_def_ddot,&
                                                  psi_def,&
                                                  psi_def_dot,&
+                                                 psi_def_ddot,&
                                                  steady_app_forces,&
                                                  dynamic_app_forces,&
                                                  gravity_forces,&
@@ -386,6 +388,8 @@ contains
         real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
         real(c_double), intent(INOUT)   :: pos_def_dot(n_node, 3)
         real(c_double), intent(INOUT)   :: psi_def_dot(n_elem, max_elem_node, 3)
+        real(c_double), intent(INOUT)   :: pos_def_ddot(n_node, 3)
+        real(c_double), intent(INOUT)   :: psi_def_ddot(n_elem, max_elem_node, 3)
 
         real(c_double), intent(IN)      :: steady_app_forces (n_node, 6)
         ! ADC: careful, forces in master FoR
@@ -396,27 +400,13 @@ contains
         real(c_double), intent(INOUT)   :: quat(4)
         real(c_double), intent(IN)      :: forced_vel(6)
         real(c_double), intent(IN)      :: forced_acc(6)
-        real(c_double), intent(OUT)     :: q(num_dof)
-        real(c_double), intent(OUT)     :: dqdt(num_dof)
+        real(c_double), intent(OUT)     :: q(num_dof + 10)
+        real(c_double), intent(OUT)     :: dqdt(num_dof + 10)
 
 
         integer(c_int)                  :: i_out
         integer(c_int)                  :: i
         integer(c_int)                  :: nodes_per_elem
-
-        integer(c_int), parameter        :: n_tsteps = 1
-
-        ! aux variables
-        real(c_double)                  :: time(n_tsteps + 1)
-        real(c_double)                  :: forced_vel_mat(2, 6)
-        real(c_double)                  :: forced_acc_mat(2, 6)
-
-
-        forced_vel_mat(1,:) = forced_vel
-        forced_acc_mat(1,:) = forced_acc
-        forced_vel_mat(2,:) = forced_vel
-        forced_acc_mat(2,:) = forced_acc
-        !num_dof = count(vdof > 0)*6
 
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
@@ -463,8 +453,10 @@ contains
                                      psi_def,&
                                      pos_def_dot,&
                                      psi_def_dot,&
-                                     q,&
-                                     dqdt,&
+                                     pos_def_ddot,&
+                                     psi_def_ddot,&
+                                     q(1:num_dof),&
+                                     dqdt(1:num_dof),&
                                      options)
         call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
     end subroutine cbeam3_solv_nlndyn_step_python
