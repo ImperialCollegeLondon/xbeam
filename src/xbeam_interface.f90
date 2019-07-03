@@ -286,56 +286,6 @@ end subroutine xbeam_solv_couplednlndyn_python
         integer(c_int)                  :: i
         integer(c_int)                  :: nodes_per_elem
 
-
-    ! if (any(isnan(steady_app_forces))) then
-    !     print*, 'xbeamint, 291'
-    !     stop
-    ! end if
-    !
-    ! if (any(isnan(dynamic_app_forces))) then
-    !     print*, 'xbeamint, 296'
-    !     stop
-    ! end if
-        ! print*, quat
-        ! fa_fake = 0
-        ! qquat = quat(:,1)
-        ! print*, 'cbeam3_interface, line 417'
-        ! ftime_fake = 0
-        ! print*, 'cbeam3_interface, line 417'
-        ! print*, size(forced_vel)l
-        ! print*, (forced_vel)
-        ! print*, 'cbeam3_interface, line 417'
-        !
-        !
-        ! print*, 'cbeam3_interface, line 423'
-        ! print*,  n_node
-         ! call print_matrix('conn',conn)
-         ! call print_matrix('pos_ini', pos_ini)
-         ! call print_matrix('pos_def', pos_def)
-         ! call print_matrix('pos_def_dot', pos_def_dot)
-         ! call print_matrix('psi_ini1', psi_ini(:, 1, :))
-         ! call print_matrix('psi_ini2', psi_ini(:, 2, :))
-         ! call print_matrix('psi_ini3', psi_ini(:, 3, :))
-         ! call print_matrix('psi_def1', psi_def(:, 1, :))
-         ! call print_matrix('psi_def2', psi_def(:, 2, :))
-         ! call print_matrix('psi_def3', psi_def(:, 3, :))
-         ! call print_matrix('fdof',fdof)
-         ! call print_matrix('steady_app_forces',steady_app_forces + dynamic_app_forces)
-         ! call print_matrix('vdof',vdof)
-         ! call print_matrix('master1',master(:,:,1))
-         ! call print_matrix('master2',master(:,:,2))
-         ! call print_matrix('masternode',master_node)
-         ! call print_matrix('psi_def_dot1',psi_def_dot(:, 1, :))
-         ! call print_matrix('psi_def_dot2',psi_def_dot(:, 2, :))
-         ! call print_matrix('q',q)
-         ! call print_matrix('dqdt',dqdt)
-         ! call print_matrix('dqddt',dqddt)
-         ! call print_matrix('for_vel',for_vel)
-         ! call print_matrix('for_acc',for_acc)
-        ! print*, 'IN'
-
-        ! print*, 'for_vel, init: ', for_vel(1:3)
-
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)
         options%NumGauss = nodes_per_elem - 1
@@ -360,8 +310,6 @@ end subroutine xbeam_solv_couplednlndyn_python
                                 master_node,&
                                 vdof,&
                                 fdof)
-         ! call print_elem('elem', elements)
-         ! call print_node('node', nodes)
 
         gravity_forces = 0.0d0
         call xbeam_solv_couplednlndyn_step_updated(numdof,&
