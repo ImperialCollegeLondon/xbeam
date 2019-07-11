@@ -2,8 +2,8 @@
 ## ===========================================================================
 export FCOMP = gfortran
 ## GFORTRAN RELEASE
-export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp # -fno-underscoring -g -fno-omit-frame-pointer
-export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared -fopenmp
+export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp  -m64 # -fno-underscoring -g -fno-omit-frame-pointer
+export LDFLAGS = -L/opt/lapack/lib64/ -lblas -llapack -shared  -Wl,--no-as-needed -lpthread -lm -ldl -fopenmp
 ## GFORTRAN DEBUG
 # export FCFLAGS = -g -fPIC -fcheck=all -fbacktrace -pedantic -fno-omit-frame-pointer  -ffpe-trap=invalid,zero,overflow,underflow,precision,denormal -std=f2008 -W -Wtabs -O -fbacktrace -fbounds-check -fstack-arrays -fno-underscoring
 # export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared -fopenmp
@@ -11,7 +11,7 @@ export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared -fopenmp
 
 ## INTEL FORTRAN SETTINGS
 ## ===========================================================================
-export FCOMP = ifort
+#export FCOMP = ifort
 ### IFORT RELEASE
 ### no MKL
 #export FCFLAGS = -I${MKLROOT}/include -fPIC -O3 -funroll-loops -march=native -fopenmp -heap-arrays -xHost -wrap-margin- -parallel -mkl
@@ -21,8 +21,8 @@ export FCOMP = ifort
 #`export LDFLAGS = -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -shared
 
 ## IFORT DEBUG
-export FCFLAGS = -fpic -O0 -g3 -stand f08 -traceback  -fstack-protector  -assume protect_parens  -implicitnone -check bounds -ftrapuv -debug all -fpe-all=0 -no-ftz -wrap-margin-
-export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared
+# export FCFLAGS = -fpic -O0 -g3 -stand f08 -traceback  -fstack-protector  -assume protect_parens  -implicitnone -check bounds -ftrapuv -debug all -fpe-all=0 -no-ftz -wrap-margin-
+# export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared
 ## ===========================================================================
 
 FOLDER = src/
