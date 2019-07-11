@@ -234,6 +234,7 @@ end subroutine xbeam_solv_couplednlndyn_python
                                                 dqddt&
                                                 )bind(C)
 
+        !$ use omp_lib
         integer(c_int), intent(IN)      :: numdof
         integer(c_int), intent(IN)      :: iter
         integer(c_int), intent(IN)      :: n_elem
@@ -289,6 +290,14 @@ end subroutine xbeam_solv_couplednlndyn_python
 
         integer(c_int)                  :: i
         integer(c_int)                  :: nodes_per_elem
+
+        logical                         :: use_openmp
+
+        use_openmp = .FALSE.
+        !$ use_openmp=.TRUE.
+        if (use_openmp) then
+            call omp_set_num_threads(2)
+        end if
 
         ! gaussian nodes
         nodes_per_elem = count(conn(1,:) /= 0)

@@ -1172,78 +1172,6 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         Ctotal = 0.0d0
         Ktotal = 0.0d0
 
-        ! system matrix generation
-        call cbeam3_asbly_dynamic(numdof,&
-                                  n_node,&
-                                  n_elem,&
-                                  elem,&
-                                  node,&
-                                  pos_ini,&
-                                  psi_ini,&
-                                  pos_def,&
-                                  psi_def,&
-                                  pos_dot_def,&
-                                  psi_dot_def,&
-                                  pos_ddot_def,&
-                                  psi_ddot_def,&
-                                  !0.0d0*pos_ddot_def,&
-                                  !0.0d0*psi_ddot_def,&
-                                  static_forces + dynamic_forces,&
-                                  dQdt(numdof+1:numdof+6),&
-                                  dQddt(numdof+1:numdof+6),&
-                                  !0.0d0*dQddt(numdof+1:numdof+6),&
-                                  MSS,&
-                                  MSR,&
-                                  CSS,&
-                                  CSR,&
-                                  KSS,&
-                                  Felast,&
-                                  Qelast,&
-                                  options,&
-                                  Cao)
-
-        call xbeam_asbly_dynamic(numdof,&
-                                 n_node,&
-                                 n_elem,&
-                                 elem,&
-                                 node,&
-                                 pos_ini,&
-                                 psi_ini,&
-                                 pos_def,&
-                                 psi_def,&
-                                 pos_dot_def,&
-                                 psi_dot_def,&
-                                 !0.0d0*pos_ddot_def,&
-                                 !0.0d0*psi_ddot_def,&
-                                 pos_ddot_def,&
-                                 psi_ddot_def,&
-                                 dQdt(numdof+1:numdof+6),&
-                                 dQddt(numdof+1:numdof+6),&
-                                 !0.0d0*dQddt(numdof+1:numdof+6),&
-                                 dQdt(numdof+7:numdof+10),&
-                                 MRS,&
-                                 MRR,&
-                                 CRS,&
-                                 CRR,&
-                                 CQR,&
-                                 CQQ,&
-                                 KRS,&
-                                 Frigid,&
-                                 Qrigid,&
-                                 options,&
-                                 Cao)
-
-        ! compute residual
-        Qelast = Qelast - matmul(Felast, &
-                                 fem_m2v(static_forces + &
-                                         dynamic_forces, &
-                                         numdof, &
-                                         Filter = ListIN))
-        Qrigid = Qrigid - matmul(Frigid,&
-                                 fem_m2v(static_forces + &
-                                         dynamic_forces, &
-                                         numdof + 6))
-
         if (options%gravity_on) then
             call xbeam_asbly_M_gravity(&
                                          numdof,&
@@ -1259,10 +1187,46 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                          MSS_gravity,&
                                          MRR_gravity,&
                                          options)
-            Qrigid = Qrigid + matmul(MRS_gravity, &
-                                     cbeam3_asbly_gravity_dynamic(NumDof + 6,&
-                                                                  options,&
-                                                                  Cao))
+        end if
+
+        !$omp parallel sections shared(Mtotal, Ctotal, Ktotal, Qtotal)
+        ! one thread
+        !$omp section
+        ! section for elastic DOF
+        ! system matrix generation
+        call cbeam3_asbly_dynamic(numdof,&
+                                  n_node,&
+                                  n_elem,&
+                                  elem,&
+                                  node,&
+                                  pos_ini,&
+                                  psi_ini,&
+                                  pos_def,&
+                                  psi_def,&
+                                  pos_dot_def,&
+                                  psi_dot_def,&
+                                  pos_ddot_def,&
+                                  psi_ddot_def,&
+                                  static_forces + dynamic_forces,&
+                                  dQdt(numdof+1:numdof+6),&
+                                  dQddt(numdof+1:numdof+6),&
+                                  MSS,&
+                                  MSR,&
+                                  CSS,&
+                                  CSR,&
+                                  KSS,&
+                                  Felast,&
+                                  Qelast,&
+                                  options,&
+                                  Cao)
+        ! compute residual
+        Qelast = Qelast - matmul(Felast, &
+                                 fem_m2v(static_forces + &
+                                         dynamic_forces, &
+                                         numdof, &
+                                         Filter = ListIN))
+
+        if (options%gravity_on) then
             gravity_forces = -fem_v2m(MATMUL(MSS_gravity,&
                                       cbeam3_asbly_gravity_dynamic(NumDof + 6,options, Cao)),&
                                       n_node, 6)
@@ -1271,25 +1235,74 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
 
         call mat_addmat(0, 0, MSS, Mtotal)
         call mat_addmat(0, numdof, MSR, Mtotal)
+
+        call mat_addmat(0, 0, CSS, Ctotal)
+        call mat_addmat(0, numdof, CSR, Ctotal)
+
+        call mat_addmat(0, 0, KSS, Ktotal)
+
+        Qtotal(1:numdof) = Qelast
+
+        ! another one here
+        !$omp section
+        call xbeam_asbly_dynamic(numdof,&
+                                 n_node,&
+                                 n_elem,&
+                                 elem,&
+                                 node,&
+                                 pos_ini,&
+                                 psi_ini,&
+                                 pos_def,&
+                                 psi_def,&
+                                 pos_dot_def,&
+                                 psi_dot_def,&
+                                 pos_ddot_def,&
+                                 psi_ddot_def,&
+                                 dQdt(numdof+1:numdof+6),&
+                                 dQddt(numdof+1:numdof+6),&
+                                 dQdt(numdof+7:numdof+10),&
+                                 MRS,&
+                                 MRR,&
+                                 CRS,&
+                                 CRR,&
+                                 CQR,&
+                                 CQQ,&
+                                 KRS,&
+                                 Frigid,&
+                                 Qrigid,&
+                                 options,&
+                                 Cao)
+
+        Qrigid = Qrigid - matmul(Frigid,&
+                                 fem_m2v(static_forces + &
+                                         dynamic_forces, &
+                                         numdof + 6))
+
+        if (options%gravity_on) then
+            Qrigid = Qrigid + matmul(MRS_gravity, &
+                                     cbeam3_asbly_gravity_dynamic(NumDof + 6,&
+                                                                  options,&
+                                                                  Cao))
+        end if
+
         call mat_addmat(numdof, 0, MRS, Mtotal)
         call mat_addmat(numdof, numdof, MRR, Mtotal)
         call mat_addmat(numdof + 6, numdof + 6, unit4, Mtotal)
 
-        Qtotal(1:numdof) = Qelast
-        Qtotal(numdof+1:numdof+6) = Qrigid
-        Qtotal(numdof+7:numdof+10) = matmul(CQQ, dQdt(numdof+7:numdof+10))
-        Qtotal = Qtotal + matmul(Mtotal, dqddt)
-
-        ! damping and stiffness matrices
-        call mat_addmat(0, 0, CSS, Ctotal)
-        call mat_addmat(0, numdof, CSR, Ctotal)
         call mat_addmat(numdof, 0, CRS, Ctotal)
         call mat_addmat(numdof, numdof, CRR, Ctotal)
         call mat_addmat(numdof+6, numdof, CQR, Ctotal)
         call mat_addmat(numdof+6, numdof+6, CQQ, Ctotal)
 
-        call mat_addmat(0, 0, KSS, Ktotal)
         call mat_addmat(numdof, 0, KRS, Ktotal)
+
+        Qtotal(numdof+1:numdof+6) = Qrigid
+        Qtotal(numdof+7:numdof+10) = matmul(CQQ, dQdt(numdof+7:numdof+10))
+
+        !up until here
+        !$omp end parallel sections
+
+        Qtotal = Qtotal + matmul(Mtotal, dqddt)
 
         Asys = Ktotal
         Asys = Asys + Ctotal*gamma/(beta*dt)
