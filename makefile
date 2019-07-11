@@ -11,17 +11,18 @@ export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared -fopenmp
 
 ## INTEL FORTRAN SETTINGS
 ## ===========================================================================
-# export FCOMP = ifort
-## IFORT RELEASE
-## no MKL
-# export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -fopenmp -heap-arrays -xHost -wrap-margin-
-## with MKL
-# export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -heap-arrays -xHost -wrap-margin- -mkl=parallel
-# export LDFLAGS = -liomp5 -lpthread -lm -ldl -shared
+export FCOMP = ifort
+### IFORT RELEASE
+### no MKL
+#export FCFLAGS = -I${MKLROOT}/include -fPIC -O3 -funroll-loops -march=native -fopenmp -heap-arrays -xHost -wrap-margin- -parallel -mkl
+### with MKL
+# export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -heap-arrays -xHost -wrap-margin- -mkl=parallel -parallel -qopenmp
+# export LDFLAGS = -lmatmul -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -mkl -shared -parallel -qopenmp
+#`export LDFLAGS = -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -shared
 
 ## IFORT DEBUG
-# export FCFLAGS = -fpic -O0 -g3 -stand f08 -traceback  -fstack-protector  -assume protect_parens  -implicitnone -check bounds -ftrapuv -debug all -fpe-all=0 -no-ftz -wrap-margin-
-# export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared -fopenmp
+export FCFLAGS = -fpic -O0 -g3 -stand f08 -traceback  -fstack-protector  -assume protect_parens  -implicitnone -check bounds -ftrapuv -debug all -fpe-all=0 -no-ftz -wrap-margin-
+export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared
 ## ===========================================================================
 
 FOLDER = src/
