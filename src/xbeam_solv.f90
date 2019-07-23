@@ -1112,6 +1112,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     gamma = 0.5d0 + options%NewmarkDamp
     beta = 0.25d0*(gamma + 0.5d0)*(gamma + 0.5d0)
 
+     dqdt(numdof+7:numdof+10) = quat
      Q = Q + dt*dQdt + (0.5d0 - beta)*dt*dt*dQddt
      dQdt = dQdt + (1.0d0 - gamma)*dt*dQddt
      dQddt = 0.0d0
@@ -1189,9 +1190,9 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
                                          options)
         end if
 
-        !$omp parallel sections shared(Mtotal, Ctotal, Ktotal, Qtotal)
+        !!$omp parallel sections shared(Mtotal, Ctotal, Ktotal, Qtotal)
         ! one thread
-        !$omp section
+        !!$omp section
         ! section for elastic DOF
         ! system matrix generation
         call cbeam3_asbly_dynamic(numdof,&
@@ -1244,7 +1245,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         Qtotal(1:numdof) = Qelast
 
         ! another one here
-        !$omp section
+        !!$omp section
         call xbeam_asbly_dynamic(numdof,&
                                  n_node,&
                                  n_elem,&
@@ -1300,7 +1301,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
         Qtotal(numdof+7:numdof+10) = matmul(CQQ, dQdt(numdof+7:numdof+10))
 
         !up until here
-        !$omp end parallel sections
+        !!$omp end parallel sections
 
         Qtotal = Qtotal + matmul(Mtotal, dqddt)
 

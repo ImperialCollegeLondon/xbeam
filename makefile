@@ -3,7 +3,7 @@
 export FCOMP = gfortran
 ## GFORTRAN RELEASE
 export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp  -m64 # -fno-underscoring -g -fno-omit-frame-pointer
-export LDFLAGS = -L/opt/lapack/lib64/ -lblas -llapack -shared  -Wl,--no-as-needed -lpthread -lm -ldl -fopenmp
+export LDFLAGS = -L$(LAPACK_LIB_DIR) -lblas -llapack -shared  -Wl,--no-as-needed -lpthread -lm -ldl -fopenmp
 ## GFORTRAN DEBUG
 # export FCFLAGS = -g -fPIC -fcheck=all -fbacktrace -pedantic -fno-omit-frame-pointer  -ffpe-trap=invalid,zero,overflow,underflow,precision,denormal -std=f2008 -W -Wtabs -O -fbacktrace -fbounds-check -fstack-arrays -fno-underscoring
 # export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared -fopenmp
