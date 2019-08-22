@@ -985,6 +985,8 @@ DX_old = 1.0d0*options%mindelta
                                     psi_def,&
                                     pos_dot_def,&
                                     psi_dot_def,&
+                                    pos_ddot_def,&
+                                    psi_ddot_def,&
                                     q,&
                                     dqdt,&
                                     options)
@@ -1017,6 +1019,8 @@ DX_old = 1.0d0*options%mindelta
   real(8),      intent(inout)       :: psi_def(num_elem, 3, 3) ! Current CRV of the nodes in the elements.
   real(8),      intent(inout)       :: pos_dot_def(num_node, 3)  ! Current time derivatives of the coordinates of the grid points
   real(8),      intent(inout)       :: psi_dot_def(num_elem, 3, 3)! Current time derivatives of the CRV of the nodes in the elements.
+  real(8),      intent(inout)       :: pos_ddot_def(num_node, 3)
+  real(8),      intent(inout)       :: psi_ddot_def(num_elem, 3, 3)
   real(8),      intent(out)         :: q(num_dof)
   real(8),      intent(out)         :: dqdt(num_dof)
   type(xbopts) ,intent(in)          :: options           ! solver parameters.
@@ -1031,8 +1035,6 @@ DX_old = 1.0d0*options%mindelta
 
   real(8)                           :: dXdt(num_dof),dXddt(num_dof)  ! Generalized coordinates and derivatives.
   real(8)                           :: X(num_dof), DX(num_dof)
-  real(8)                           :: residual
-  real(8)                           :: previous_residual
 
   integer                           ::  ListIN     (num_node)    ! List of independent nodes.
 
@@ -1053,6 +1055,8 @@ DX_old = 1.0d0*options%mindelta
   real(8)                           :: Cao(3,3)
   real(8)                           :: Temp(4, 4)
   logical                           :: converged
+  real(8)                           :: residual
+  real(8)                           :: abs_threshold
   real(8)                           :: old_x
   real(8)                           :: old_dx
 
@@ -1069,6 +1073,7 @@ DX_old = 1.0d0*options%mindelta
     dXdt = 0.0d0
     dXddt = 0.0d0
     call cbeam3_solv_disp2state(node,pos_def,psi_def,pos_dot_def,psi_dot_def,X,dXdt)
+    call cbeam3_solv_accel2state(node, pos_ddot_def, psi_ddot_def, dXddt)
 
     X = X + dt*dXdt + (0.5d0 - beta)*dt*dt*dXddt
     dXdt = dXdt + (1.0d0 - gamma)*dt*dXddt
@@ -1082,6 +1087,7 @@ DX_old = 1.0d0*options%mindelta
     mindelta = 0
     old_x = 1.0d0
     converged = .FALSE.
+    abs_threshold = epsilon(old_DX)
     old_DX = 1.0d0
     ! Iteration loop -----------------------------------------
     do iter = 1, options%maxiterations + 1
@@ -1101,7 +1107,7 @@ DX_old = 1.0d0*options%mindelta
                                     psi_def,&
                                     pos_dot_def,&
                                     psi_dot_def)
-        ! call cbeam3_solv_state2accel(Elem, Node, dqddt(1:numdof), pos_ddot_def, psi_ddot_def)
+        call cbeam3_solv_state2accel(Elem, Node, dXddt, pos_ddot_def, psi_ddot_def)
 
         ! system functionals and matrices initialisation
         Mvel = 0.0d0
@@ -1125,10 +1131,10 @@ DX_old = 1.0d0*options%mindelta
                                   psi_def,&
                                   pos_dot_def,&
                                   psi_dot_def,&
-                                  ! pos_ddot_def,&
-                                  ! psi_ddot_def,&
-                                  0.0d0*pos_dot_def,&
-                                  0.0d0*psi_dot_def,&
+                                  pos_ddot_def,&
+                                  psi_ddot_def,&
+                                  !0.0d0*pos_dot_def,&
+                                  !0.0d0*psi_dot_def,&
                                   static_forces + dynamic_forces,&
                                   for_vel,&
                                   for_acc,&
@@ -1145,7 +1151,6 @@ DX_old = 1.0d0*options%mindelta
         ! compute residual
         Qglobal = Qglobal + MATMUL(Mglobal, dXddt)
         Qglobal = Qglobal + MATMUL(Mvel, for_acc)
-        ! Qglobal = Qglobal - MATMUL(Fglobal, fem_m2v(static_forces + dynamic_forces, num_dof, filter=ListIN))
         Qglobal = Qglobal - MATMUL(Fglobal, fem_m2v(static_forces + dynamic_forces, num_dof, filter=ListIN))
 
         if (options%gravity_on) then
@@ -1168,86 +1173,25 @@ DX_old = 1.0d0*options%mindelta
             Qglobal = Qglobal - fem_m2v(gravity_forces, num_dof, filter=ListIN)
         end if
 
-        ! Qtotal(1:numdof) = Qelast
-        ! Qtotal(numdof+1:numdof+6) = Qrigid
-        ! Qtotal(numdof+7:numdof+10) = matmul(CQQ, dQdt(numdof+7:numdof+10))
-
-        ! call mat_addmat(0, 0, MSS, Mtotal)
-        ! call mat_addmat(0, numdof, MSR, Mtotal)
-        ! call mat_addmat(numdof, 0, MRS, Mtotal)
-        ! call mat_addmat(numdof, numdof, MRR, Mtotal)
-        ! call mat_addmat(numdof + 6, numdof + 6, unit4, Mtotal)
-
-        ! Qtotal = Qtotal + matmul(Mtotal, dqddt)
-
-        ! convergence check
-        ! print*, 'maxval(abs(Qelast)) = ', maxval(abs(Qelast))
-        ! if (maxval(abs(Qelast)) < mindelta .AND.&
-        !     maxval(abs(Qrigid)) < MinDeltarigid) then
-        !     ! print*, 'converged in ', iter
-        !     converged = .TRUE.
-        ! end if
-
-        ! ! damping and stiffness matrices
-        ! call mat_addmat(0, 0, CSS, Ctotal)
-        ! call mat_addmat(0, numdof, CSR, Ctotal)
-        ! call mat_addmat(numdof, 0, CRS, Ctotal)
-        ! call mat_addmat(numdof, numdof, CRR, Ctotal)
-        ! call mat_addmat(numdof+6, numdof, CQR, Ctotal)
-        ! call mat_addmat(numdof+6, numdof+6, CQQ, Ctotal)
-        !
-        ! call mat_addmat(0, 0, KSS, Ktotal)
-        ! call mat_addmat(numdof, 0, KRS, Ktotal)
-
-        ! assembly of A matrix
-        ! if (any(abs(Ktotal) > 1e11)) then
-        !     print*, 'KTOTAL---------------------------------'
-            ! call print_matrix('Mtotal', Mtotal)
-        !     call print_matrix('pos_def', pos_def)
-        !     call print_elem('failed_elements', elem)
-        !     stop
-        ! end if
-
-        ! print*, 'Test'
-        ! if (any(isnan(Ktotal))) then
-        !     print*, 'Ktotal'
-        !     stop
-        ! end if
-        ! if (any(isnan(Ctotal))) then
-        !     print*, 'Ctotal'
-        !     stop
-        ! end if
-        ! if (any(isnan(Mtotal))) then
-        !     print*, 'Mtotal'
-        !     stop
-        ! end if
-!
-        ! call print_matrix('Kglobal', Kglobal)
-        ! call print_matrix('Cglobal', Cglobal)
-        ! call print_matrix('Mglobal', Mglobal)
-        ! stop
         Asys = Kglobal
         Asys = Asys + Cglobal*gamma/(beta*dt)
         Asys = Asys + Mglobal/(beta*dt*dt)
 
-        ! print*, size(Asys, dim=1), size(Asys, dim=2)
-        ! if (any(isnan(Asys))) then
-        !     print*, 'Asys'
-        !     stop
-        ! end if
 
 
         ! calculation of the correction
         DX = 0.0d0
         call lu_solve(num_dof, Asys, -Qglobal, DX)
 
+        residual = sqrt(dot_product(DX, DX))
         if (Iter > 1) then
-            ! print*, (maxval(abs(DX))/old_DX)
-            ! if ((sqrt(dot_product(q, q))-old_q)/old_q < options%MinDelta) then
-            ! if (abs(maxval(abs(DQ)) - old_DQ)/old_DQ < options%MinDelta) then
-            if (maxval(abs(DX))/old_DX < options%MinDelta) then
+            if (residual/old_DX < options%MinDelta) then
+                converged = .TRUE.
+            else if (residual < abs_threshold) then
                 converged = .TRUE.
             end if
+        else
+            old_DX = residual
         end if
 
 
@@ -1259,27 +1203,8 @@ DX_old = 1.0d0*options%mindelta
         X = X + DX
         dXdt  = dXdt  + gamma/(beta*dt)*DX
         dXddt = dXddt + 1.d0/(beta*dt*dt)*DX
-
-        if (iter == 1) then
-            old_DX = max(maxval(abs(DX)), 1.0d0)
-        end if
-        ! old_q = sqrt(dot_product(q, q))
-        ! end of convergence check
-
-        ! call cbeam3_solv_state2disp(elem,&
-        !                             node,&
-        !                             pos_ini,&
-        !                             psi_ini,&
-        !                             Q(1:numdof),&
-        !                             dQdt(1:numdof),&
-        !                             pos_def,&
-        !                             psi_def,&
-        !                             pos_dot_def,&
-        !                             psi_dot_def)
     end do
 
-    ! dQdt(numdof+7:numdof+10) = rot_unit(dQdt(numdof+7:numdof+10))
-    ! update of the nodal positions
     call cbeam3_solv_state2disp(elem,&
                                 node,&
                                 pos_ini,&
@@ -1290,236 +1215,12 @@ DX_old = 1.0d0*options%mindelta
                                 psi_def,&
                                 pos_dot_def,&
                                 psi_dot_def)
+    call cbeam3_solv_state2accel(Elem, Node, dXddt, pos_ddot_def, psi_ddot_def)
 
 
-  q(1:size(q) - 10) = X
-  dqdt(1:size(q) - 10) = dXdt
+  q = X
+  dqdt = dXdt
 
-    ! quat = dQdt(numdof+7:numdof+10)
-    ! if (options%OutInaframe) then
-    !     for_vel = dQdt(numdof+1:numdof+6)
-    !     for_acc = dQddt(numdof+1:numdof+6)
-    ! else
-    !     print*, 'outinaframe is not TRUE, please check!'
-    !     stop
-    ! end if
-
-! ! Initialize.
-!   do k=1, num_node
-!     ListIN(k)=Node(k)%Vdof
-!   end do
-!   gamma=0.5d0+Options%NewmarkDamp
-!   beta =0.25d0*(gamma+0.5d0)*(gamma+0.5d0)
-!
-!   Cao = xbeam_Rot(Quat)
-!
-! ! Extract initial displacements and velocities.
-!   call cbeam3_solv_disp2state (node,pos_def,psi_def,pos_dot_def,psi_dot_def,X,dXdt)
-!
-! ! Compute initial acceleration (we are neglecting qdotdot in Kmass).
-!   if (options%gravity_on .eqv. .TRUE.) then
-!       call cbeam3_asbly_dynamic (Elem,&
-!                                  Node,&
-!                                  Coords,&
-!                                  Psi0,&
-!                                  PosDefor,&
-!                                  PsiDefor,&
-!                                  PosDotDefor,&
-!                                  PsiDotDefor,&
-!                                  0.d0*PosDefor,&
-!                                  0.d0*PsiDefor,&
-!                                  F0+Ftime(1)*Fa,&
-!                                  Vrel(1,:),&
-!                                  VrelDot(1,:),&
-!                                  ms,Mglobal,&
-!                                  Mvel,&
-!                                  cs,Cglobal,&
-!                                  Cvel,&
-!                                  ks,Kglobal,&
-!                                  fs,Fglobal,&
-!                                  Qglobal,&
-!                                  Options,&
-!                                  Cao)
-!
-!       Qglobal= Qglobal + sparse_matvmul(ms,Mglobal,&
-!                                         NumDof,&
-!                                         cbeam3_asbly_gravity_dynamic(NumDof, options, Cao), '749')
-!   else
-!       call cbeam3_asbly_dynamic (Elem,&
-!                                  Node,&
-!                                  Coords,&
-!                                  Psi0,&
-!                                  PosDefor,&
-!                                  PsiDefor,&
-!                                  PosDotDefor,&
-!                                  PsiDotDefor,&
-!                                  0.d0*PosDefor,&
-!                                  0.d0*PsiDefor,&
-!                                  F0+Ftime(1)*Fa,&
-!                                  Vrel(1,:),&
-!                                  VrelDot(1,:),&
-!                                  ms,Mglobal,&
-!                                  Mvel,&
-!                                  cs,Cglobal,&
-!                                  Cvel,&
-!                                  ks,Kglobal,&
-!                                  fs,Fglobal,&
-!                                  Qglobal,&
-!                                  Options,&
-!                                  Cao)
-!   end if
-!
-!   Qglobal= Qglobal - sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(F0+Ftime(1)*Fa,NumDof,Filter=ListIN))
-!
-!   call sparse_addsparse(0,0,ms,Mglobal,as,Asys)
-!   call lu_sparse(as,Asys,-Qglobal,dXddt)
-!
-! ! Loop in the time steps.
-!   do iStep=1,size(Time)-1
-!     dt= Time(iStep+1)-Time(iStep)
-!     if (Options%PrintInfo) then
-!       call out_time(iStep,Time(iStep+1),Text)
-!       ! write (*,'(5X,A,$)') trim(Text)
-!     end if
-! ! Update transformation matrix for given angular velocity
-!     call lu_invers ((Unit4+0.25d0*xbeam_QuadSkew(Vrel(iStep+1,4:6))*(Time(iStep+1)-Time(iStep))),Temp)
-!     Quat=matmul(Temp,matmul((Unit4-0.25d0*xbeam_QuadSkew(Vrel(iStep,4:6))*(Time(iStep+1)-Time(iStep))),Quat))
-!     Cao = xbeam_Rot(Quat)
-!
-! ! Predictor step.
-!     X    = X + dt*dXdt + (0.5d0-beta)*dt*dt*dXddt
-!     dXdt = dXdt + (1.d0-gamma)*dt*dXddt
-!     dXddt= 0.d0
-!
-! ! Iteration until convergence.
-!
-!     previous_residual = 1e10
-!     do Iter=1,Options%MaxIterations+1
-!       if (Iter.gt.Options%MaxIterations) then
-!         ! write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
-!         STOP 'Solution did not converge (18235)'
-!       end if
-!
-! ! Update nodal positions and velocities .
-!       call cbeam3_solv_state2disp (Elem,&
-!                                    Node,&
-!                                    Coords,&
-!                                    Psi0,&
-!                                    X,&
-!                                    dXdt,&
-!                                    PosDefor,&
-!                                    PsiDefor,&
-!                                    PosDotDefor,&
-!                                    PsiDotDefor)
-!
-! ! Compute system functionals and matrices. (Use initial accelerations for Kgyr).
-!       Qglobal= 0.d0
-!       Mvel   = 0.d0
-!       Cvel   = 0.d0
-!       call sparse_zero (ms,Mglobal)
-!       call sparse_zero (cs,Cglobal)
-!       call sparse_zero (ks,Kglobal)
-!       call sparse_zero (fs,Fglobal)
-!
-!   if (options%gravity_on .eqv. .TRUE.) then
-!       call cbeam3_asbly_dynamic (Elem,&
-!                                  Node,&
-!                                  Coords,&
-!                                  Psi0,&
-!                                  PosDefor,&
-!                                  PsiDefor,&
-!                                  PosDotDefor,&
-!                                  PsiDotDefor,&
-!                                  0.d0*PosDefor,&
-!                                  0.d0*PsiDefor,&
-!                                  F0+Ftime(iStep+1)*Fa,&
-!                                  Vrel(iStep+1,:),&
-!                                  VrelDot(iStep+1,:),&
-!                                  ms,Mglobal,&
-!                                  Mvel,&
-!                                  cs,Cglobal,&
-!                                  Cvel,&
-!                                  ks,Kglobal,&
-!                                  fs,Fglobal,&
-!                                  Qglobal,&
-!                                  Options,&
-!                                  Cao)
-!       Qglobal= Qglobal + sparse_matvmul(ms,Mglobal,&
-!                                         NumDof,&
-!                                         cbeam3_asbly_gravity_dynamic(NumDof,&
-!                                                                      options,&
-!                                                                      Cao), &
-!                                         '807')
-!
-!   else
-!       call cbeam3_asbly_dynamic (Elem,&
-!                                  Node,&
-!                                  Coords,&
-!                                  Psi0,&
-!                                  PosDefor,&
-!                                  PsiDefor,&
-!                                  PosDotDefor,&
-!                                  PsiDotDefor,&
-!                                  0.d0*PosDefor,&
-!                                  0.d0*PsiDefor,&
-!                                  F0+Ftime(iStep+1)*Fa,&
-!                                  Vrel(iStep+1,:),&
-!                                  VrelDot(iStep+1,:),&
-!                                  ms,Mglobal,&
-!                                  Mvel,&
-!                                  cs,Cglobal,&
-!                                  Cvel,&
-!                                  ks,Kglobal,&
-!                                  fs,Fglobal,&
-!                                  Qglobal,&
-!                                  Options,&
-!                                  Cao)
-!   end if
-!
-! ! Compute admissible error.
-!       MinDelta=Options%MinDelta
-!
-! ! Compute the residual.
-!       Qglobal= Qglobal + sparse_matvmul(ms,Mglobal,NumDof,dXddt) + matmul(Mvel,Vreldot(iStep+1,:))
-!       Qglobal= Qglobal - sparse_matvmul(fs,Fglobal,NumDof,fem_m2v(F0+Ftime(iStep+1)*Fa,NumDof,Filter=ListIN))
-!
-!
-! ! Check convergence.
-!     !   if (maxval(abs(DX)).lt.MinDelta) then
-!     residual = maxval(abs(DX))
-!     ! if (Iter > 1) then
-!       if (abs((residual - previous_residual)/previous_residual).lt.MinDelta) then
-!         if (Options%PrintInfo) then
-!           write (*,'(5X,A,I4,A,1PE12.3)') 'Subiteration',Iter, '  Delta=', maxval(abs(Qglobal))
-!         end if
-!         exit
-!       end if
-!     end if
-!     previous_residual = residual
-!
-! ! Compute Jacobian
-!       call sparse_zero (as,Asys)
-!       call sparse_addsparse(0,0,ks,Kglobal,as,Asys,Factor=1.d0)
-!       call sparse_addsparse(0,0,cs,Cglobal,as,Asys,Factor=gamma/(beta*dt))
-!       call sparse_addsparse(0,0,ms,Mglobal,as,Asys,Factor=1.d0/(beta*dt*dt))
-!
-! ! Calculation of the correction.
-!       call lu_sparse(as,Asys,-Qglobal,DX)
-!
-!       X    = X     + DX
-!       dXdt = dXdt  + gamma/(beta*dt)*DX
-!       dXddt= dXddt + 1.d0/(beta*dt*dt)*DX
-!     end do
-!
-! ! Update nodal positions and velocities on the current converged time step.
-!     call cbeam3_solv_state2disp (Elem,Node,Coords,Psi0,X,dXdt,PosDefor,PsiDefor,PosDotDefor,PsiDotDefor)
-!   end do
-!
-!   deallocate (ListIN,Mvel,Cvel)
-!   deallocate (Asys,Fglobal,Mglobal)
-!   deallocate (Kglobal,Cglobal,Qglobal)
-!   deallocate (X,DX,dXdt,dXddt)
-!   deallocate (Displ,Veloc)
  end subroutine cbeam3_solv_nlndyn_step
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! !-> Subroutine CBEAM3_SOLV_NLNDYN_STEP

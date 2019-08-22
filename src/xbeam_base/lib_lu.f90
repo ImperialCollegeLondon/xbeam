@@ -369,7 +369,7 @@ end function inv
     end subroutine lu_sparse
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     subroutine lu_solve(numdof,A, b, X, balancing)
-        use, intrinsic :: IEEE_ARITHMETIC
+        !use, intrinsic :: IEEE_ARITHMETIC
         use, intrinsic :: ISO_C_BINDING
         integer, intent(IN)     :: numdof
         real(8), intent(IN)     :: A(numdof, numdof)
@@ -402,14 +402,14 @@ end function inv
         integer                 :: nrows
         logical                 :: with_balancing
 
-        if (any(ieee_is_nan(A))) then
-             open(newunit=unit, file='debug_failed_Asys.txt')
-             do i=1, size(A(:,1))
-                 write(unit,*)A(i, :)
-             end do
-             close(unit)
-            STOP 'NaN in lu_solve'
-        end if
+        !if (any(ieee_is_nan(A))) then
+             !open(newunit=unit, file='debug_failed_Asys.txt')
+             !do i=1, size(A(:,1))
+                 !write(unit,*)A(i, :)
+             !end do
+             !close(unit)
+            !STOP 'NaN in lu_solve'
+        !end if
 
         A_copy = A
         X = b
