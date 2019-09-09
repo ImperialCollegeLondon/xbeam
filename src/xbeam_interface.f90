@@ -932,8 +932,10 @@ end subroutine xbeam_solv_couplednlndyn_python
                                             psi_ini,&
                                             pos,&
                                             pos_dot,&
+                                            pos_ddot,&
                                             psi,&
                                             psi_dot,&
+                                            psi_ddot,&
                                             steady_applied_forces,&
                                             unsteady_applied_forces,&
                                             for_vel,&
@@ -982,8 +984,10 @@ end subroutine xbeam_solv_couplednlndyn_python
         real(c_double), intent(IN)      :: psi_ini(n_elem, max_elem_node, 3)
         real(c_double), intent(IN)      :: pos(n_node, 3)
         real(c_double), intent(IN)      :: pos_dot(n_node, 3)
+        real(c_double), intent(IN)      :: pos_ddot(n_node, 3)
         real(c_double), intent(IN)      :: psi(n_elem, max_elem_node, 3)
         real(c_double), intent(IN)      :: psi_dot(n_elem, max_elem_node, 3)
+        real(c_double), intent(IN)      :: psi_ddot(n_elem, max_elem_node, 3)
 
         ! input variables: forces
         real(c_double), intent(IN)      :: steady_applied_forces(n_node, 6)
@@ -1066,8 +1070,6 @@ end subroutine xbeam_solv_couplednlndyn_python
         real(c_double), intent(IN)    :: dQdt(numdof + 6 + 4)
         real(c_double)                :: aux_dQdt(numdof + 6 + 4)
         real(c_double), intent(IN)    :: dQddt(numdof + 6 + 4)
-        real(8)                       :: pos_ddot(n_node, 3)
-        real(8)                       :: psi_ddot(n_elem, 3, 3)
         integer                         :: k
 
         real(8),parameter,dimension(4,4):: Unit4= &       ! 4x4 Unit matrix.
@@ -1101,8 +1103,6 @@ end subroutine xbeam_solv_couplednlndyn_python
          do k=1,size(nodes)
            ListIN(k)=nodes(k)%Vdof
          end do
-
-        call cbeam3_solv_state2accel(elements, nodes, dqddt(1:numdof), pos_ddot, psi_ddot)
 
          ! orientation update
          ! ams: otherwise it gives a compilation error
@@ -1154,12 +1154,9 @@ end subroutine xbeam_solv_couplednlndyn_python
                                    psi_dot,&
                                    pos_ddot,&
                                    psi_ddot,&
-                                   !0.0d0*pos_ddot_def,&
-                                   !0.0d0*psi_ddot_def,&
                                    steady_applied_forces + unsteady_applied_forces,&
                                    dQdt(numdof+1:numdof+6),&
                                    dQddt(numdof+1:numdof+6),&
-                                   !0.0d0*dQddt(numdof+1:numdof+6),&
                                    MSS,&
                                    MSR,&
                                    CSS,&
@@ -1181,13 +1178,10 @@ end subroutine xbeam_solv_couplednlndyn_python
                                   psi,&
                                   pos_dot,&
                                   psi_dot,&
-                                  !0.0d0*pos_ddot_def,&
-                                  !0.0d0*psi_ddot_def,&
                                   pos_ddot,&
                                   psi_ddot,&
                                   dQdt(numdof+1:numdof+6),&
                                   dQddt(numdof+1:numdof+6),&
-                                  !0.0d0*dQddt(numdof+1:numdof+6),&
                                   dQdt(numdof+7:numdof+10),&
                                   MRS,&
                                   MRR,&
@@ -1208,10 +1202,6 @@ end subroutine xbeam_solv_couplednlndyn_python
                                           numdof, &
                                           Filter = ListIN))
 
-         ! Qrigid = Qrigid - matmul(Frigid,&
-         !                          fem_m2v(steady_applied_forces + &
-         !                                  unsteady_applied_forces, &
-         !                                  numdof + 6))
           Qrigid = Qrigid - matmul(Frigid,&
                                    fem_m2v(steady_applied_forces + &
                                            unsteady_applied_forces, &
@@ -1263,6 +1253,8 @@ end subroutine xbeam_solv_couplednlndyn_python
 
          call mat_addmat(0, 0, KSS, Ktotal)
          call mat_addmat(numdof, 0, KRS, Ktotal)
+
+         
 
     end subroutine xbeam3_asbly_dynamic_python
 

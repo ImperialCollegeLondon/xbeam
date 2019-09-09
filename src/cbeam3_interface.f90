@@ -974,8 +974,10 @@ end subroutine output_elems
                                         psi_ini,&
                                         pos,&
                                         pos_dot,&
+                                        pos_ddot,&
                                         psi,&
                                         psi_dot,&
+                                        psi_ddot,&
                                         steady_applied_forces,&
                                         unsteady_applied_forces,&
                                         for_vel,&
@@ -1020,8 +1022,10 @@ end subroutine output_elems
     real(c_double), intent(IN)      :: psi_ini(n_elem, max_elem_node, 3)
     real(c_double), intent(IN)      :: pos(n_node, 3)
     real(c_double), intent(IN)      :: pos_dot(n_node, 3)
+    real(c_double), intent(IN)      :: pos_ddot(n_node, 3)
     real(c_double), intent(IN)      :: psi(n_elem, max_elem_node, 3)
     real(c_double), intent(IN)      :: psi_dot(n_elem, max_elem_node, 3)
+    real(c_double), intent(IN)      :: psi_ddot(n_elem, max_elem_node, 3)
     real(c_double), intent(IN)      :: dXddt(num_dof)
 
     ! input variables: forces
@@ -1131,6 +1135,8 @@ end subroutine output_elems
     Quat=matmul(Temp,matmul((Unit4-0.25d0*xbeam_QuadSkew(for_vel(4:6))*dt),Quat))
     Cao = xbeam_Rot(Quat)
 
+    !call cbeam3_solv_state2accel(elements, nodes, dXddt, pos_ddot, psi_ddot)
+
     ! Assembly matrices
     call cbeam3_asbly_dynamic_new_interface(num_dof,&
                                           n_node,&
@@ -1143,10 +1149,8 @@ end subroutine output_elems
                                           psi,&
                                           pos_dot,&
                                           psi_dot,&
-                                          ! pos_ddot_def,&
-                                          ! psi_ddot_def,&
-                                          0.0d0*pos_dot,&
-                                          0.0d0*psi_dot,&
+                                          pos_ddot,&
+                                          psi_ddot,&
                                           steady_applied_forces + unsteady_applied_forces,&
                                           for_vel,&
                                           for_acc,&
@@ -1188,6 +1192,7 @@ end subroutine output_elems
         Qglobal = Qglobal - fem_m2v(gravity_forces, num_dof, Filter=ListIN)
     end if
 
+    !call cbeam3_solv_state2accel(Elem, Node, dXddt, pos_ddot, psi_ddot)
 
 end subroutine cbeam3_asbly_dynamic_python
 
