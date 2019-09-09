@@ -1438,7 +1438,7 @@ end subroutine cbeam3_asbly_dynamic_python
   !   real(8),      intent(IN)          :: dt
   !
     ! Matrices
-    real(c_double)                    :: Mglobal(num_dof,num_dof)
+    real(c_double)                    :: Mglobal(num_dof + 6,num_dof + 6)
   !   real(c_double)                  :: Mvel(num_dof, 6)
   !   real(c_double), intent(OUT)     :: Cglobal(num_dof,num_dof)
   !   real(c_double)                  :: Cvel(num_dof, 6)
