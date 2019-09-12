@@ -189,13 +189,14 @@ DX_old = 1.0d0*options%mindelta
   Fglobal = 0.0d0
 
 ! Apply loads in substeps.
-  do iLoadStep=1,Options%NumLoadSteps
+    iloadstep = 1
     Iter  = 0
     Delta = Options%MinDelta+1.d0
 
 ! Iteration until convergence.
   converged=.false.
     do while (converged .eqv. .false.)!(Delta.gt.Options%MinDelta)
+  print*, 'In cbeam3_solv, line 200'
       Iter= Iter+1
       if (Iter.gt.Options%MaxIterations) then
           print*, 'Residual is: ', maxval(abs(DeltaX))
@@ -358,7 +359,6 @@ DX_old = 1.0d0*options%mindelta
  !    end if
 
     end do
-  end do
  end subroutine cbeam3_solv_nlnstatic_old
 
 
