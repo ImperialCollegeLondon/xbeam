@@ -485,7 +485,6 @@ contains
                                             psi_ini,&
                                             pos_def,&
                                             psi_def,&
-                                            n_tsteps,&
                                             forced_vel,&
                                             FullMglobal,&
                                             FullCglobal,&
@@ -528,7 +527,6 @@ contains
             real(c_double), intent(INOUT)   :: psi_def(n_elem, max_elem_node, 3)
 
             ! input variables: time steps and FoR velocity
-            integer(c_int), intent(IN)      :: n_tsteps
             real(c_double), intent(IN)      :: forced_vel(6)
 
             ! variable initialization
