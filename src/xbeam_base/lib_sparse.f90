@@ -25,7 +25,6 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module lib_sparse
-  use iso_c_binding
  implicit none
 
 ! Define derived types.

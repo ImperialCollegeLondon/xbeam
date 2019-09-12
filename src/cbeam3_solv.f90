@@ -516,9 +516,9 @@ DX_old = 1.0d0*options%mindelta
   type(xbopts), intent(in) :: Options           ! Solver parameters.
 
   ! System matrices
-  real(8), intent(inout) :: FullCglobal(num_dof,num_dof)
-  real(8), intent(inout) :: FullMglobal(num_dof,num_dof)
-  real(8), intent(inout) :: FullKglobal(num_dof,num_dof)
+  real(8), intent(out) :: FullCglobal(num_dof,num_dof)
+  real(8), intent(out) :: FullMglobal(num_dof,num_dof)
+  real(8), intent(out) :: FullKglobal(num_dof,num_dof)
 
   ! Local variables.
   integer:: k                            ! Counters.

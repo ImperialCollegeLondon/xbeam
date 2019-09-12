@@ -395,7 +395,7 @@ module xbeam_solv
   use cbeam3_asbly
   use cbeam3_solv
   use xbeam_asbly
-  use iso_c_binding
+  use, intrinsic :: iso_c_binding
 
 ! I/O Variables.
   integer,      intent(in)   :: iOut              ! Output file.
@@ -1019,7 +1019,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
     use cbeam3_asbly
     use cbeam3_solv
     use xbeam_asbly
-    use iso_c_binding
+    use, intrinsic :: iso_c_binding
     use debug_utils
     integer(c_int), intent(IN)                      :: numdof
     real(c_double), intent(IN)                      :: dt

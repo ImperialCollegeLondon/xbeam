@@ -403,7 +403,7 @@ end subroutine xbeam_solv_couplednlndyn_python
         use cbeam3_solv
         use xbeam_asbly
         use xbeam_solv
-        use iso_c_binding
+        use, intrinsic :: iso_c_binding
         integer(c_int), intent(IN)      :: numdof
         integer(c_int), intent(IN)      :: iter
         integer(c_int), intent(IN)      :: n_elem
