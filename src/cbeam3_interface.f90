@@ -537,9 +537,9 @@ contains
             integer(c_int)                  :: nodes_per_elem
 
             ! output matrices
-            real(c_double), intent(inout):: FullCglobal(num_dof,num_dof)     ! Global Damping matrix.
-            real(c_double), intent(inout):: FullKglobal(num_dof,num_dof)     ! Global stiffness matrix
-            real(c_double), intent(inout):: FullMglobal(num_dof,num_dof)     ! Global mass matrix
+            real(c_double), intent(out):: FullCglobal(num_dof,num_dof)     ! Global Damping matrix.
+            real(c_double), intent(out):: FullKglobal(num_dof,num_dof)     ! Global stiffness matrix
+            real(c_double), intent(out):: FullMglobal(num_dof,num_dof)     ! Global mass matrix
 
             ! Compute missing information
             nodes_per_elem = count(conn(1,:) /= 0)
@@ -790,7 +790,7 @@ contains
     use lib_rotvect
     use lib_bgeom
     use lib_cbeam3
-    use iso_c_binding
+    use, intrinsic :: iso_c_binding
 
     ! I/O Variables.
     integer(c_int), intent(IN)              :: n_elem
