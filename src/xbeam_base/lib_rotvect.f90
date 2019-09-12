@@ -83,7 +83,7 @@ module lib_rotvect
 
 ! Force the norm to be in [-pi,pi].
   NormPsi=OldNormPsi-2.d0*pi*int(OldNormPsi/(2.d0*pi))
-  if (NormPsi.eq.0.d0) then
+  if (abs(NormPsi) <= rot_epsilon) then
     Psi=0.d0
   else
     if (NormPsi.gt.pi) then
@@ -712,7 +712,7 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  pure function rotvect_psi2intmat (Psi)
 ! I/O Variables.
-  real(8),intent(in)    :: Psi(:)              ! Rotation Vector.
+  real(8),intent(in)    :: Psi(3)              ! Rotation Vector.
   real(8),dimension(3,3):: rotvect_psi2intmat  ! Integral of coord transf matrix.
 
 ! Local variables
@@ -996,7 +996,7 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
   real(8),dimension(3,3):: nnT,bSnnT,nSbSnnT,np1T,p1nT,nSp1S2bnT
 
 ! Compute rotation angle.
-  NormPsi=dsqrt(dot_product(Psi,Psi))
+  NormPsi=sqrt(dot_product(Psi,Psi))
 
   bS  = rot_skew(b)
   p1S = rot_skew(PsiDot)
@@ -1028,7 +1028,7 @@ Psi= rotvect_quat2psi(rotvect_mat2quat(CoordTransMat))
 
     np1T   = rot_outprod(Normal,PsiDot)
     p1nT   = rot_outprod(PsiDot,Normal)
-    nSp1S2bnT= matmul((matmul(nS,p1S)+matmul(p1S,nS)), &
+    nSp1S2bnT= matmul((matmul(nS, p1S) + matmul(p1S, nS)), &
 &                     rot_outprod(b,Normal))
 
     rotvect_b1= C1*(K0+8.d0*K1-5.d0*K2)*K3*bSnnT                &
