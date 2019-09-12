@@ -917,12 +917,12 @@ module lib_xbeam
 
 ! I/O Variables.
   integer,intent(in)    :: NumNodesElem     ! Number of nodes in the element.
-  real(8),intent(in)    :: r0       (:,:)   ! Initial position/orientation of grid points.
-  real(8),intent(in)    :: Ri       (:,:)   ! Current position/orientation of grid points.
-  real(8),intent(in)    :: RiDot    (:,:)   ! Current time derivative of position/CRV of points.
+  real(8),intent(in)    :: r0       (NumNodesElem,3)   ! Initial position/orientation of grid points.
+  real(8),intent(in)    :: Ri       (NumNodesElem,3)   ! Current position/orientation of grid points.
+  real(8),intent(in)    :: RiDot    (NumNodesElem,3)   ! Current time derivative of position/CRV of points.
   real(8),intent(in)    :: Vrel     (6)     ! Linear/angular velocity of reference frame.
-  real(8),intent(in)    :: NodalMass(:,:,:) ! Inertia tensor of lumped masses at element nodes.
-  real(8),intent(inout) :: Cgyr     (:,:)   ! Tangent gyroscopic damping matrix.
+  real(8),intent(in)    :: NodalMass(NumNodesElem,6,6) ! Inertia tensor of lumped masses at element nodes.
+  real(8),intent(inout) :: Cgyr     (6,6)   ! Tangent gyroscopic damping matrix.
 
 ! Local variables
   integer :: i,iNode                ! Counters.
