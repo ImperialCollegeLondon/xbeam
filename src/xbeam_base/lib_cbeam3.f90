@@ -2113,7 +2113,7 @@ end subroutine cbeam3_rbmvel
   real(8),intent(in) :: AllPsi_0  (:,:,:)  ! Initial CRV from global to nodes in all elements.
   real(8),intent(in) :: Psi02_t   (NNE,3)    ! Current CRV from global to nodes in element.
   real(8),intent(in) :: AllPsi_t  (:,:,:)  ! Current CRV from global to nodes in all elements.
-  real(8),intent(out):: S21       (3*NNE,3*NNE)    ! Element transformation matrix master2slave.
+  real(8),intent(out):: S21       (6*NNE,6*NNE)    ! Element transformation matrix master2slave.
 
 ! Local variables.
   integer :: i1         ! Counter.

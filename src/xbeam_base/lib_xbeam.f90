@@ -917,12 +917,12 @@ module lib_xbeam
 
 ! I/O Variables.
   integer,intent(in)    :: NumNodesElem     ! Number of nodes in the element.
-  real(8),intent(in)    :: r0       (NumNodesElem,3)   ! Initial position/orientation of grid points.
-  real(8),intent(in)    :: Ri       (NumNodesElem,3)   ! Current position/orientation of grid points.
-  real(8),intent(in)    :: RiDot    (NumNodesElem,3)   ! Current time derivative of position/CRV of points.
+  real(8),intent(in)    :: r0       (NumNodesElem,6)   ! Initial position/orientation of grid points.
+  real(8),intent(in)    :: Ri       (NumNodesElem,6)   ! Current position/orientation of grid points.
+  real(8),intent(in)    :: RiDot    (NumNodesElem,6)   ! Current time derivative of position/CRV of points.
   real(8),intent(in)    :: Vrel     (6)     ! Linear/angular velocity of reference frame.
   real(8),intent(in)    :: NodalMass(NumNodesElem,6,6) ! Inertia tensor of lumped masses at element nodes.
-  real(8),intent(inout) :: Cgyr     (6,6)   ! Tangent gyroscopic damping matrix.
+  real(8),intent(inout) :: Cgyr     (6,6*MaxNodCB3)   ! Tangent gyroscopic damping matrix.
 
 ! Local variables
   integer :: i,iNode                ! Counters.
@@ -940,12 +940,11 @@ module lib_xbeam
 
 ! Loop in the element ndoes.
   do iNode=1,NumNodesElem
-
 ! Compute the current position vector and rotations, and their derivatives.
-		Ra     = Ri    (iNode,1:3)
-		RaDot  = RiDot (iNode,1:3)
-		Psi    = Ri    (iNode,4:6)
-		PsiDot = RiDot (iNode,4:6)
+    Ra     = Ri    (iNode,1:3)
+    RaDot  = RiDot (iNode,1:3)
+    Psi    = Ri    (iNode,4:6)
+    PsiDot = RiDot (iNode,4:6)
 
 ! Compute element shape functions at the corrent node.
     N =0.d0
@@ -992,8 +991,19 @@ module lib_xbeam
 &                            -matmul(CaB,matmul(rot_skew(HB),Rot))
 
 ! Compute strain matrix operator and material tangent stiffness.
-    Cgyr= Cgyr + matmul((matmul(ARC,matmul(NodalMass(iNode,:,:),dVgyrdqdot)) &
-&              + dAWRCdqdotPhat + matmul(AWRC,matmul(NodalMass(iNode,:,:),dVdqdot))),N)
+    Cgyr= Cgyr + matmul(&
+                        (&
+                         matmul(&
+                                ARC,&
+                                matmul(NodalMass(iNode,:,:),&
+                                       dVgyrdqdot)&
+                                ) + dAWRCdqdotPhat + matmul(AWRC,&
+                                                            matmul(&
+                                                                  NodalMass(iNode,:,:),&
+                                                                  dVdqdot)&
+                                                           )&
+                        ),&
+                        N)
 
   end do
  end subroutine xbeam_rbcgyr
