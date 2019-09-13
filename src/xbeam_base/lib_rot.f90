@@ -265,7 +265,7 @@ pure function rot_skew (Vector)
  pure function rot_vect (SkewMatrix)
 
 ! I/O Variables.
-  real(8), intent(in)  :: SkewMatrix(:,:)
+  real(8), intent(in)  :: SkewMatrix(3,3)
   real(8), dimension(3):: rot_vect
 
   rot_vect(1)= SkewMatrix(3,2)
@@ -287,8 +287,8 @@ pure function rot_skew (Vector)
  pure function rot_outprod (a,b)
 
 ! I/O Variables.
-  real(8),intent(in)    :: a(:)
-  real(8),intent(in)    :: b(:)
+  real(8),intent(in)    :: a(3)
+  real(8),intent(in)    :: b(3)
   real(8),dimension(3,3):: rot_outprod
 
 ! Local variables.

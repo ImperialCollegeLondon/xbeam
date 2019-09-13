@@ -453,9 +453,9 @@ end subroutine cbeam3_asbly_modal_old
   real(8),     intent(in) :: PsiDefor  (n_elem,3,3)    ! Current CRV of the nodes in the elements.
   real(8),     intent(in) :: Vrel(6)               ! Velocity of reference frame .
 
-  real(8),     intent(inout)    :: FullMglobal   (num_dof, num_dof)
-  real(8),     intent(inout)    :: FullCglobal   (num_dof, num_dof)
-  real(8),     intent(inout)    :: FullKglobal   (num_dof, num_dof)
+  real(8),     intent(out)    :: FullMglobal   (num_dof, num_dof)
+  real(8),     intent(out)    :: FullCglobal   (num_dof, num_dof)
+  real(8),     intent(out)    :: FullKglobal   (num_dof, num_dof)
 real(8) :: temp   (num_dof, num_dof)
 real(8) :: det
 

@@ -2108,12 +2108,12 @@ end subroutine cbeam3_rbmvel
 
 ! I/O Variables.
   integer,intent(in) :: NNE                ! Number of nodes in the element.
-  integer,intent(in) :: TreeConn  (:,:)    ! Connectivity tree.
-  real(8),intent(in) :: Psi02_0   (:,:)    ! Initial CRV from global to nodes in element.
+  integer,intent(in) :: TreeConn  (NNE,2)    ! Connectivity tree.
+  real(8),intent(in) :: Psi02_0   (NNE,3)    ! Initial CRV from global to nodes in element.
   real(8),intent(in) :: AllPsi_0  (:,:,:)  ! Initial CRV from global to nodes in all elements.
-  real(8),intent(in) :: Psi02_t   (:,:)    ! Current CRV from global to nodes in element.
+  real(8),intent(in) :: Psi02_t   (NNE,3)    ! Current CRV from global to nodes in element.
   real(8),intent(in) :: AllPsi_t  (:,:,:)  ! Current CRV from global to nodes in all elements.
-  real(8),intent(out):: S21       (:,:)    ! Element transformation matrix master2slave.
+  real(8),intent(out):: S21       (6*NNE,6*NNE)    ! Element transformation matrix master2slave.
 
 ! Local variables.
   integer :: i1         ! Counter.
@@ -2128,7 +2128,7 @@ end subroutine cbeam3_rbmvel
   real(8) :: S21n(3,3)  ! Transformation matrix master-to-slave for the current node.
 
 ! Initialise
-  S21(:,:)=0.d0
+  S21=0.d0
 
 ! Loop in the elements nodes.
   i1=0
@@ -2146,9 +2146,8 @@ end subroutine cbeam3_rbmvel
       Psi21= rotvect_addpsi(-Psi02_0(iNode,:),Psi01) !
 
   ! If the rotation is non-zero, slave-node equations need to be transformed.
-      if (dot_product(Psi21,Psi21).ne.0.d0) then
+      if (dot_product(Psi21,Psi21) > rot_epsilon) then
         C_12=  rotvect_psi2mat(Psi21)
-
   ! Transformation operator from local to global rotations.
         Psi01= AllPsi_t(TreeConn(iNode,1),TreeConn(iNode,2),:)
         T02= rotvect_psi2rot(Psi02_t(iNode,:))
