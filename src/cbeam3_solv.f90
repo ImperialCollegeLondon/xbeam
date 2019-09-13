@@ -93,7 +93,6 @@ module cbeam3_solv
   real(8):: Delta                          ! Flag for convergence in iterations.
   integer:: fs                             ! Current storage size of force matrix.
   integer:: ms                             ! Current storage size of mass matrix.
-  integer:: iLoadStep                      ! Counter in the load steps.
   integer:: Iter                           ! Counter on iterations.
   integer:: i,j,k                          ! Auxiliary integer.
   integer:: ks                             ! Current storage size of stiffness matrix.
@@ -189,7 +188,6 @@ DX_old = 1.0d0*options%mindelta
   Fglobal = 0.0d0
 
 ! Apply loads in substeps.
-    iloadstep = 1
     Iter  = 0
     Delta = Options%MinDelta+1.d0
 
@@ -231,10 +229,10 @@ DX_old = 1.0d0*options%mindelta
       Mglobal = 0.0d0
       call cbeam3_asbly_static (numdof, n_elem, n_node,Elem,Node,Coords,Psi0,&
                                 PosDefor,PsiDefor,&
-                                AppForces*dble(iLoadStep)/dble(Options%NumLoadSteps), &
+                                AppForces, &
                                 Kglobal,Fglobal,Qglobal,Options,Mglobal,MRR)
 
-      Qglobal= Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps) * &
+      Qglobal= Qglobal - &
       &              MATMUL(Fglobal,fem_m2v(AppForces,NumDof,Filter=ListIN))
 
       if (options%gravity_on) then
@@ -263,7 +261,7 @@ DX_old = 1.0d0*options%mindelta
         ! print*, '--'
         ! print*, 'product'
         ! print*, total_gravity_acceleration
-        Qglobal = Qglobal - dble(iLoadStep)/dble(Options%NumLoadSteps)*&
+        Qglobal = Qglobal - &
                   fem_m2v(nodal_gravity_forces, numdof, filter=ListIN)
       end if
 
