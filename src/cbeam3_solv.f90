@@ -196,7 +196,6 @@ DX_old = 1.0d0*options%mindelta
 ! Iteration until convergence.
   converged=.false.
     do while (converged .eqv. .false.)!(Delta.gt.Options%MinDelta)
-  print*, 'In cbeam3_solv, line 200'
       Iter= Iter+1
       if (Iter.gt.Options%MaxIterations) then
           print*, 'Residual is: ', maxval(abs(DeltaX))
