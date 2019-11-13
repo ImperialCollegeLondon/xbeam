@@ -3,7 +3,7 @@
 ### GFORTRAN RELEASE - FAST RUN, SLOW COMPILATION
 export FCOMP = gfortran
 export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp  -m64
-export LDFLAGS = -lblas -llapack -shared  -Wl,--no-as-needed -lpthread -lm -ldl -fopenmp
+export LDFLAGS = -shared  -Wl,--no-as-needed -lpthread -lm -ldl -fopenmp
 
 ### GFORTRAN DEBUG
 #export FCOMP = gfortran
