@@ -1,29 +1,41 @@
 ## GFORTRAN SETTINGS
 ## ===========================================================================
+### GFORTRAN RELEASE - FAST RUN, SLOW COMPILATION
 export FCOMP = gfortran
-## GFORTRAN RELEASE
-export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp  -m64 # -fno-underscoring -g -fno-omit-frame-pointer
-export LDFLAGS = -L$(LAPACK_LIB_DIR) -lblas -llapack -shared  -Wl,--no-as-needed -lpthread -lm -ldl -fopenmp
-## GFORTRAN DEBUG
-# export FCFLAGS = -g -fPIC -fcheck=all -fbacktrace -pedantic -fno-omit-frame-pointer  -ffpe-trap=invalid,zero,overflow,underflow,precision,denormal -std=f2008 -W -Wtabs -O -fbacktrace -fbounds-check -fstack-arrays -fno-underscoring
-# export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared -fopenmp
+export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp  -m64
+export LDFLAGS = -lblas -llapack -shared  -Wl,--no-as-needed -lpthread -lm -ldl -fopenmp
+
+### GFORTRAN DEBUG
+#export FCOMP = gfortran
+#export FCFLAGS = -g3 -fPIC -fcheck=all -fbacktrace -pedantic -fno-omit-frame-pointer  -ffpe-trap=invalid,zero,overflow,underflow,precision,denormal -std=f2008 -W -Wtabs -O0 -fbacktrace -fbounds-check -fstack-arrays -fno-underscoring 
+#export LDFLAGS = -lblas -llapack -shared -lm -ldl
 ## ===========================================================================
 
 ## INTEL FORTRAN SETTINGS
 ## ===========================================================================
-#export FCOMP = ifort
 ### IFORT RELEASE
-### no MKL
-#export FCFLAGS = -I${MKLROOT}/include -fPIC -O3 -funroll-loops -march=native -fopenmp -heap-arrays -xHost -wrap-margin- -parallel -mkl
-### with MKL
-# export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -heap-arrays -xHost -wrap-margin- -mkl=parallel -parallel -qopenmp
-# export LDFLAGS = -lmatmul -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -mkl -shared -parallel -qopenmp
-#`export LDFLAGS = -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -shared
+###     with MKL
+#export FCOMP = ifort
+#export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -heap-arrays -xHost -wrap-margin- -mkl=parallel -parallel -qopenmp
+#export LDFLAGS = -lmatmul -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -mkl -shared -parallel -qopenmp
 
-## IFORT DEBUG
-# export FCFLAGS = -fpic -O0 -g3 -stand f08 -traceback  -fstack-protector  -assume protect_parens  -implicitnone -check bounds -ftrapuv -debug all -fpe-all=0 -no-ftz -wrap-margin-
-# export LDFLAGS = -L$(LAPACK_LIB_DIR) -llapack -shared
+### IFORT DEBUG
+#export FCOMP = ifort
+#export FCFLAGS = -fPIC -O0 -g3 -stand f08 -traceback -assume protect_parens  -implicitnone -check bounds -ftrapuv -debug all -fpe-all=0 -no-ftz -wrap-margin- -fp-model source
+#export LDFLAGS = -llapack -shared
 ## ===========================================================================
+
+## FLANG SETTINGS
+## ===========================================================================
+### FLANG DEBUG
+#export FCOMP = flang
+#export FCFLAGS = -O0 -g3 -fPIC
+#export LDFLAGS = -llapack -shared
+
+### FLANG RELEASE
+#export FCOMP = flang
+#export FCFLAGS = -O3 -fPIC -funroll-loops -march=native
+#export LDFLAGS = -llapack -shared
 
 FOLDER = src/
 LIBRARY_NAME =  libxbeam
