@@ -2,7 +2,7 @@
 ## ===========================================================================
 ### GFORTRAN RELEASE - FAST RUN, SLOW COMPILATION
 export FCOMP = gfortran
-export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -march=native -fopenmp  -m64
+export FCFLAGS = -fPIC -O3 -funroll-loops -ftree-parallelize-loops=4 -fopenmp  -m64
 export LDFLAGS = -shared  -Wl,--no-as-needed -lpthread -lm -ldl -fopenmp
 
 ### GFORTRAN DEBUG
@@ -16,7 +16,7 @@ export LDFLAGS = -shared  -Wl,--no-as-needed -lpthread -lm -ldl -fopenmp
 ### IFORT RELEASE
 ###     with MKL
 #export FCOMP = ifort
-#export FCFLAGS = -fPIC -O3 -funroll-loops -march=native -heap-arrays -xHost -wrap-margin- -mkl=parallel -parallel -qopenmp
+#export FCFLAGS = -fPIC -O3 -funroll-loops -heap-arrays -xHost -wrap-margin- -mkl=parallel -parallel -qopenmp
 #export LDFLAGS = -lmatmul -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -mkl -shared -parallel -qopenmp
 
 ### IFORT DEBUG
@@ -34,7 +34,7 @@ export LDFLAGS = -shared  -Wl,--no-as-needed -lpthread -lm -ldl -fopenmp
 
 ### FLANG RELEASE
 #export FCOMP = flang
-#export FCFLAGS = -O3 -fPIC -funroll-loops -march=native
+#export FCFLAGS = -O3 -fPIC -funroll-loops
 #export LDFLAGS = -llapack -shared
 
 FOLDER = src/
