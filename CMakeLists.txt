@@ -7,12 +7,10 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_F90_COMPILER gfortran)
-
+set(BUILD_SHARED_LIBS ON)
 file(GLOB SOURCES src/xbeam_base/*.f90 src/*.f90)
 add_library(xbeam SHARED ${SOURCES})
 
-set(BUILD_SHARED_LIBS ON)
 find_package(MKL)
 if (MKL_FOUND)
     include_directories(${MKL_INCLUDE_DIR})
