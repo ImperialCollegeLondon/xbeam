@@ -1726,4 +1726,377 @@ end subroutine xbeam_solv_couplednlndyn_step_updated
 ! end subroutine xbeam_solv_couplednlndyn_step_updated
 
 
+subroutine xbeam_solv_coupledrigid_step(&
+                                        numdof,&
+                                        dt,&
+                                        n_node,&
+                                        n_elem,&
+                                        elem,&
+                                        node,&
+                                        pos_ini,&
+                                        psi_ini,&
+                                        static_forces,&
+                                        dynamic_forces,&
+                                        gravity_forces,&
+                                        for_vel,&
+                                        for_acc,&
+                                        quat,&
+                                        Q,&
+                                        dQdt,&
+                                        dQddt,&
+                                        options)
+    use lib_fem
+    use lib_rot
+    use lib_rotvect
+    use lib_mat
+    use lib_xbeam
+    use lib_lu
+    use cbeam3_asbly
+    use cbeam3_solv
+    use xbeam_asbly
+    use, intrinsic :: iso_c_binding
+    use debug_utils
+    integer(c_int), intent(IN)                      :: numdof
+    real(c_double), intent(IN)                      :: dt
+    integer(c_int), intent(IN)                      :: n_node
+    integer(c_int), intent(IN)                      :: n_elem
+    type(xbelem), intent(IN)                        :: elem(n_elem)
+    type(xbnode), intent(IN)                        :: node(n_node)
+    real(c_double), intent(IN)                      :: pos_ini(n_node, 3)
+    real(c_double), intent(IN)                      :: psi_ini(n_elem, 3, 3)
+    real(c_double), intent(IN)                      :: static_forces(n_node, 6)
+    real(c_double), intent(IN)                      :: dynamic_forces(n_node, 6)
+    real(c_double), intent(INOUT)                   :: gravity_forces(n_node, 6)
+    real(c_double), intent(INOUT)                   :: for_vel(6)
+    real(c_double), intent(INOUT)                   :: for_acc(6)
+    real(c_double), intent(INOUT)                   :: quat(4)
+    real(c_double), intent(INOUT)                   :: Q(6 + 4)
+    real(c_double), intent(INOUT)                   :: dQdt(6 + 4)
+    real(c_double), intent(INOUT)                   :: dQddt(6 + 4)
+    type(xbopts), intent(IN)                        :: options
+
+    ! Local variables.
+    real(8)                                         :: beta,gamma   ! Newmark coefficients.
+    !real(8)                                         :: beta_rigid,gamma_rigid   ! Newmark coefficients.
+    integer                                         :: k            ! Counters.
+    integer                                         :: Iter   ! Counters on subiterations.
+    real(8)                                         :: MinDelta     ! Value of Delta for convergence.
+    !real(8)                                         :: MinDeltarigid     ! Value of Delta for convergence.
+
+    real(8)                                         :: DQ(10)
+    ! real(8)                                         :: old_DQ(10)
+
+    integer                                         :: ListIN(n_node)    ! List of independent nodes.
+
+    ! Define variables for structure system matrices.
+    real(8)                                         :: Asys(10, 10)
+        ! System matrix for implicit Newmark method.
+    !real(8)                                         :: CSS(numdof, numdof)     ! Sparse damping matrix.
+    !real(8)                                         :: KSS(numdof, numdof)     ! Elast stiffness matrix in sparse storage.
+    !real(8)                                         :: MSS(numdof, numdof)     ! Elast mass matrix in sparse storage.
+    !real(8)                                         :: Felast(numdof, numdof)  ! Applied external forces on structure
+    !real(8)                                         :: Qelast(numdof)  ! Elast vector of discrete generalize forces.
+    !real(8)                                         :: MSR(numdof, 6)   ! Mass and damping from the motions of reference system.
+    !real(8)                                         :: CSR(numdof, 6)   ! Mass and damping from the motions of reference system.
+
+    ! Define variables for rigid system matrices.
+    real(8)                                         :: CRS(6, numdof)      ! rigid Sparse damping matrix.
+    real(8)                                         :: KRS(6, numdof)      ! rigid stiffness matrix in sparse storage.
+    real(8)                                         :: MRS(6, numdof)   ! Mass and damping from the motions of reference system.
+    real(8)                                         :: Frigid(6, numdof + 6)   ! rigid matrix of applied forces in sparse format
+    real(8)                                         :: Qrigid(6)   ! rigid vector of discrete generalize forces.
+    real(8)                                         :: MRR(6, 6)    ! rigid Mass and damping from the motions of reference system.
+    real(8)                                         :: CRR(6, 6)    ! rigid Mass and damping from the motions of reference system.
+    real(8)                                         :: CQR(4, 6)
+    real(8)                                         :: CQQ(4, 4)  ! Tangent matrices from linearisation of quaternion equation.
+
+    ! Define variables for rigid-body motion
+    real(8)                                         :: Cao (3, 3)
+                ! Rotation operator from reference to inertial frame
+
+    ! Define variables for complete system matrices.
+    real(8)                                         :: Ctotal(10, 10)    ! Total Sparse damping matrix.
+    real(8)                                         :: Ktotal(10, 10)
+            ! Total stiffness matrix in sparse storage.
+    real(8)                                         :: Mtotal(10, 10)    ! Total mass matrix in sparse storage.
+    real(8)                                         :: Qtotal(10)    ! Total vector of discrete generalize forces.
+    ! real(8)                                         :: previous_q(10)
+    ! real(8)                                         :: previous_dqddt(10)
+    real(8)                                         :: MRS_gravity(6, numdof + 6)
+    real(8)                                         :: MSS_gravity(numdof + 6, numdof + 6)
+    real(8)                                         :: MRR_gravity(6, 6)
+
+    ! Useless vectors because this is a rigid simulation
+    ! I keep them to keep the solvers' structure
+    real(8)                                         :: pos_dot_def(n_node)
+    real(8)                                         :: psi_dot_def(n_node)
+    real(8)                                         :: pos_ddot_def(n_node)
+    real(8)                                         :: psi_ddot_def(n_node)
+
+    ! Parameters to Check Convergence
+    logical                                         :: converged
+    real(8)                                         :: residual
+    real(8)                                         :: initial_residual
+    real(8)                                         :: abs_threshold
+
+
+    ListIN = 0
+    do k=1,n_node
+        ListIN(k)=Node(k)%Vdof
+    end do
+
+    gamma = 0.5d0 + options%NewmarkDamp
+    beta = 0.25d0*(gamma + 0.5d0)*(gamma + 0.5d0)
+
+    dqdt(7:10) = quat
+    Q = Q + dt*dQdt + (0.5d0 - beta)*dt*dt*dQddt
+    dQdt = dQdt + (1.0d0 - gamma)*dt*dQddt
+    dQddt = 0.0d0
+
+    ! Iteration loop -----------------------------------------
+    converged = .FALSE.
+    abs_threshold = epsilon(residual)*1000
+    do iter = 1, options%maxiterations + 1
+        if (iter == options%maxiterations + 1) then
+            print*, 'Solver did not converge in ', iter, ' iterations.'
+            print*, 'Last residual: ', residual
+            exit
+        end if
+
+        ! update positions and velocities
+        ! call cbeam3_solv_state2disp(Elem,&
+                                    ! Node,&
+                                    ! pos_ini,&
+                                    ! psi_ini,&
+                                    ! Q(1:numdof),&
+                                    ! dQdt(1:numdof),&
+                                    ! pos_def,&
+                                    ! psi_def,&
+                                    ! pos_dot_def,&
+                                    ! psi_dot_def)
+        ! call cbeam3_solv_state2accel(Elem, Node, dqddt(1:numdof), pos_ddot_def, psi_ddot_def)
+
+        ! orientation update
+        Cao = xbeam_rot(dQdt(7:10))
+
+        ! system functionals and matrices initialisation
+        ! Qelast = 0.0d0
+        Qrigid = 0.0d0
+        ! Qtotal = 0.0d0
+
+        Frigid = 0.0d0
+        ! Felast = 0.0d0
+
+        ! MSS = 0.0d0
+        ! MSR = 0.0d0
+        MRS = 0.0d0
+        MRR = 0.0d0
+        MRS_gravity = 0.0d0
+        MSS_gravity = 0.0d0
+        MRR_gravity = 0.0d0
+
+        ! CSS = 0.0d0
+        ! CSR = 0.0d0
+        CRS = 0.0d0
+        CRR = 0.0d0
+        CQR = 0.0d0
+        CQQ = 0.0d0
+
+        ! KSS = 0.0d0
+        KRS = 0.0d0
+
+        Asys = 0.0d0
+        Mtotal = 0.0d0
+        Ctotal = 0.0d0
+        Ktotal = 0.0d0
+
+        pos_dot_def = 0.0d0
+        psi_dot_def = 0.0d0
+        pos_ddot_def = 0.0d0
+        psi_ddot_def = 0.0d0
+
+        if (options%gravity_on) then
+            call xbeam_asbly_M_gravity(&
+                                         numdof,&
+                                         n_node,&
+                                         n_elem,&
+                                         Elem,&
+                                         Node,&
+                                         pos_ini,&
+                                         psi_ini,&
+                                         pos_ini,& ! pos_def,&
+                                         psi_ini,& ! psi_def,&
+                                         MRS_gravity,&
+                                         MSS_gravity,&
+                                         MRR_gravity,&
+                                         options)
+        end if
+
+        !!$omp parallel sections shared(Mtotal, Ctotal, Ktotal, Qtotal)
+        ! one thread
+        !!$omp section
+        ! section for elastic DOF
+        ! system matrix generation
+        ! call cbeam3_asbly_dynamic(numdof,&
+        !                           n_node,&
+        !                           n_elem,&
+        !                           elem,&
+        !                           node,&
+        !                           pos_ini,&
+        !                           psi_ini,&
+        !                           pos_def,&
+        !                           psi_def,&
+        !                           pos_dot_def,&
+        !                           psi_dot_def,&
+        !                           pos_ddot_def,&
+        !                           psi_ddot_def,&
+        !                           static_forces + dynamic_forces,&
+        !                           dQdt(numdof+1:numdof+6),&
+        !                           dQddt(numdof+1:numdof+6),&
+        !                           MSS,&
+        !                           MSR,&
+        !                           CSS,&
+        !                           CSR,&
+        !                           KSS,&
+        !                           Felast,&
+        !                           Qelast,&
+        !                           options,&
+        !                           Cao)
+        ! compute residual
+        ! Qelast = Qelast - matmul(Felast, &
+        !                          fem_m2v(static_forces + &
+        !                                  dynamic_forces, &
+        !                                  numdof, &
+        !                                  Filter = ListIN))
+
+        ! if (options%gravity_on) then
+        !     gravity_forces = -fem_v2m(MATMUL(MSS_gravity,&
+        !                               cbeam3_asbly_gravity_dynamic(NumDof + 6,options, Cao)),&
+        !                               n_node, 6)
+        !     Qelast = Qelast - fem_m2v(gravity_forces, numdof, filter=ListIN)
+        ! end if
+
+        ! call mat_addmat(0, 0, MSS, Mtotal)
+        ! call mat_addmat(0, numdof, MSR, Mtotal)
+        !
+        ! call mat_addmat(0, 0, CSS, Ctotal)
+        ! call mat_addmat(0, numdof, CSR, Ctotal)
+        !
+        ! call mat_addmat(0, 0, KSS, Ktotal)
+        !
+        ! Qtotal(1:numdof) = Qelast
+
+        ! another one here
+        !!$omp section
+        call xbeam_asbly_dynamic(numdof,&
+                                 n_node,&
+                                 n_elem,&
+                                 elem,&
+                                 node,&
+                                 pos_ini,&
+                                 psi_ini,&
+                                 pos_ini,& ! pos_def,&
+                                 psi_ini,& ! psi_def,&
+                                 pos_dot_def,&
+                                 psi_dot_def,&
+                                 pos_ddot_def,&
+                                 psi_ddot_def,&
+                                 dQdt(1:6),&
+                                 dQddt(1:6),&
+                                 dQdt(7:0),&
+                                 MRS,&
+                                 MRR,&
+                                 CRS,&
+                                 CRR,&
+                                 CQR,&
+                                 CQQ,&
+                                 KRS,&
+                                 Frigid,&
+                                 Qrigid,&
+                                 options,&
+                                 Cao)
+
+        Qrigid = Qrigid - matmul(Frigid,&
+                                 fem_m2v(static_forces + &
+                                         dynamic_forces, &
+                                         numdof + 6))
+
+        if (options%gravity_on) then
+            Qrigid = Qrigid + matmul(MRS_gravity, &
+                                     cbeam3_asbly_gravity_dynamic(numdof + 6,&
+                                                                  options,&
+                                                                  Cao))
+        end if
+
+        ! call mat_addmat(numdof, 0, MRS, Mtotal)
+        call mat_addmat(0, 0, MRR, Mtotal)
+        call mat_addmat(6, 6, unit4, Mtotal)
+
+        ! call mat_addmat(numdof, 0, CRS, Ctotal)
+        call mat_addmat(0, 0, CRR, Ctotal)
+        call mat_addmat(6, 0, CQR, Ctotal)
+        call mat_addmat(6, 6, CQQ, Ctotal)
+
+        ! call mat_addmat(numdof, 0, KRS, Ktotal)
+
+        Qtotal(1:6) = Qrigid
+        Qtotal(7:10) = matmul(CQQ, dQdt(7:10))
+
+        !up until here
+        !!$omp end parallel sections
+
+        Qtotal = Qtotal + matmul(Mtotal, dqddt)
+
+        Asys = Ktotal
+        Asys = Asys + Ctotal*gamma/(beta*dt)
+        Asys = Asys + Mtotal/(beta*dt*dt)
+
+        ! calculation of the correction
+        DQ = 0.0d0
+        call lu_solve(10, Asys, -Qtotal, DQ, options%balancing)
+        DQ = (1.0d0 - options%relaxation_factor)*DQ
+
+        residual = sqrt(dot_product(DQ, DQ))
+        if (Iter > 1) then
+            if (residual/initial_residual < options%mindelta) then
+                converged = .TRUE.
+            else if (residual < abs_threshold) then
+                converged = .TRUE.
+            end if
+        else
+            initial_residual = residual
+        end if
+
+        ! reconstruction of state vectors
+        Q = Q + DQ
+        dQdt  = dQdt  + gamma/(beta*dt)*DQ
+        dQddt = dQddt + 1.d0/(beta*dt*dt)*DQ
+
+        if (converged) then
+            exit
+        end if
+    end do
+
+    dQdt(7:10) = rot_unit(dQdt(7:10))
+    quat = dQdt(7:10)
+    ! call cbeam3_solv_state2disp(elem,&
+    !                             node,&
+    !                             pos_ini,&
+    !                             psi_ini,&
+    !                             Q(1:numdof),&
+    !                             dQdt(1:numdof),&
+    !                             pos_def,&
+    !                             psi_def,&
+    !                             pos_dot_def,&
+    !                             psi_dot_def)
+    ! call cbeam3_solv_state2accel(Elem, Node, dqddt, pos_ddot_def, psi_ddot_def)
+
+    if (options%OutInaframe) then
+        for_vel = dQdt(1:6)
+        for_acc = dQddt(1:6)
+    else
+        print*, 'outinaframe is not TRUE, please check!'
+        stop
+    end if
+end subroutine xbeam_solv_coupledrigid_step
 end module xbeam_solv
