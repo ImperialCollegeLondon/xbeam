@@ -1383,12 +1383,12 @@ end subroutine xbeam_solv_couplednlndyn_python
                                           dt,&
                                           n_node,&
                                           n_elem,&
-                                          elem,&
-                                          node,&
+                                          elements,&
+                                          nodes,&
                                           pos_ini,&
                                           psi_ini,&
-                                          static_forces,&
-                                          dynamic_forces,&
+                                          steady_app_forces,&
+                                          dynamic_app_forces,&
                                           gravity_forces,&
                                           for_vel,&
                                           for_acc,&

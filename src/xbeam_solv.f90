@@ -1828,10 +1828,10 @@ subroutine xbeam_solv_coupledrigid_step(&
 
     ! Useless vectors because this is a rigid simulation
     ! I keep them to keep the solvers' structure
-    real(8)                                         :: pos_dot_def(n_node)
-    real(8)                                         :: psi_dot_def(n_node)
-    real(8)                                         :: pos_ddot_def(n_node)
-    real(8)                                         :: psi_ddot_def(n_node)
+    real(8)                                         :: pos_dot_def(n_node, 3)
+    real(8)                                         :: psi_dot_def(n_elem, 3, 3)
+    real(8)                                         :: pos_ddot_def(n_node, 3)
+    real(8)                                         :: psi_ddot_def(n_elem, 3, 3)
 
     ! Parameters to Check Convergence
     logical                                         :: converged
