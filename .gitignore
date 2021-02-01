@@ -11,3 +11,5 @@ lib/libxbeam_base\.dylib
 lib/
 
 *.dylib
+
+build/

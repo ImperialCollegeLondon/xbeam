@@ -66,8 +66,8 @@ subroutine xbeam_solv_couplednlndyn_python(n_elem,&
    real(c_double), intent(IN)      :: mass_db(n_mass, 6, 6)
    integer(c_int), intent(IN)      :: mass_indices(n_elem)
    integer(c_int), intent(IN)      :: n_stiffness
-   real(c_double), intent(IN)      :: stiffness_db(n_mass, 6, 6)
-   real(c_double), intent(IN)      :: inv_stiffness_db(n_mass, 6, 6)
+   real(c_double), intent(IN)      :: stiffness_db(n_stiffness, 6, 6)
+   real(c_double), intent(IN)      :: inv_stiffness_db(n_stiffness, 6, 6)
    integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
    real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
    real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
@@ -420,7 +420,7 @@ end subroutine xbeam_solv_couplednlndyn_python
         integer(c_int), intent(IN)      :: mass_indices(n_elem)
         integer(c_int), intent(IN)      :: n_stiffness
         real(c_double), intent(IN)      :: stiffness_db(n_stiffness, 6, 6)
-        real(c_double), intent(IN)      :: inv_stiffness_db(n_mass, 6, 6)
+        real(c_double), intent(IN)      :: inv_stiffness_db(n_stiffness, 6, 6)
         integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
         real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
         real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
@@ -1254,9 +1254,150 @@ end subroutine xbeam_solv_couplednlndyn_python
          call mat_addmat(0, 0, KSS, Ktotal)
          call mat_addmat(numdof, 0, KRS, Ktotal)
 
-         
+
 
     end subroutine xbeam3_asbly_dynamic_python
 
 
+    subroutine xbeam_solv_coupledrigid_step_python(numdof,&
+                                                   iter,&
+                                                   n_elem,&
+                                                   n_node,&
+                                                   dt,&
+                                                   num_nodes,&
+                                                   mem_number,&
+                                                   conn,&
+                                                   master,&
+                                                   n_mass,&
+                                                   mass_db,&
+                                                   mass_indices,&
+                                                   n_stiffness,&
+                                                   stiffness_db,&
+                                                   inv_stiffness_db,&
+                                                   stiffness_indices,&
+                                                   for_delta,&
+                                                   rbmass,&
+                                                   master_node,&
+                                                   vdof,&
+                                                   fdof,&
+                                                   options,&
+                                                   pos_ini,&
+                                                   psi_ini,&
+                                                   steady_app_forces,&
+                                                   dynamic_app_forces,&
+                                                   gravity_forces,&
+                                                   quat,&
+                                                   for_vel,&
+                                                   for_acc,&
+                                                   q,&
+                                                   dqdt,&
+                                                   dqddt&
+                                                   )bind(C)
+
+        !$ use omp_lib
+        integer(c_int), intent(IN)      :: numdof
+        integer(c_int), intent(IN)      :: iter
+        integer(c_int), intent(IN)      :: n_elem
+        integer(c_int), intent(IN)      :: n_node
+        real(c_double), intent(IN)      :: dt
+
+        ! elem data
+        integer(c_int), intent(IN)      :: num_nodes(n_elem)
+        integer(c_int), intent(IN)      :: mem_number(n_elem)
+        integer(c_int), intent(IN)      :: conn(n_elem, max_elem_node)
+        integer(c_int), intent(IN)      :: master(n_elem, max_elem_node, 2)
+        integer(c_int), intent(IN)      :: n_mass
+        real(c_double), intent(IN)      :: mass_db(n_mass, 6, 6)
+        integer(c_int), intent(IN)      :: mass_indices(n_elem)
+        integer(c_int), intent(IN)      :: n_stiffness
+        real(c_double), intent(IN)      :: stiffness_db(n_stiffness, 6, 6)
+        real(c_double), intent(IN)      :: inv_stiffness_db(n_stiffness, 6, 6)
+        integer(c_int), intent(IN)      :: stiffness_indices(n_elem)
+        real(c_double), intent(IN)      :: for_delta(n_elem, max_elem_node, 3)
+        real(c_double), intent(IN)      :: rbmass(n_elem, max_elem_node, 6, 6)
+
+        ! node data
+        integer(c_int), intent(IN)      :: master_node(n_node, 2)
+        integer(c_int), intent(IN)      :: vdof(n_node)
+        integer(c_int), intent(IN)      :: fdof(n_node)
+
+        ! data structures to be reconstructed
+        type(xbelem)                    :: elements(n_elem)
+        type(xbnode)                    :: nodes(n_node)
+        type(xbopts), intent(INOUT)     :: options
+
+        real(c_double), intent(IN)      :: pos_ini(n_node, 3)
+        real(c_double), intent(IN)      :: psi_ini(n_elem, max_elem_node, 3)
+
+        real(c_double), intent(IN)      :: steady_app_forces (n_node, 6)
+        ! ADC: careful, forces in master FoR
+
+        ! dynamic
+        real(c_double), intent(IN)      :: dynamic_app_forces(n_node, 6)
+        real(c_double), intent(INOUT)   :: gravity_forces(n_node, 6)
+        real(c_double), intent(INOUT)   :: quat(4)
+        real(c_double), intent(INOUT)   :: for_vel(6)
+        real(c_double), intent(INOUT)   :: for_acc(6)
+        real(c_double), intent(INOUT)   :: q(10)
+        real(c_double), intent(INOUT)   :: dqdt(10)
+        real(c_double), intent(INOUT)   :: dqddt(10)
+
+        integer(c_int)                  :: i
+        integer(c_int)                  :: nodes_per_elem
+
+        logical                         :: use_openmp
+
+        use_openmp = .FALSE.
+        !$ use_openmp=.TRUE.
+        if (use_openmp) then
+            call omp_set_num_threads(2)
+        end if
+
+        ! gaussian nodes
+        nodes_per_elem = count(conn(1,:) /= 0)
+        options%NumGauss = nodes_per_elem - 1
+
+        elements = generate_xbelem(n_elem,&
+                                   num_nodes,&
+                                   mem_number,&
+                                   conn,&
+                                   master,&
+                                   n_mass,&
+                                   mass_db,&
+                                   mass_indices,&
+                                   n_stiffness,&
+                                   stiffness_db,&
+                                   inv_stiffness_db,&
+                                   stiffness_indices,&
+                                   for_delta,&
+                                   psi_ini,&
+                                   rbmass)
+
+        nodes = generate_xbnode(n_node,&
+                                master_node,&
+                                vdof,&
+                                fdof)
+
+        gravity_forces = 0.0d0
+        call xbeam_solv_coupledrigid_step(numdof,&
+                                          dt,&
+                                          n_node,&
+                                          n_elem,&
+                                          elements,&
+                                          nodes,&
+                                          pos_ini,&
+                                          psi_ini,&
+                                          steady_app_forces,&
+                                          dynamic_app_forces,&
+                                          gravity_forces,&
+                                          for_vel,&
+                                          for_acc,&
+                                          quat,&
+                                          Q,&
+                                          dQdt,&
+                                          dQddt,&
+                                          options)
+
+        call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_ini, elements, nodes)
+    end subroutine xbeam_solv_coupledrigid_step_python
 end module xbeam_interface
