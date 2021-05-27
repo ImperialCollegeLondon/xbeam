@@ -2003,7 +2003,7 @@ subroutine xbeam_solv_coupledrigid_step(&
                                  psi_ddot_def,&
                                  dQdt(1:6),&
                                  dQddt(1:6),&
-                                 dQdt(7:0),&
+                                 dQdt(7:10),&
                                  MRS,&
                                  MRR,&
                                  CRS,&
