@@ -63,6 +63,7 @@ contains
         integer(c_int), intent(IN)      :: vdof(n_node)
         integer(c_int), intent(IN)      :: fdof(n_node)
 
+ 
         type(xbelem)                    :: elements(n_elem)
         type(xbnode)                    :: nodes(n_node)
         type(xbopts), intent(INOUT)     :: options
@@ -124,8 +125,8 @@ contains
                                   psi_ini,&
                                   pos_def,&
                                   psi_def,&
-                                  options&
-                                  )
+                                  options)
+                                  
         call correct_gravity_forces(n_node, n_elem, gravity_forces, psi_def, elements, nodes)
     end subroutine cbeam3_solv_nlnstatic_python
 
