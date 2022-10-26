@@ -1084,7 +1084,7 @@ DX_old = 1.0d0*options%mindelta
     mindelta = 0
     old_x = 1.0d0
     converged = .FALSE.
-    abs_threshold = epsilon(old_DX)
+    abs_threshold = options%abs_threshold
     old_DX = 1.0d0
     ! Iteration loop -----------------------------------------
     do iter = 1, options%maxiterations + 1

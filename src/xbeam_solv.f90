@@ -1119,7 +1119,7 @@ subroutine xbeam_solv_couplednlndyn_step_updated(&
 
     ! Iteration loop -----------------------------------------
     converged = .FALSE.
-    abs_threshold = epsilon(residual)*1000
+    abs_threshold = options%abs_threshold
     do iter = 1, options%maxiterations + 1
         if (iter == options%maxiterations + 1) then
             print*, 'Solver did not converge in ', iter, ' iterations.'
@@ -1855,7 +1855,7 @@ subroutine xbeam_solv_coupledrigid_step(&
 
     ! Iteration loop -----------------------------------------
     converged = .FALSE.
-    abs_threshold = epsilon(residual)*1000
+    abs_threshold = options%abs_threshold
     do iter = 1, options%maxiterations + 1
         if (iter == options%maxiterations + 1) then
             print*, 'Solver did not converge in ', iter, ' iterations.'
