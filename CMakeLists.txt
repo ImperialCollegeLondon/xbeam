@@ -29,14 +29,15 @@ endif()
 
 # Add debug flags
 ## For all compilers
-target_compile_options(xbeam PUBLIC $<$<CONFIG:DEBUG>: >)
+target_compile_options(xbeam PUBLIC $<$<CONFIG:DEBUG>:>)
 
 # Add release flags
 ## For all compilers
-target_compile_options(xbeam PUBLIC $<$<CONFIG:RELEASE>: -funroll-loops>)
+target_compile_options(xbeam PUBLIC $<$<CONFIG:RELEASE>:-funroll-loops>)
 
 # Custom flags for:
 ## For Intel Fortran
+## To do - test optimisation flags for IFORT before implementation
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
     target_compile_options(xbeam PUBLIC $<$<CONFIG:DEBUG>:-warn all>)
     target_compile_options(xbeam PUBLIC $<$<CONFIG:RELEASE>:-heap-arrays>)
@@ -45,7 +46,7 @@ endif()
 ## For GNU gfortran
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     target_compile_options(xbeam PUBLIC $<$<CONFIG:DEBUG>:-Wall>)
-    target_compile_options(xbeam PUBLIC $<$<CONFIG:RELEASE>:-ftree-parallelize-loops=4>)
+    target_compile_options(xbeam PUBLIC $<$<CONFIG:RELEASE>:-ofast>)
 endif()
 
 install(TARGETS xbeam
