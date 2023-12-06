@@ -87,7 +87,7 @@ module cbeam3_solv
   real(8),      intent(in)   :: Psi0     (n_elem,3,3)  ! Initial CRV of the nodes in the elements.
   real(8),      intent(inout):: PosDefor (n_node, 3)    ! Current coordinates of the grid points
   real(8),      intent(inout):: PsiDefor (n_elem, 3, 3)  ! Current CRV of the nodes in the elements.
-  type(xbopts),intent(in)    :: Options           ! Solver parameters.
+  type(xbopts),intent(inout) :: Options           ! Solver parameters.
 
 ! Local variables.
   real(8):: Delta                          ! Flag for convergence in iterations.
@@ -171,7 +171,7 @@ module cbeam3_solv
 ! TaPos =     Possc       *Options%MinDelta
 ! TaPsi =           Psisc *Options%MinDelta
 
-DX_old = 1.0d0*options%mindelta
+  DX_old = 1.0d0*options%mindelta
 
 ! Initialize geometric constants and system state.
   ListIN = 0
@@ -193,11 +193,25 @@ DX_old = 1.0d0*options%mindelta
 
 ! Iteration until convergence.
   converged=.false.
+! print*, 'before asgn1 Conv is: ', Options%load_ramping_conv
+
+  Options%load_ramping_conv = .true.
+  
+! print*, 'after asgn1 Conv is: ', Options%load_ramping_conv
     do while (converged .eqv. .false.)!(Delta.gt.Options%MinDelta)
       Iter= Iter+1
       if (Iter.gt.Options%MaxIterations) then
+        
+          Options%load_ramping_conv = .false.
+        
           print*, 'Residual is: ', maxval(abs(DeltaX))
-          STOP 'Static equations did not converge (17235)'
+          print*, 'Static equations did not converge (17235), current number of load steps = ' , Options%NumLoadSteps
+          print*, 'Doubling load step. conv = ' , Options%load_ramping_conv
+
+
+          converged = .TRUE.
+          cycle
+          ! STOP 'Static equations did not converge (17235)'
       end if
 
       if ((Options%PrintInfo) .AND. (Iter.eq.1)) then
@@ -273,18 +287,23 @@ DX_old = 1.0d0*options%mindelta
       call cbeam3_solv_update_static (Elem,Node,Psi0,DeltaX,PosDefor,PsiDefor)
 
       if (iter > 1) then
+!         print*, 'Current iter is ', iter
           if (maxval(abs(DeltaX)) < DX_old) then
+!             print*, 'before conv asgn Conv is: ', Options%load_ramping_conv
+              
+              Options%load_ramping_conv = .true.
+              
               converged = .TRUE.
-
+!             print*, 'after conv asgn Conv is: ', Options%load_ramping_conv
             !   print*, 'APPFORCES = ', sum(appforces, dim=1)
             !   print*, 'gravity_forces = ', sum(gravity_forces, dim=1)
             !   print*, sum(gravity_forces + AppForces, dim=1)
           end if
       end if
 
-    if (iter == 1) then
-      DX_old = max(1.0d0, maxval(abs(DeltaX)))*options%mindelta
-    end if
+      if (iter == 1) then
+        DX_old = max(1.0d0, maxval(abs(DeltaX)))*options%mindelta
+      end if
 ! Convergence parameter delta (original):
  !      call delta_check(Qglobal,DeltaX,Delta,passed_delta,Options%MinDelta,Options%PrintInfo)
  ! ! Check convergence using the residual:

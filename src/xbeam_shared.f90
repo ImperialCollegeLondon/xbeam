@@ -90,6 +90,7 @@ module xbeam_shared
   real(c_double):: gravity_dir_z = 1
   logical(c_bool):: balancing = .false.
   real(c_double):: relaxation_factor = 0.3
+  logical(c_bool):: load_ramping_conv = .false.
  end type
 
 end module xbeam_shared
